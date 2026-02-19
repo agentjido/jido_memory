@@ -1,28 +1,88 @@
 defmodule JidoMemory.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/agentjido/jido_memory"
+  @description "Data-driven, ETS-backed memory system for Jido agents"
+
   def project do
     [
       app: :jido_memory,
-      version: "0.1.0",
-      elixir: "~> 1.19",
+      version: @version,
+      elixir: "~> 1.18",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: aliases(),
+      # Documentation
+      name: "Jido Memory",
+      source_url: @source_url,
+      homepage_url: @source_url,
+      description: @description,
+      docs: docs(),
+      # Testing
+      test_coverage: [tool: :coveralls],
+      preferred_cli_env: [
+        "coveralls.html": :test,
+        "test.watch": :test,
+        quality: :test
+      ]
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
+  defp aliases do
+    [
+      setup: ["deps.get", "cmd npm install"],
+      quality: [
+        "format",
+        "credo --strict",
+        "dialyzer",
+        "test",
+        "coveralls.html",
+        "doctor --raise"
+      ]
+    ]
+  end
+
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      # Jido ecosystem
+      {:jido, "~> 2.0.0-rc.5"},
+      {:jido_action, github: "agentjido/jido_action", branch: "main"},
+      {:jido_ai, github: "agentjido/jido_ai", ref: "ae4d37a0dfae564bc7a6a94323fd5a9756a3853d"},
+      # Validation & errors
+      {:zoi, "~> 0.16"},
+      {:splode, "~> 0.3"},
+      # Dev & test
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:doctor, "~> 0.21", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18", only: [:dev, :test]},
+      {:stream_data, "~> 1.0", only: [:dev, :test]},
+      {:mimic, "~> 2.0", only: :test}
+    ]
+  end
+
+  defp docs do
+    [
+      extras: [
+        "README.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md"
+      ],
+      main: "readme",
+      source_ref: "main",
+      formatters: ["html"]
     ]
   end
 end

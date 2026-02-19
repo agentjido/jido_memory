@@ -1,0 +1,36 @@
+defmodule Jido.Memory.Actions.Recall do
+  @moduledoc """
+  Explicit action for querying memory records.
+  """
+
+  use Jido.Action,
+    name: "memory_recall",
+    description: "Query memory records",
+    schema: [
+      namespace: [type: :string, required: false, doc: "Override namespace"],
+      classes: [type: :any, required: false, doc: "Class filters"],
+      kinds: [type: :any, required: false, doc: "Kind filters"],
+      tags_any: [type: :any, required: false, doc: "Any-tag filter"],
+      tags_all: [type: :any, required: false, doc: "All-tag filter"],
+      text_contains: [type: :any, required: false, doc: "Case-insensitive text substring"],
+      since: [type: :any, required: false, doc: "Start timestamp ms"],
+      until: [type: :any, required: false, doc: "End timestamp ms"],
+      limit: [type: :any, required: false, doc: "Max result count"],
+      order: [type: :any, required: false, doc: "Sort order asc|desc"],
+      store: [type: :any, required: false, doc: "Store declaration"],
+      store_opts: [type: :any, required: false, doc: "Store options"],
+      memory_result_key: [type: :any, required: false, doc: "Output map key"]
+    ]
+
+  @impl true
+  def run(params, context) do
+    case Jido.Memory.Runtime.recall(context, params) do
+      {:ok, records} ->
+        key = params[:memory_result_key] || :memory_results
+        {:ok, %{key => records}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+end
