@@ -21,8 +21,13 @@ defmodule JidoMemory.MixProject do
       description: @description,
       docs: docs(),
       # Testing
-      test_coverage: [tool: :coveralls],
-      preferred_cli_env: [
+      test_coverage: [tool: :coveralls]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
         "coveralls.html": :test,
         "test.watch": :test,
         quality: :test

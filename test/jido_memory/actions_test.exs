@@ -1,7 +1,7 @@
 defmodule Jido.Memory.ActionsTest do
   use ExUnit.Case, async: true
 
-  alias Jido.Memory.Actions.{Forget, Recall, Remember}
+  alias Jido.Memory.Actions.{Forget, Recall, Remember, Retrieve}
   alias Jido.Memory.Record
   alias Jido.Memory.Store.ETS
 
@@ -42,6 +42,20 @@ defmodule Jido.Memory.ActionsTest do
 
     assert {:ok, %{memory_results: [%Record{text: "recall me"}]}} =
              Recall.run(%{text_contains: "recall", order: :asc}, context)
+  end
+
+  test "retrieve action matches recall semantics", %{context: context} do
+    assert {:ok, %{last_memory_id: _id}} =
+             Remember.run(
+               %{class: :episodic, kind: :event, text: "retrieve me", tags: ["x"]},
+               context
+             )
+
+    assert {:ok, %{memory_results: [%Record{text: "retrieve me"}]}} =
+             Retrieve.run(%{text_contains: "retrieve", order: :asc}, context)
+
+    assert {:ok, %{memory_results: [%Record{text: "retrieve me"}]}} =
+             Recall.run(%{text_contains: "retrieve", order: :asc}, context)
   end
 
   test "forget action deletes and returns boolean", %{

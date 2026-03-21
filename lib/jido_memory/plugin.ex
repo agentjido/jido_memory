@@ -1,19 +1,17 @@
 require Jido.Memory.Actions.Forget
 require Jido.Memory.Actions.Recall
 require Jido.Memory.Actions.Remember
+require Jido.Memory.Actions.Retrieve
 
-defmodule Jido.Memory.ETSPlugin do
-  @moduledoc """
-  ETS-backed memory plugin for Jido agents.
+defmodule Jido.Memory.PluginSupport do
+  @moduledoc false
 
-  This plugin owns `:__memory__` state and keeps only lightweight runtime
-  metadata in agent state while records live in ETS.
-  """
-
-  alias Jido.Signal
-  alias Jido.Memory.Actions.{Forget, Recall, Remember}
+  alias Jido.Memory.Actions.{Forget, Recall, Remember, Retrieve}
+  alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.ProviderRef
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store
+  alias Jido.Signal
 
   @default_store {Jido.Memory.Store.ETS, [table: :jido_memory]}
 
@@ -23,72 +21,77 @@ defmodule Jido.Memory.ETSPlugin do
     "ai.tool.result"
   ]
 
-  @state_schema Zoi.object(%{
-                  namespace: Zoi.string() |> Zoi.optional(),
-                  store: Zoi.any() |> Zoi.default(@default_store),
-                  auto_capture: Zoi.boolean() |> Zoi.default(true),
-                  capture_signal_patterns:
-                    Zoi.list(Zoi.string())
-                    |> Zoi.default(@default_capture_patterns),
-                  capture_rules: Zoi.map() |> Zoi.default(%{})
-                })
+  @type mode :: :provider_aware | :legacy_ets
 
-  @config_schema Zoi.object(%{
-                   store: Zoi.any() |> Zoi.default(@default_store),
-                   store_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
-                   namespace: Zoi.string() |> Zoi.optional(),
-                   namespace_mode: Zoi.atom() |> Zoi.default(:per_agent),
-                   shared_namespace: Zoi.string() |> Zoi.optional(),
-                   auto_capture: Zoi.boolean() |> Zoi.default(true),
-                   capture_signal_patterns:
-                     Zoi.list(Zoi.string())
-                     |> Zoi.default(@default_capture_patterns),
-                   capture_rules: Zoi.map() |> Zoi.default(%{})
-                 })
-
-  use Jido.Plugin,
-    name: "memory",
-    state_key: :__memory__,
-    actions: [Remember, Recall, Forget],
-    schema: @state_schema,
-    config_schema: @config_schema,
-    singleton: true,
-    description: "ETS-backed memory plugin with structured retrieval and auto-capture.",
-    capabilities: [:memory]
-
-  @impl Jido.Plugin
-  def mount(agent, config) do
-    with {:ok, namespace} <- resolve_namespace(agent, config),
-         {:ok, {store_mod, store_opts}} <- resolve_store(config),
-         :ok <- store_mod.ensure_ready(store_opts) do
-      {:ok,
-       %{
-         namespace: namespace,
-         store: {store_mod, store_opts},
-         auto_capture: map_get(config, :auto_capture, true),
-         capture_signal_patterns:
-           map_get(config, :capture_signal_patterns, @default_capture_patterns),
-         capture_rules: map_get(config, :capture_rules, %{})
-       }}
-    end
+  @spec state_schema() :: Zoi.schema()
+  def state_schema do
+    Zoi.object(%{
+      provider: Zoi.any() |> Zoi.optional(),
+      namespace: Zoi.string() |> Zoi.optional(),
+      store: Zoi.any() |> Zoi.optional(),
+      auto_capture: Zoi.boolean() |> Zoi.default(true),
+      capture_signal_patterns:
+        Zoi.list(Zoi.string())
+        |> Zoi.default(@default_capture_patterns),
+      capture_rules: Zoi.map() |> Zoi.default(%{})
+    })
   end
 
-  @impl Jido.Plugin
-  def signal_routes(_config) do
+  @spec config_schema() :: Zoi.schema()
+  def config_schema do
+    Zoi.object(%{
+      provider: Zoi.any() |> Zoi.optional(),
+      provider_opts: Zoi.any() |> Zoi.default([]),
+      store: Zoi.any() |> Zoi.default(@default_store),
+      store_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
+      namespace: Zoi.string() |> Zoi.optional(),
+      namespace_mode: Zoi.atom() |> Zoi.default(:per_agent),
+      shared_namespace: Zoi.string() |> Zoi.optional(),
+      auto_capture: Zoi.boolean() |> Zoi.default(true),
+      capture_signal_patterns:
+        Zoi.list(Zoi.string())
+        |> Zoi.default(@default_capture_patterns),
+      capture_rules: Zoi.map() |> Zoi.default(%{})
+    })
+  end
+
+  @spec actions() :: [module()]
+  def actions, do: [Remember, Retrieve, Recall, Forget]
+
+  @spec signal_routes() :: [{String.t(), module()}]
+  def signal_routes do
     [
       {"remember", Remember},
+      {"retrieve", Retrieve},
       {"recall", Recall},
       {"forget", Forget}
     ]
   end
 
-  @impl Jido.Plugin
+  @spec mount(map(), map() | keyword(), mode()) :: {:ok, map()} | {:error, term()}
+  def mount(agent, config, mode) do
+    config_map = normalize_map(config)
+
+    with {:ok, provider_ref} <- resolve_provider_ref(config_map, mode),
+         {:ok, legacy_state} <- resolve_legacy_state(agent, config_map, provider_ref, mode) do
+      provider_ref = maybe_enrich_provider_ref(provider_ref, legacy_state)
+
+      {:ok,
+       legacy_state
+       |> Map.put(:provider, provider_ref)
+       |> Map.put(:auto_capture, map_get(config_map, :auto_capture, true))
+       |> Map.put(:capture_signal_patterns, map_get(config_map, :capture_signal_patterns, @default_capture_patterns))
+       |> Map.put(:capture_rules, map_get(config_map, :capture_rules, %{}))}
+    end
+  end
+
+  @spec handle_signal(Signal.t(), map()) :: {:ok, :continue}
   def handle_signal(%Signal{} = signal, context) do
     plugin_state =
       context
       |> map_get(:agent, %{})
       |> map_get(:state, %{})
-      |> map_get(:__memory__, %{})
+      |> map_get(Runtime.plugin_state_key(), %{})
 
     auto_capture = map_get(plugin_state, :auto_capture, true)
     patterns = map_get(plugin_state, :capture_signal_patterns, @default_capture_patterns)
@@ -113,14 +116,106 @@ defmodule Jido.Memory.ETSPlugin do
     _ -> {:ok, :continue}
   end
 
-  @impl Jido.Plugin
+  @spec on_checkpoint(term(), map()) :: :keep
   def on_checkpoint(_plugin_state, _context), do: :keep
 
-  @impl Jido.Plugin
-  def on_restore(pointer, _context) when is_map(pointer), do: {:ok, pointer}
-  def on_restore(_pointer, _context), do: {:ok, nil}
+  @spec on_restore(term(), map(), mode()) :: {:ok, map() | nil}
+  def on_restore(pointer, _context, :provider_aware) when is_map(pointer),
+    do: {:ok, normalize_state(pointer, :provider_aware)}
 
-  @spec resolve_store(map()) :: {:ok, {module(), keyword()}} | {:error, term()}
+  def on_restore(pointer, _context, :legacy_ets) when is_map(pointer), do: {:ok, pointer}
+  def on_restore(_pointer, _context, _mode), do: {:ok, nil}
+
+  defp resolve_provider_ref(config_map, :legacy_ets) do
+    provider_ref = {Basic, legacy_provider_opts(config_map)}
+
+    with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref),
+         {:ok, _provider_meta} <- provider_ref.module.init(provider_ref.opts) do
+      {:ok, provider_ref}
+    end
+  end
+
+  defp resolve_provider_ref(config_map, :provider_aware) do
+    provider_input = map_get(config_map, :provider)
+    provider_opts = map_get(config_map, :provider_opts, [])
+
+    with true <- is_nil(provider_input) or is_list(provider_opts) do
+      provider_ref =
+        cond do
+          is_nil(provider_input) ->
+            {Basic, legacy_provider_opts(config_map)}
+
+          match?({module, opts} when is_atom(module) and is_list(opts), provider_input) ->
+            provider_input
+
+          is_atom(provider_input) ->
+            {provider_input, provider_opts}
+
+          true ->
+            provider_input
+        end
+
+      with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref),
+           {:ok, _provider_meta} <- provider_ref.module.init(provider_ref.opts) do
+        {:ok, provider_ref}
+      end
+    else
+      false -> {:error, :invalid_provider_opts}
+    end
+  end
+
+  defp resolve_legacy_state(agent, config_map, %ProviderRef{module: Basic, opts: provider_opts}, _mode) do
+    basic_config =
+      config_map
+      |> put_missing(:namespace, Keyword.get(provider_opts, :namespace))
+      |> put_missing(:store, Keyword.get(provider_opts, :store))
+      |> put_missing(:store_opts, Keyword.get(provider_opts, :store_opts, []))
+
+    with {:ok, namespace} <- resolve_namespace(agent, basic_config),
+         {:ok, {store_mod, store_opts}} <- resolve_store(basic_config),
+         :ok <- store_mod.ensure_ready(store_opts) do
+      {:ok, %{namespace: namespace, store: {store_mod, store_opts}}}
+    end
+  end
+
+  defp resolve_legacy_state(_agent, _config_map, _provider_ref, _mode), do: {:ok, %{}}
+
+  defp normalize_state(state, mode) do
+    state_map = normalize_map(state)
+
+    provider =
+      case map_get(state_map, :provider) do
+        nil ->
+          resolve_provider_ref(state_map, mode)
+          |> case do
+            {:ok, provider_ref} -> provider_ref
+            _ -> ProviderRef.default()
+          end
+
+        provider ->
+          case ProviderRef.normalize(provider) do
+            {:ok, provider_ref} -> provider_ref
+            _ -> ProviderRef.default()
+          end
+      end
+
+    %{
+      provider: provider,
+      namespace: normalize_optional_string(map_get(state_map, :namespace)),
+      store: map_get(state_map, :store),
+      auto_capture: map_get(state_map, :auto_capture, true),
+      capture_signal_patterns: map_get(state_map, :capture_signal_patterns, @default_capture_patterns),
+      capture_rules: map_get(state_map, :capture_rules, %{})
+    }
+  end
+
+  defp legacy_provider_opts(config_map) do
+    []
+    |> maybe_put(:namespace, map_get(config_map, :namespace))
+    |> maybe_put(:store, map_get(config_map, :store))
+    |> maybe_put(:store_opts, map_get(config_map, :store_opts, []))
+  end
+
   defp resolve_store(config) do
     store_value = map_get(config, :store, @default_store)
     override_opts = map_get(config, :store_opts, [])
@@ -134,7 +229,6 @@ defmodule Jido.Memory.ETSPlugin do
     end
   end
 
-  @spec resolve_namespace(map(), map()) :: {:ok, String.t()} | {:error, term()}
   defp resolve_namespace(agent, config) do
     explicit = map_get(config, :namespace)
 
@@ -165,7 +259,6 @@ defmodule Jido.Memory.ETSPlugin do
     end
   end
 
-  @spec build_capture_attrs(Signal.t(), map()) :: map() | :skip
   defp build_capture_attrs(%Signal{} = signal, plugin_state) do
     base =
       case signal.type do
@@ -229,7 +322,6 @@ defmodule Jido.Memory.ETSPlugin do
     maybe_apply_capture_rule(base, signal.type, rules)
   end
 
-  @spec maybe_apply_capture_rule(map(), String.t(), map()) :: map() | :skip
   defp maybe_apply_capture_rule(base, signal_type, rules) when is_map(rules) do
     rule = Map.get(rules, signal_type) || Map.get(rules, safe_existing_atom(signal_type))
 
@@ -257,13 +349,11 @@ defmodule Jido.Memory.ETSPlugin do
 
   defp maybe_apply_capture_rule(base, _signal_type, _rules), do: base
 
-  @spec maybe_override(map(), map(), atom()) :: map()
   defp maybe_override(base, rule, key) do
     value = map_get(rule, key)
     if is_nil(value), do: base, else: Map.put(base, key, value)
   end
 
-  @spec merge_tags(map(), map()) :: map()
   defp merge_tags(base, rule) do
     case map_get(rule, :tags) do
       tags when is_list(tags) ->
@@ -275,7 +365,6 @@ defmodule Jido.Memory.ETSPlugin do
     end
   end
 
-  @spec extract_llm_text(map()) :: String.t() | nil
   defp extract_llm_text(data) do
     pick(data, :text) ||
       pick(data, :answer) ||
@@ -287,7 +376,6 @@ defmodule Jido.Memory.ETSPlugin do
       end
   end
 
-  @spec signal_timestamp(Signal.t()) :: integer()
   defp signal_timestamp(%Signal{time: nil}), do: System.system_time(:millisecond)
 
   defp signal_timestamp(%Signal{time: time}) when is_binary(time) do
@@ -299,7 +387,6 @@ defmodule Jido.Memory.ETSPlugin do
 
   defp signal_timestamp(_), do: System.system_time(:millisecond)
 
-  @spec base_metadata(Signal.t()) :: map()
   defp base_metadata(%Signal{} = signal) do
     %{
       signal_id: signal.id,
@@ -310,19 +397,16 @@ defmodule Jido.Memory.ETSPlugin do
     |> Map.new()
   end
 
-  @spec normalize_data(term()) :: map()
   defp normalize_data(%{} = data), do: data
   defp normalize_data(nil), do: %{}
   defp normalize_data(data), do: %{value: data}
 
-  @spec signal_matches_any?(String.t(), [String.t()]) :: boolean()
   defp signal_matches_any?(_type, []), do: false
 
   defp signal_matches_any?(type, patterns) when is_binary(type) and is_list(patterns) do
     Enum.any?(patterns, &signal_type_matches?(type, &1))
   end
 
-  @spec signal_type_matches?(String.t(), String.t()) :: boolean()
   defp signal_type_matches?(type, pattern) when type == pattern, do: true
 
   defp signal_type_matches?(type, pattern) do
@@ -344,15 +428,52 @@ defmodule Jido.Memory.ETSPlugin do
     end
   end
 
-  @spec pick(map(), atom()) :: term()
   defp pick(map, key), do: map_get(map, key)
 
-  @spec map_get(map(), atom(), term()) :: term()
-  defp map_get(map, key, default \\ nil) do
+  defp map_get(map, key, default \\ nil)
+
+  defp map_get(map, key, default) when is_map(map) do
     Map.get(map, key, Map.get(map, Atom.to_string(key), default))
   end
 
-  @spec safe_existing_atom(String.t()) :: atom() | nil
+  defp map_get(_map, _key, default), do: default
+
+  defp normalize_map(%{} = map), do: map
+  defp normalize_map(list) when is_list(list), do: Map.new(list)
+  defp normalize_map(_other), do: %{}
+
+  defp normalize_optional_string(nil), do: nil
+
+  defp normalize_optional_string(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp normalize_optional_string(_value), do: nil
+
+  defp maybe_enrich_provider_ref(%ProviderRef{module: Basic} = provider_ref, legacy_state) do
+    %{provider_ref | opts: enrich_basic_opts(provider_ref.opts, legacy_state)}
+  end
+
+  defp maybe_enrich_provider_ref(provider_ref, _legacy_state), do: provider_ref
+
+  defp enrich_basic_opts(provider_opts, legacy_state) do
+    provider_opts
+    |> maybe_put(:namespace, map_get(legacy_state, :namespace))
+    |> maybe_put(:store, map_get(legacy_state, :store))
+  end
+
+  defp put_missing(map, _key, nil), do: map
+
+  defp put_missing(map, key, value) when is_atom(key) do
+    Map.put_new(map, key, value)
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
   defp safe_existing_atom(value) when is_binary(value) do
     String.to_existing_atom(value)
   rescue
@@ -360,4 +481,75 @@ defmodule Jido.Memory.ETSPlugin do
   end
 
   defp safe_existing_atom(_), do: nil
+end
+
+previous_ignore_module_conflict = Code.get_compiler_option(:ignore_module_conflict)
+Code.put_compiler_option(:ignore_module_conflict, true)
+
+defmodule Jido.Memory.Plugin do
+  @moduledoc """
+  Provider-aware memory plugin for Jido agents.
+  """
+
+  alias Jido.Memory.PluginSupport
+
+  use Jido.Plugin,
+    name: "memory",
+    state_key: :__memory__,
+    actions: PluginSupport.actions(),
+    schema: PluginSupport.state_schema(),
+    config_schema: PluginSupport.config_schema(),
+    singleton: true,
+    description: "Provider-aware memory plugin with structured retrieval and auto-capture.",
+    capabilities: [:memory]
+
+  @impl Jido.Plugin
+  def mount(agent, config), do: PluginSupport.mount(agent, config, :provider_aware)
+
+  @impl Jido.Plugin
+  def signal_routes(_config), do: PluginSupport.signal_routes()
+
+  @impl Jido.Plugin
+  def handle_signal(signal, context), do: PluginSupport.handle_signal(signal, context)
+
+  @impl Jido.Plugin
+  def on_checkpoint(plugin_state, context), do: PluginSupport.on_checkpoint(plugin_state, context)
+
+  @impl Jido.Plugin
+  def on_restore(pointer, context), do: PluginSupport.on_restore(pointer, context, :provider_aware)
+end
+
+Code.put_compiler_option(:ignore_module_conflict, previous_ignore_module_conflict)
+
+defmodule Jido.Memory.ETSPlugin do
+  @moduledoc """
+  ETS-backed compatibility wrapper over `Jido.Memory.Plugin`.
+  """
+
+  alias Jido.Memory.PluginSupport
+
+  use Jido.Plugin,
+    name: "memory",
+    state_key: :__memory__,
+    actions: PluginSupport.actions(),
+    schema: PluginSupport.state_schema(),
+    config_schema: PluginSupport.config_schema(),
+    singleton: true,
+    description: "ETS-backed memory plugin with structured retrieval and auto-capture.",
+    capabilities: [:memory]
+
+  @impl Jido.Plugin
+  def mount(agent, config), do: PluginSupport.mount(agent, config, :legacy_ets)
+
+  @impl Jido.Plugin
+  def signal_routes(_config), do: PluginSupport.signal_routes()
+
+  @impl Jido.Plugin
+  def handle_signal(signal, context), do: PluginSupport.handle_signal(signal, context)
+
+  @impl Jido.Plugin
+  def on_checkpoint(plugin_state, context), do: PluginSupport.on_checkpoint(plugin_state, context)
+
+  @impl Jido.Plugin
+  def on_restore(pointer, context), do: PluginSupport.on_restore(pointer, context, :legacy_ets)
 end

@@ -7,9 +7,23 @@
 Version 1 uses ETS as the authoritative store and provides:
 - Structured records (`Jido.Memory.Record`)
 - Structured query filters (`Jido.Memory.Query`)
+- A canonical provider contract (`Jido.Memory.Provider`)
+- A default provider (`Jido.Memory.Provider.Basic`)
+- A provider-aware plugin (`Jido.Memory.Plugin`)
 - A Jido plugin (`Jido.Memory.ETSPlugin`)
-- Explicit actions (`memory.remember`, `memory.recall`, `memory.forget`)
+- Explicit actions (`memory.remember`, `memory.retrieve`, `memory.recall`, `memory.forget`)
 - Auto-capture hooks for AI and non-LLM signal flows
+
+## Canonical Providers
+
+`jido_memory` now separates the stable memory facade from the implementation behind it.
+
+- `Jido.Memory.Runtime` stays the public API.
+- `Jido.Memory.Provider.Basic` is the default provider for store-backed memory.
+- `Jido.Memory.Plugin` is the common provider-aware plugin for core memory flows.
+- `Jido.Memory.ETSPlugin` remains the compatibility wrapper for existing ETS-backed agents.
+
+That lets the same core plugin and runtime calls target `Basic` or a downstream provider such as `Jido.MemoryOS.Provider`.
 
 ## Installation
 
@@ -26,6 +40,28 @@ end
 ```
 
 ## Use As A Jido Plugin
+
+### Common Provider-Aware Plugin
+
+Use `Jido.Memory.Plugin` when you want the same agent-facing core memory API to work across providers:
+
+```elixir
+defmodule MyApp.Agent do
+  use Jido.Agent,
+    name: "my_agent",
+    default_plugins: %{__memory__: false},
+    plugins: [
+      {Jido.Memory.Plugin,
+       %{
+         provider:
+           {Jido.Memory.Provider.Basic,
+            [store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]}}}
+       }}
+    ]
+end
+```
+
+### Compatibility ETS Plugin
 
 Jido includes a default memory plugin at `:__memory__`, so replace it explicitly:
 
@@ -116,7 +152,7 @@ You can still write/read memory explicitly through actions or API calls.
 
 # Query
 {:ok, results} =
-  Jido.Memory.Runtime.recall(%{id: "agent-1"}, %{
+  Jido.Memory.Runtime.retrieve(%{id: "agent-1"}, %{
     classes: [:semantic],
     tags_any: ["market"],
     limit: 10,
@@ -133,13 +169,39 @@ You can still write/read memory explicitly through actions or API calls.
 
 The plugin exposes these signal routes:
 - `memory.remember` -> `Jido.Memory.Actions.Remember`
+- `memory.retrieve` -> `Jido.Memory.Actions.Retrieve`
 - `memory.recall` -> `Jido.Memory.Actions.Recall`
 - `memory.forget` -> `Jido.Memory.Actions.Forget`
 
 Action result conventions:
 - `Remember` -> `%{last_memory_id: id}`
+- `Retrieve` -> `%{memory_results: [...]}` (or custom `memory_result_key`)
 - `Recall` -> `%{memory_results: [...]}` (or custom `memory_result_key`)
 - `Forget` -> `%{last_memory_deleted?: boolean}`
+
+## MemoryOS Provider Example
+
+When `jido_memory_os` is available, the same common plugin can target MemoryOS for core flows:
+
+```elixir
+{Jido.Memory.Plugin,
+ %{
+   provider:
+     {Jido.MemoryOS.Provider,
+      [
+        server: MyApp.MemoryManager,
+        app_config: %{
+          tiers: %{
+            short: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_short]}},
+            mid: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_mid]}},
+            long: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_long]}}
+          }
+        }
+      ]}
+ }}
+```
+
+Use `Jido.MemoryOS.Plugin` instead when you need MemoryOS-specific routes like `pre_turn` and `post_turn`.
 
 ## Record Model
 

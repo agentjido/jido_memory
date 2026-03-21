@@ -2,6 +2,8 @@ defmodule Jido.Memory.ETSPluginTest do
   use ExUnit.Case, async: true
 
   alias Jido.Memory.ETSPlugin, as: Plugin
+  alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.ProviderRef
   alias Jido.Memory.Store.ETS
 
   setup do
@@ -35,6 +37,7 @@ defmodule Jido.Memory.ETSPluginTest do
     routes = Plugin.signal_routes(%{})
 
     assert {"remember", Jido.Memory.Actions.Remember} in routes
+    assert {"retrieve", Jido.Memory.Actions.Retrieve} in routes
     assert {"recall", Jido.Memory.Actions.Recall} in routes
     assert {"forget", Jido.Memory.Actions.Forget} in routes
   end
@@ -81,5 +84,66 @@ defmodule Jido.Memory.ETSPluginTest do
     pointer = %{namespace: "agent:x", store: {ETS, [table: :x]}}
     assert :keep = Plugin.on_checkpoint(pointer, %{})
     assert {:ok, ^pointer} = Plugin.on_restore(pointer, %{})
+  end
+
+  test "mount keeps legacy store-backed state while tracking the Basic provider", %{store: store} do
+    assert {:ok, state} =
+             Plugin.mount(%{id: "agent-legacy"}, %{store: store, namespace_mode: :per_agent})
+
+    assert state.namespace == "agent:agent-legacy"
+    assert state.store == store
+    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
+    assert Keyword.get(provider_opts, :store) == store
+    assert Keyword.get(provider_opts, :namespace) == "agent:agent-legacy"
+  end
+end
+
+defmodule Jido.Memory.PluginTest do
+  use ExUnit.Case, async: true
+
+  alias Jido.Memory.Plugin
+  alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.ProviderRef
+  alias Jido.Memory.Store.ETS
+
+  setup do
+    table = String.to_atom("jido_memory_provider_plugin_test_#{System.unique_integer([:positive])}")
+    opts = [table: table]
+    assert :ok = ETS.ensure_ready(opts)
+    %{store: {ETS, opts}}
+  end
+
+  test "mount defaults to the Basic provider when none is configured", %{store: store} do
+    assert {:ok, state} =
+             Plugin.mount(%{id: "agent-basic"}, %{store: store, namespace_mode: :per_agent})
+
+    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
+    assert Keyword.get(provider_opts, :store) == store
+    assert state.namespace == "agent:agent-basic"
+  end
+
+  test "mount accepts provider bundles in canonical tuple form", %{store: store} do
+    provider = {Basic, [store: store, namespace: "provider:tuple"]}
+
+    assert {:ok, state} = Plugin.mount(%{id: "agent-provider"}, %{provider: provider})
+
+    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
+    assert Keyword.get(provider_opts, :store) == store
+    assert Keyword.get(provider_opts, :namespace) == "provider:tuple"
+    assert state.namespace == "provider:tuple"
+    assert state.store == store
+    assert state.auto_capture == true
+    assert state.capture_rules == %{}
+  end
+
+  test "restore normalizes provider-aware pointers", %{store: store} do
+    pointer = %{provider: {Basic, [store: store, namespace: "provider:restore"]}, auto_capture: false}
+
+    assert {:ok, restored} = Plugin.on_restore(pointer, %{})
+    assert %ProviderRef{module: Basic, opts: provider_opts} = restored.provider
+    assert Keyword.get(provider_opts, :store) == store
+    assert Keyword.get(provider_opts, :namespace) == "provider:restore"
+    assert restored.auto_capture == false
+    assert restored.capture_rules == %{}
   end
 end

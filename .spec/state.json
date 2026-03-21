@@ -713,7 +713,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -724,7 +724,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -735,7 +735,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -746,7 +746,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
@@ -757,7 +757,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
@@ -768,7 +768,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "executed",
+        "strength": "claimed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
@@ -986,8 +986,8 @@
     "cli_minimum_strength": null,
     "default_minimum_strength": "claimed",
     "strength_summary": {
-      "claimed": 0,
-      "executed": 6,
+      "claimed": 6,
+      "executed": 0,
       "linked": 23
     },
     "threshold_failures": 0
