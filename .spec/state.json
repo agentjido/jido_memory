@@ -1,0 +1,503 @@
+{
+  "decisions": {
+    "items": []
+  },
+  "findings": [],
+  "index": {
+    "exceptions": [],
+    "requirements": [
+      {
+        "file": ".spec/specs/package.spec.md",
+        "id": "jido_memory.package.auto_capture",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The plugin shall support auto-capture of configured signal patterns into structured memory records.",
+        "subject_id": "jido_memory.package"
+      },
+      {
+        "file": ".spec/specs/package.spec.md",
+        "id": "jido_memory.package.default_ets_path",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The default shipped memory path shall be ETS-backed and use ETS as the authoritative store unless the caller supplies another store implementation.",
+        "subject_id": "jido_memory.package"
+      },
+      {
+        "file": ".spec/specs/package.spec.md",
+        "id": "jido_memory.package.plugin_and_actions",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The package shall provide a Jido plugin and explicit actions for remember, recall, and forget flows.",
+        "subject_id": "jido_memory.package"
+      },
+      {
+        "file": ".spec/specs/package.spec.md",
+        "id": "jido_memory.package.structured_memory_contract",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The package shall provide structured record and query contracts plus a runtime facade and store behavior for writing, retrieving, and deleting memory records.",
+        "subject_id": "jido_memory.package"
+      },
+      {
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "id": "jido_memory.provider_architecture.contract_owner",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The canonical provider architecture proposal shall place the shared provider contract in jido_memory rather than in an implementation-specific advanced provider.",
+        "subject_id": "jido_memory.provider_architecture"
+      },
+      {
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "id": "jido_memory.provider_architecture.core_plus_capabilities",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The proposal shall separate required core provider operations from optional capability behaviors so minimal and advanced providers can coexist without a single oversized interface.",
+        "subject_id": "jido_memory.provider_architecture"
+      },
+      {
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "id": "jido_memory.provider_architecture.provider_roles",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The proposal shall treat the current runtime and store stack as the basic provider path and position jido_memory_os as an advanced provider implementation of the shared contract.",
+        "subject_id": "jido_memory.provider_architecture"
+      },
+      {
+        "file": ".spec/specs/spec_system.spec.md",
+        "id": "spec.workspace.agents_present",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The repository shall include a .spec/AGENTS.md that gives local operating guidance for agents editing current-truth subjects.",
+        "subject_id": "spec.system"
+      },
+      {
+        "file": ".spec/specs/spec_system.spec.md",
+        "id": "spec.workspace.current_truth_boundary",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "Current-truth subject specs shall live in .spec/specs/, while supporting RFCs and design notes shall stay outside that directory.",
+        "subject_id": "spec.system"
+      },
+      {
+        "file": ".spec/specs/spec_system.spec.md",
+        "id": "spec.workspace.decisions_readme_present",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The repository shall include a .spec/decisions/README.md that explains when durable ADRs belong in the workspace.",
+        "subject_id": "spec.system"
+      },
+      {
+        "file": ".spec/specs/spec_system.spec.md",
+        "id": "spec.workspace.readme_present",
+        "priority": "must",
+        "stability": "stable",
+        "statement": "The repository shall include a .spec/README.md that explains the purpose, layout, and workflow for the local Spec Led workspace.",
+        "subject_id": "spec.system"
+      }
+    ],
+    "scenarios": [
+      {
+        "covers": [
+          "jido_memory.package.structured_memory_contract"
+        ],
+        "file": ".spec/specs/package.spec.md",
+        "given": [
+          "two agents write memory without overriding namespace"
+        ],
+        "id": "jido_memory.package.agent_isolation",
+        "subject_id": "jido_memory.package",
+        "then": [
+          "each agent sees only its own namespace-scoped records"
+        ],
+        "when": [
+          "each agent recalls its own memories"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.package.auto_capture",
+          "jido_memory.package.plugin_and_actions"
+        ],
+        "file": ".spec/specs/package.spec.md",
+        "given": [
+          "a mounted plugin with matching capture patterns"
+        ],
+        "id": "jido_memory.package.auto_capture_flow",
+        "subject_id": "jido_memory.package",
+        "then": [
+          "the signal is persisted as a structured memory record"
+        ],
+        "when": [
+          "the agent receives a matching signal"
+        ]
+      }
+    ],
+    "subjects": [
+      {
+        "file": ".spec/specs/package.spec.md",
+        "id": "jido_memory.package",
+        "meta": {
+          "decisions": null,
+          "id": "jido_memory.package",
+          "kind": "package",
+          "status": "active",
+          "summary": "jido_memory provides a structured record model, query model, store abstraction, ETS-backed runtime, and plugin/actions integration for Jido agents.",
+          "surface": [
+            "README.md",
+            "mix.exs",
+            "lib/jido_memory.ex",
+            "lib/jido_memory/record.ex",
+            "lib/jido_memory/query.ex",
+            "lib/jido_memory/store.ex",
+            "lib/jido_memory/store/ets.ex",
+            "lib/jido_memory/plugin.ex",
+            "lib/jido_memory/actions/*.ex",
+            "test/jido_memory_test.exs",
+            "test/jido_memory/plugin_test.exs",
+            "test/jido_memory/actions_test.exs"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "jido_memory Package"
+      },
+      {
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "id": "jido_memory.provider_architecture",
+        "meta": {
+          "decisions": null,
+          "id": "jido_memory.provider_architecture",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft provider architecture for making jido_memory the canonical contract layer and allowing pluggable memory implementations such as a basic provider and jido_memory_os.",
+          "surface": [
+            "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+            "lib/jido_memory.ex",
+            "lib/jido_memory/store.ex",
+            "lib/jido_memory/plugin.ex"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Canonical Memory Provider Architecture"
+      },
+      {
+        "file": ".spec/specs/spec_system.spec.md",
+        "id": "spec.system",
+        "meta": {
+          "decisions": null,
+          "id": "spec.system",
+          "kind": "policy",
+          "status": "active",
+          "summary": "Local workspace contract for authored specs and supporting design boundaries in jido_memory.",
+          "surface": [
+            ".spec/README.md",
+            ".spec/AGENTS.md",
+            ".spec/decisions/README.md",
+            ".spec/specs/*.spec.md",
+            "docs/rfcs/*.md"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Spec Workspace"
+      }
+    ],
+    "verifications": [
+      {
+        "covers": [
+          "jido_memory.package.structured_memory_contract",
+          "jido_memory.package.default_ets_path",
+          "jido_memory.package.plugin_and_actions",
+          "jido_memory.package.auto_capture"
+        ],
+        "file": ".spec/specs/package.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.package",
+        "target": "README.md"
+      },
+      {
+        "covers": [
+          "jido_memory.package.structured_memory_contract",
+          "jido_memory.package.default_ets_path",
+          "jido_memory.package.agent_isolation"
+        ],
+        "execute": true,
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory_test.exs"
+      },
+      {
+        "covers": [
+          "jido_memory.package.plugin_and_actions",
+          "jido_memory.package.auto_capture",
+          "jido_memory.package.auto_capture_flow"
+        ],
+        "execute": true,
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_architecture.contract_owner",
+          "jido_memory.provider_architecture.core_plus_capabilities",
+          "jido_memory.provider_architecture.provider_roles"
+        ],
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md"
+      },
+      {
+        "covers": [
+          "spec.workspace.readme_present"
+        ],
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "subject_id": "spec.system",
+        "target": ".spec/README.md"
+      },
+      {
+        "covers": [
+          "spec.workspace.agents_present"
+        ],
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "subject_id": "spec.system",
+        "target": ".spec/AGENTS.md"
+      },
+      {
+        "covers": [
+          "spec.workspace.decisions_readme_present"
+        ],
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "subject_id": "spec.system",
+        "target": ".spec/decisions/README.md"
+      },
+      {
+        "covers": [
+          "spec.workspace.current_truth_boundary"
+        ],
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "subject_id": "spec.system",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md"
+      }
+    ]
+  },
+  "specification_version": "1.0",
+  "summary": {
+    "decision_parse_errors": 0,
+    "decisions": 0,
+    "exceptions": 0,
+    "findings": 0,
+    "requirements": 11,
+    "scenarios": 2,
+    "subjects": 3,
+    "verifications": 8
+  },
+  "verification": {
+    "claims": [
+      {
+        "cover_id": "jido_memory.package.auto_capture",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.package",
+        "target": "README.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.package.default_ets_path",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.package",
+        "target": "README.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.package.plugin_and_actions",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.package",
+        "target": "README.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.package.structured_memory_contract",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.package",
+        "target": "README.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.package.agent_isolation",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory_test.exs",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.package.default_ets_path",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory_test.exs",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.package.structured_memory_contract",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory_test.exs",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.package.auto_capture",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.package.auto_capture_flow",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.package.plugin_and_actions",
+        "file": ".spec/specs/package.spec.md",
+        "kind": "command",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "claimed",
+        "subject_id": "jido_memory.package",
+        "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_architecture.contract_owner",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_architecture.core_plus_capabilities",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_architecture.provider_roles",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "spec.workspace.readme_present",
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "spec.system",
+        "target": ".spec/README.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "spec.workspace.agents_present",
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "spec.system",
+        "target": ".spec/AGENTS.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "spec.workspace.decisions_readme_present",
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "spec.system",
+        "target": ".spec/decisions/README.md",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "spec.workspace.current_truth_boundary",
+        "file": ".spec/specs/spec_system.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "spec.system",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 3
+      }
+    ],
+    "cli_minimum_strength": null,
+    "default_minimum_strength": "claimed",
+    "strength_summary": {
+      "claimed": 6,
+      "executed": 0,
+      "linked": 11
+    },
+    "threshold_failures": 0
+  },
+  "workspace": {
+    "decision_count": 0,
+    "spec_count": 3
+  }
+}
