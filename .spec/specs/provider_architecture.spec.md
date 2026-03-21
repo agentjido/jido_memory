@@ -6,6 +6,13 @@ This subject records the current repository-level direction for the proposed pro
 
 Keep the provider architecture proposal explicit and reviewable while the implementation still lives in design form.
 
+Detailed implementation subjects are tracked separately in:
+
+- `.spec/specs/provider_core.spec.md`
+- `.spec/specs/provider_capabilities.spec.md`
+- `.spec/specs/provider_facade.spec.md`
+- `.spec/specs/provider_migration.spec.md`
+
 ```spec-meta
 id: jido_memory.provider_architecture
 kind: architecture

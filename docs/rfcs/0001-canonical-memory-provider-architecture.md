@@ -29,6 +29,8 @@ The design centers on:
 - implementation-specific composition behind the provider boundary
 
 <!-- covers: jido_memory.provider_architecture.core_plus_capabilities -->
+<!-- covers: jido_memory.provider_core.provider_bundle_selection -->
+<!-- covers: jido_memory.provider_capabilities.optional_behaviours -->
 
 ## Motivation
 
@@ -167,6 +169,9 @@ flowchart LR
 
 The core behaviour should cover the minimum contract that all memory systems can reasonably satisfy.
 
+<!-- covers: jido_memory.provider_core.required_behaviour -->
+<!-- covers: jido_memory.provider_core.bootstrap_boundary -->
+
 ```elixir
 defmodule Jido.Memory.Provider do
   alias Jido.Memory.Query
@@ -207,6 +212,8 @@ end
 - `info/2` gives one stable place for implementation metadata and health
 
 ## Optional Capability Behaviours
+
+<!-- covers: jido_memory.provider_capabilities.optional_behaviours -->
 
 ### Lifecycle
 
@@ -259,6 +266,9 @@ end
 
 Providers should expose capabilities as structured data rather than a flat list of atoms.
 
+<!-- covers: jido_memory.provider_capabilities.structured_discovery -->
+<!-- covers: jido_memory.provider_capabilities.typed_unsupported_error -->
+
 Example:
 
 ```elixir
@@ -300,6 +310,9 @@ The stable plugin/actions layer can use this to:
 
 `jido_memory` should own the stable plugin/actions facade.
 
+<!-- covers: jido_memory.provider_facade.provider_configurable_plugin -->
+<!-- covers: jido_memory.provider_facade.canonical_dispatch_boundary -->
+
 ### Proposed direction
 
 - `Jido.Memory.Plugin` becomes provider-configurable
@@ -330,6 +343,8 @@ Advanced provider example:
 ```
 
 ## Query and Record Contract
+
+<!-- covers: jido_memory.provider_facade.shared_record_query_contract -->
 
 ### Record
 
@@ -373,6 +388,8 @@ The `Basic` provider can be very thin:
 - return no child specs
 - expose only core capabilities
 
+<!-- covers: jido_memory.provider_migration.basic_provider_default -->
+
 ### `jido_memory_os`
 
 `jido_memory_os` becomes a provider implementation that satisfies:
@@ -387,6 +404,7 @@ The `Basic` provider can be very thin:
 Its current manager and workers can be surfaced through `child_specs/1`.
 
 <!-- covers: jido_memory.provider_architecture.provider_roles -->
+<!-- covers: jido_memory.provider_migration.memory_os_integration -->
 
 ## Composability Model
 
@@ -440,6 +458,8 @@ five or six low-level parts.
 ## Backward Compatibility
 
 This RFC is intended to be additive in its first implementation stages.
+
+<!-- covers: jido_memory.provider_migration.incremental_compatibility -->
 
 Backward compatibility goals:
 
