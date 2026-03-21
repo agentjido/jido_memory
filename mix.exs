@@ -56,9 +56,9 @@ defmodule JidoMemory.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0.0-rc.5"},
-      {:jido_action, github: "agentjido/jido_action", branch: "main"},
-      {:jido_ai, github: "agentjido/jido_ai", ref: "ae4d37a0dfae564bc7a6a94323fd5a9756a3853d"},
+      {:jido, "~> 2.1"},
+      {:jido_action, "~> 2.1"},
+      {:jido_ai, "~> 2.0"},
       # Validation & errors
       {:zoi, "~> 0.16"},
       {:splode, "~> 0.3"},
@@ -69,7 +69,9 @@ defmodule JidoMemory.MixProject do
       {:doctor, "~> 0.21", only: :dev, runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
-      {:mimic, "~> 2.0", only: :test}
+      {:mimic, "~> 2.0", only: :test},
+      {:spec_led_ex,
+       github: "specleddev/specled_ex", branch: "main", only: [:dev, :test], runtime: false}
     ]
   end
 

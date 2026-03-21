@@ -2,6 +2,8 @@
 
 `Jido.Memory` is a basic, data-driven memory system for Jido agents.
 
+<!-- covers: jido_memory.package.structured_memory_contract jido_memory.package.default_ets_path jido_memory.package.plugin_and_actions jido_memory.package.auto_capture -->
+
 Version 1 uses ETS as the authoritative store and provides:
 - Structured records (`Jido.Memory.Record`)
 - Structured query filters (`Jido.Memory.Query`)
@@ -16,9 +18,9 @@ Add dependencies in `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:jido, "2.0.0-rc.5"},
-    {:jido_action, github: "agentjido/jido_action", branch: "main", override: true},
-    {:jido_ai, github: "agentjido/jido_ai", ref: "ae4d37a0dfae564bc7a6a94323fd5a9756a3853d"}
+    {:jido, "~> 2.1"},
+    {:jido_action, "~> 2.1"},
+    {:jido_ai, "~> 2.0"}
   ]
 end
 ```
