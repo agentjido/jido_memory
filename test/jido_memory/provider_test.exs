@@ -3,6 +3,7 @@ defmodule Jido.Memory.ProviderTest do
 
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Mem0
   alias Jido.Memory.Provider.Mirix
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderContract
@@ -33,8 +34,16 @@ defmodule Jido.Memory.ProviderTest do
     assert {:ok, %ProviderRef{module: Tiered, opts: []}} = ProviderRef.normalize(:tiered)
   end
 
+  test "provider ref accepts built-in :mem0 alias" do
+    assert {:ok, %ProviderRef{module: Mem0, opts: []}} = ProviderRef.normalize(:mem0)
+  end
+
   test "provider registry reserves the built-in :mirix alias" do
     assert {:ok, Jido.Memory.Provider.Mirix} = ProviderRegistry.resolve_alias(:mirix)
+  end
+
+  test "provider registry reserves the built-in :mem0 alias" do
+    assert {:ok, Jido.Memory.Provider.Mem0} = ProviderRegistry.resolve_alias(:mem0)
   end
 
   test "provider registry merges built-in and external aliases" do
@@ -42,6 +51,7 @@ defmodule Jido.Memory.ProviderTest do
              ProviderRegistry.registered(external_demo: ExternalProvider)
 
     assert aliases.basic == Basic
+    assert aliases.mem0 == Mem0
     assert aliases.tiered == Tiered
     assert aliases.external_demo == ExternalProvider
   end
@@ -119,6 +129,29 @@ defmodule Jido.Memory.ProviderTest do
     assert Basic.capabilities(meta).governance.protected_memory == false
 
     assert {:ok, %{provider: Basic, defaults: %{store: ^store}}} = Basic.info(meta, :all)
+  end
+
+  test "mem0 provider exposes baseline topology and capability metadata", %{store: store} do
+    assert {:ok, meta} = Mem0.init(store: store, namespace: "agent:mem0-baseline")
+
+    capabilities = Mem0.capabilities(meta)
+    assert capabilities.core == true
+    assert capabilities.retrieval.explainable == false
+    assert capabilities.retrieval.provider_extensions == true
+    assert capabilities.retrieval.scoped == true
+    assert capabilities.retrieval.graph_augmentation == false
+    assert capabilities.ingestion.access == :provider_direct
+    assert capabilities.operations.feedback == :provider_direct
+    assert capabilities.operations.export == :provider_direct
+    assert capabilities.operations.history == :provider_direct
+
+    assert {:ok, info} = Mem0.info(meta, [:provider, :provider_style, :topology, :scoped_identity])
+    assert info.provider == Mem0
+    assert info.provider_style == :mem0
+    assert info.topology.archetype == :extraction_reconciliation
+    assert info.topology.retrieval.scoped == true
+    assert info.scoped_identity.enabled == false
+    assert info.scoped_identity.supported_dimensions == [:user, :agent, :app, :run]
   end
 
   test "runtime retrieve and recall stay aligned for the Basic provider", %{store: store} do

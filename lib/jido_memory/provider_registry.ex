@@ -11,6 +11,7 @@ defmodule Jido.Memory.ProviderRegistry do
   """
 
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Mem0
   alias Jido.Memory.Provider.Mirix
   alias Jido.Memory.Provider.Tiered
 
@@ -19,6 +20,7 @@ defmodule Jido.Memory.ProviderRegistry do
 
   @built_in_aliases %{
     basic: Basic,
+    mem0: Mem0,
     tiered: Tiered,
     mirix: Mirix
   }

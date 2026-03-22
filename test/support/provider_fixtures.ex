@@ -18,6 +18,10 @@ defmodule Jido.Memory.ProviderFixtures do
     {:basic, [store: unique_store("#{prefix}_store"), namespace: "agent:#{prefix}"]}
   end
 
+  def mem0_provider(prefix \\ "jido_memory_mem0") do
+    {:mem0, [store: unique_store("#{prefix}_store"), namespace: "agent:#{prefix}"]}
+  end
+
   def tiered_provider(prefix \\ "jido_memory_tiered") do
     {:tiered,
      [
