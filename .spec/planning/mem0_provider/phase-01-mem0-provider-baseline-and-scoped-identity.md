@@ -37,22 +37,23 @@ Back to index: [README](./README.md)
       [x] 1.1.2.2 Subtask - Reserve retrieval capability keys for explainability, scoped retrieval, and optional graph augmentation.
       [x] 1.1.2.3 Subtask - Reserve provider-direct advanced-operation metadata for feedback, export, history, and maintenance controls.
 
-  [ ] 1.2 Section - Scoped Identity Model and Configuration Baseline
+  [x] 1.2 Section - Scoped Identity Model and Configuration Baseline
     Define how user, agent, app, and run scoping are expressed through provider configuration and metadata without changing provider resolution precedence.
+    Completed by adding scoped-identity config validation and defaults to the Mem0 provider, resolving runtime-vs-target-vs-config scope precedence deterministically, and stamping effective scope ids into Mem0 record metadata.
 
-    [ ] 1.2.1 Task - Define the scoped identity config model
+    [x] 1.2.1 Task - Define the scoped identity config model
       Make Mem0-style scoping explicit and reusable through the provider's own configuration surface.
 
-      [ ] 1.2.1.1 Subtask - Support provider config blocks for default user, agent, app, and run scope handling.
-      [ ] 1.2.1.2 Subtask - Define how scope ids are derived from target data, runtime opts, and provider config with deterministic precedence.
-      [ ] 1.2.1.3 Subtask - Keep canonical namespace support intact while allowing Mem0 scopes to live in provider metadata.
+      [x] 1.2.1.1 Subtask - Support provider config blocks for default user, agent, app, and run scope handling.
+      [x] 1.2.1.2 Subtask - Define how scope ids are derived from target data, runtime opts, and provider config with deterministic precedence.
+      [x] 1.2.1.3 Subtask - Keep canonical namespace support intact while allowing Mem0 scopes to live in provider metadata.
 
-    [ ] 1.2.2 Task - Map scoped identities into canonical records and info payloads
+    [x] 1.2.2 Task - Map scoped identities into canonical records and info payloads
       Preserve the shared record model while surfacing provider-native scoping context clearly.
 
-      [ ] 1.2.2.1 Subtask - Store effective scope ids in provider metadata and record metadata rather than inventing a second public record type.
-      [ ] 1.2.2.2 Subtask - Expose scope configuration and effective scope policy through `info/2`.
-      [ ] 1.2.2.3 Subtask - Keep provider selection precedence independent from scope resolution precedence.
+      [x] 1.2.2.1 Subtask - Store effective scope ids in provider metadata and record metadata rather than inventing a second public record type.
+      [x] 1.2.2.2 Subtask - Expose scope configuration and effective scope policy through `info/2`.
+      [x] 1.2.2.3 Subtask - Keep provider selection precedence independent from scope resolution precedence.
 
   [ ] 1.3 Section - Canonical Core Flow Mapping
     Route the shared remember, get, retrieve, forget, and prune flows through the Mem0 provider without introducing extraction or graph-specific behavior yet.

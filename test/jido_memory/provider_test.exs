@@ -132,7 +132,12 @@ defmodule Jido.Memory.ProviderTest do
   end
 
   test "mem0 provider exposes baseline topology and capability metadata", %{store: store} do
-    assert {:ok, meta} = Mem0.init(store: store, namespace: "agent:mem0-baseline")
+    assert {:ok, meta} =
+             Mem0.init(
+               store: store,
+               namespace: "agent:mem0-baseline",
+               scoped_identity: [user: "cfg-user", app: "cfg-app"]
+             )
 
     capabilities = Mem0.capabilities(meta)
     assert capabilities.core == true
@@ -150,8 +155,38 @@ defmodule Jido.Memory.ProviderTest do
     assert info.provider_style == :mem0
     assert info.topology.archetype == :extraction_reconciliation
     assert info.topology.retrieval.scoped == true
-    assert info.scoped_identity.enabled == false
+    assert info.scoped_identity.enabled == true
+    assert info.scoped_identity.defaults.user_id == "cfg-user"
+    assert info.scoped_identity.defaults.app_id == "cfg-app"
     assert info.scoped_identity.supported_dimensions == [:user, :agent, :app, :run]
+  end
+
+  test "mem0 provider resolves scope ids from runtime opts then target data then provider config", %{store: store} do
+    target = %{id: "target-agent", app_id: "target-app", run_id: "target-run"}
+
+    provider =
+      {Mem0,
+       [
+         store: store,
+         namespace: "agent:mem0-scope",
+         scoped_identity: [user: "cfg-user", app: "cfg-app", run: "cfg-run"]
+       ]}
+
+    assert {:ok, %Record{} = record} =
+             Runtime.remember(
+               target,
+               %{class: :semantic, kind: :fact, text: "scope precedence"},
+               provider: provider,
+               user_id: "runtime-user",
+               agent_id: "runtime-agent"
+             )
+
+    assert get_in(record.metadata, ["mem0", "scope"]) == %{
+             "user_id" => "runtime-user",
+             "agent_id" => "runtime-agent",
+             "app_id" => "target-app",
+             "run_id" => "target-run"
+           }
   end
 
   test "runtime retrieve and recall stay aligned for the Basic provider", %{store: store} do
