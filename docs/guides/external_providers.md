@@ -80,6 +80,9 @@ Alias selection is optional and local to the runtime or plugin call path.
 External packages can expose a helper such as `MyApp.Memory.provider_aliases/0`,
 but `jido_memory` does not require a global registry.
 
+Example:
+- `/Users/Pascal/code/agentjido/jido_memory/examples/external_provider_agent.exs`
+
 ## Bootstrap Ownership
 
 External providers that need supervised runtime processes should expose them via

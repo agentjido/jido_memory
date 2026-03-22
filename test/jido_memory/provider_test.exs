@@ -3,10 +3,10 @@ defmodule Jido.Memory.ProviderTest do
 
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Provider.Basic
-  alias Jido.Memory.ProviderRegistry
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderRef
+  alias Jido.Memory.ProviderRegistry
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS

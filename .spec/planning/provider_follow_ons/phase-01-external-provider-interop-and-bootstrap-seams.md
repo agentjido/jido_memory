@@ -52,12 +52,12 @@ Description: validate that external-provider interop is real and safe without re
 
 ### Task 1.4.1 - Provider resolution scenarios
 Description: prove built-in and external provider selection rules are deterministic.
-- [ ] Verify the same runtime and plugin path can target a built-in provider or a test external provider through canonical config.
-- [ ] Verify invalid external providers fail before dispatch with compatibility-safe runtime errors.
-- [ ] Verify capability discovery and provider info remain stable across built-in and external providers.
+- [x] Verify the same runtime and plugin path can target a built-in provider or a test external provider through canonical config.
+- [x] Verify invalid external providers fail before dispatch with compatibility-safe runtime errors.
+- [x] Verify capability discovery and provider info remain stable across built-in and external providers.
 
 ### Task 1.4.2 - Bootstrap and migration scenarios
 Description: prove optional interop does not destabilize the built-in path.
-- [ ] Verify built-in Basic and Tiered behavior remains unchanged when no external provider bootstrap is configured.
-- [ ] Verify external provider bootstrap helpers behave predictably when providers expose child specs.
-- [ ] Verify external-provider documentation examples align with tested selection and bootstrap behavior.
+- [x] Verify built-in Basic and Tiered behavior remains unchanged when no external provider bootstrap is configured.
+- [x] Verify external provider bootstrap helpers behave predictably when providers expose child specs.
+- [x] Verify external-provider documentation examples align with tested selection and bootstrap behavior.

@@ -14,8 +14,8 @@ This planning set tracks the next wave of work after the built-in provider rollo
 - `phase-04-release-hardening-and-follow-on-acceptance.md`
 
 ## Current Status
-- This planning set is newly authored.
-- No follow-on phases are implemented yet.
+- Phase 1 is implemented on the current branch.
+- Phases 2 through 4 remain pending.
 
 ## Delivery Rules
 - `Jido.Memory.Runtime`, `recall/2`, `Jido.Memory.ETSPlugin`, and tuple-style public results stay compatible.

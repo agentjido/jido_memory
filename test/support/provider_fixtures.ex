@@ -4,6 +4,7 @@ defmodule Jido.Memory.ProviderFixtures do
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.ProviderRef
   alias Jido.Memory.Store.ETS
+  alias Jido.Memory.Support.ExternalProvider
 
   def unique_store(prefix) do
     table = String.to_atom("#{prefix}_#{System.unique_integer([:positive])}")
@@ -24,6 +25,10 @@ defmodule Jido.Memory.ProviderFixtures do
        long_term_store: {LongTermETS, [store: unique_store("#{prefix}_long")]},
        lifecycle: [short_to_mid_threshold: 0.65, mid_to_long_threshold: 0.85]
      ]}
+  end
+
+  def external_provider(prefix \\ "jido_memory_external") do
+    {ExternalProvider, [store: unique_store("#{prefix}_store"), namespace: "provider:#{prefix}"]}
   end
 
   def plugin_state(provider, overrides \\ %{}) do
