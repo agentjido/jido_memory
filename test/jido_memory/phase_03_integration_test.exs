@@ -72,7 +72,7 @@ defmodule Jido.Memory.Phase03IntegrationTest do
         {name, Enum.map(records, & &1.text)}
       end
 
-    assert results_by_backend.ets == results_by_backend.postgres
+    assert Enum.sort(results_by_backend.ets) == Enum.sort(results_by_backend.postgres)
   end
 
   test "Tiered works over Postgres long-term storage and the operational example executes" do

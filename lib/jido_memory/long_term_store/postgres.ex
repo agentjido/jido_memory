@@ -44,10 +44,12 @@ defmodule Jido.Memory.LongTermStore.Postgres do
   @impl true
   def validate_config(opts) when is_list(opts) do
     with :ok <- ensure_postgrex_available(),
-         {:ok, _conn_opts} <- connection_opts(opts),
          :ok <- validate_identifier(Keyword.get(opts, :schema, @default_schema)),
          :ok <- validate_identifier(Keyword.get(opts, :table, @default_table)) do
-      :ok
+      case connection_opts(opts) do
+        {:ok, _conn_opts} -> :ok
+        {:error, _reason} = error -> error
+      end
     end
   end
 
@@ -106,9 +108,8 @@ defmodule Jido.Memory.LongTermStore.Postgres do
   def retrieve(_target, %Query{} = query, opts) when is_list(opts) do
     with :ok <- validate_config(opts),
          {:ok, effective_query} <- attach_namespace(query, opts),
-         {:ok, records} <- select_namespace_records(opts, effective_query.namespace),
-         {:ok, filtered} <- RecordQuery.filter(records, effective_query) do
-      {:ok, filtered}
+         {:ok, records} <- select_namespace_records(opts, effective_query.namespace) do
+      RecordQuery.filter(records, effective_query)
     end
   end
 
@@ -116,9 +117,8 @@ defmodule Jido.Memory.LongTermStore.Postgres do
     with :ok <- validate_config(opts),
          {:ok, namespace} <- runtime_namespace(opts),
          {:ok, query} <- build_query(query_attrs, namespace),
-         {:ok, records} <- select_namespace_records(opts, namespace),
-         {:ok, filtered} <- RecordQuery.filter(records, query) do
-      {:ok, filtered}
+         {:ok, records} <- select_namespace_records(opts, namespace) do
+      RecordQuery.filter(records, query)
     end
   end
 
@@ -208,15 +208,13 @@ defmodule Jido.Memory.LongTermStore.Postgres do
   defp decode_row(_row), do: []
 
   defp decode_payload(payload) when is_binary(payload) do
-    try do
-      case :erlang.binary_to_term(payload, [:safe]) do
-        %Record{} = record -> {:ok, record}
-        map when is_map(map) -> Record.new(map)
-        other -> {:error, {:invalid_long_term_payload, other}}
-      end
-    rescue
-      error -> {:error, {:invalid_long_term_payload, error}}
+    case :erlang.binary_to_term(payload, [:safe]) do
+      %Record{} = record -> {:ok, record}
+      map when is_map(map) -> Record.new(map)
+      other -> {:error, {:invalid_long_term_payload, other}}
     end
+  rescue
+    error -> {:error, {:invalid_long_term_payload, error}}
   end
 
   defp encode_record_params(%Record{} = record) do
