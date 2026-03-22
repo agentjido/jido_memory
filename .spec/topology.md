@@ -28,11 +28,13 @@ flowchart LR
 
     ProviderRef --> Basic["Basic Provider"]
     ProviderRef --> Tiered["Tiered Provider"]
+    ProviderRef --> Mirix["Mirix Provider"]
     ProviderRef --> External["External Provider"]
 
     Basic --> Store["Jido.Memory.Store"]
     Tiered --> ShortMid["Short + Mid Stores"]
     Tiered --> LongTerm["Jido.Memory.LongTermStore"]
+    Mirix --> MirixStores["Typed memory stores"]
     External --> ExtImpl["Provider-Owned Implementation"]
 ```
 
@@ -42,6 +44,7 @@ flowchart LR
 flowchart TB
     Runtime["Jido.Memory.Runtime"] --> Basic["Jido.Memory.Provider.Basic"]
     Runtime --> Tiered["Jido.Memory.Provider.Tiered"]
+    Runtime --> Mirix["Jido.Memory.Provider.Mirix"]
 
     Basic --> SingleStore["Single Jido.Memory.Store backend"]
 
@@ -54,6 +57,15 @@ flowchart TB
     Short --> StoreShort["Jido.Memory.Store"]
     Mid --> StoreMid["Jido.Memory.Store"]
     Long --> LongStore["Jido.Memory.LongTermStore"]
+
+    Mirix --> Core["Core store"]
+    Mirix --> Episodic["Episodic store"]
+    Mirix --> Semantic["Semantic store"]
+    Mirix --> Procedural["Procedural store"]
+    Mirix --> Resource["Resource store"]
+    Mirix --> Vault["Vault store"]
+    Mirix --> Active["Active retrieval explanations"]
+    Mirix --> Direct["Provider-direct ingest + vault APIs"]
 ```
 
 ## Long-Term Storage Topology
@@ -91,12 +103,13 @@ Optional capability path:
 
 Current built-in support:
 
-| Path | Core | Explainability | Lifecycle | Durable Long-Term |
-| --- | --- | --- | --- | --- |
-| `:basic` | yes | no | no | no |
-| `:tiered` + ETS long-term | yes | yes | yes | ETS only |
-| `:tiered` + Postgres long-term | yes | yes | yes | yes |
-| External reference path | yes | provider-specific | provider-specific | provider-specific |
+| Path | Core | Explainability | Lifecycle | Durable Long-Term | Ingestion | Protected Memory |
+| --- | --- | --- | --- | --- | --- | --- |
+| `:basic` | yes | no | no | no | no | no |
+| `:tiered` + ETS long-term | yes | yes | yes | ETS only | no | no |
+| `:tiered` + Postgres long-term | yes | yes | yes | yes | no | no |
+| `:mirix` | yes | yes | no | ETS-backed typed stores | provider-direct | provider-direct |
+| External reference path | yes | provider-specific | provider-specific | provider-specific | provider-specific | provider-specific |
 
 ## Boundary With `jido_memory_os`
 
@@ -114,6 +127,7 @@ The release-gated matrix currently includes:
 - built-in `:basic`
 - built-in `:tiered` with ETS long-term storage
 - built-in `:tiered` with Postgres long-term storage
+- built-in `:mirix`
 - the external-provider reference path
 
 Reference material:

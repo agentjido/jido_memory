@@ -54,7 +54,7 @@ decisions:
     - jido_memory.matrix.governance.no_mandatory_vault_core
 - id: jido_memory.matrix.governance.protected_memory_provider_boundary
   given:
-    - a provider that stores exact-preservation facts separately from general memory
+    - a provider such as Mirix that stores exact-preservation facts separately from general memory
   when:
     - the provider is integrated through the canonical layer
   then:

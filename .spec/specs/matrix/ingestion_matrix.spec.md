@@ -53,7 +53,7 @@ decisions:
     - jido_memory.matrix.ingestion.core_write_stability
 - id: jido_memory.matrix.ingestion.multimodal_provider_path
   given:
-    - a provider that accepts batches of multimodal input and routes them internally across memory subsystems
+    - a provider such as Mirix that accepts batches of multimodal input and routes them internally across memory subsystems
   when:
     - the provider is integrated through the canonical layer
   then:

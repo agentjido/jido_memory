@@ -78,7 +78,7 @@ decisions:
     - jido_memory.provider_capabilities.structured_discovery
 - id: jido_memory.provider_capabilities.multimodal_ingestion_negotiation
   given:
-    - a provider that supports batch multimodal ingestion in addition to the canonical core write path
+    - a built-in provider such as Mirix that supports batch multimodal ingestion in addition to the canonical core write path
   when:
     - tooling inspects the provider capability map
   then:
@@ -89,7 +89,7 @@ decisions:
     - jido_memory.provider_capabilities.structured_discovery
 - id: jido_memory.provider_capabilities.routing_trace_negotiation
   given:
-    - a provider that performs active retrieval planning and memory-type routing
+    - a built-in provider such as Mirix that performs active retrieval planning and memory-type routing
   when:
     - the caller asks for retrieval explanation through the canonical layer
   then:
@@ -99,7 +99,7 @@ decisions:
     - jido_memory.provider_capabilities.explainability_routing_trace_boundary
 - id: jido_memory.provider_capabilities.protected_memory_negotiation
   given:
-    - a provider that includes protected exact-preservation memory
+    - a built-in provider such as Mirix that includes protected exact-preservation memory
   when:
     - the provider advertises its advanced feature set
   then:

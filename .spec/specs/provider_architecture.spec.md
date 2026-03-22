@@ -17,7 +17,7 @@ Detailed implementation subjects are tracked separately in:
 id: jido_memory.provider_architecture
 kind: architecture
 status: draft
-summary: Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic and Tiered, while leaving jido_memory_os as a standalone advanced library.
+summary: Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving jido_memory_os as a standalone advanced library.
 surface:
   - docs/rfcs/0001-canonical-memory-provider-architecture.md
   - lib/jido_memory.ex
@@ -41,7 +41,7 @@ surface:
   priority: must
   stability: evolving
 - id: jido_memory.provider_architecture.provider_roles
-  statement: The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in advanced path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.
+  statement: The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.
   priority: must
   stability: evolving
 ```

@@ -54,7 +54,7 @@ decisions:
     - jido_memory.matrix.provider_surface.core_lane_stability
 - id: jido_memory.matrix.provider_surface.specialized_provider_lane
   given:
-    - a specialized provider with active retrieval planning, multimodal ingestion, and protected memory
+    - a specialized provider such as Mirix with active retrieval planning, multimodal ingestion, and protected memory
   when:
     - the provider is classified against the matrix
   then:

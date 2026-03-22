@@ -54,7 +54,7 @@ decisions:
     - jido_memory.matrix.retrieval.explanation_trace_lane
 - id: jido_memory.matrix.retrieval.active_planning_path
   given:
-    - a provider that generates an internal retrieval plan before selecting memory sources
+    - a provider such as Mirix that generates an internal retrieval plan before selecting memory sources
   when:
     - the provider is used through the canonical runtime surface
   then:

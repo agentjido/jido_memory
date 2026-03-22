@@ -78,6 +78,19 @@ decisions:
     - jido_memory.provider_facade.canonical_dispatch_boundary
     - jido_memory.provider_facade.shared_record_query_contract
     - jido_memory.provider_facade.built_in_provider_selection
+- id: jido_memory.provider_facade.built_in_mirix_provider_path
+  given:
+    - a plugin configuration that selects the built-in Mirix provider
+  when:
+    - agent memory actions are executed through the common plugin and runtime surface
+  then:
+    - the shared agent-facing API remains stable for canonical memory operations while routed retrieval explanations stay on the common facade and ingestion or protected-memory workflows remain provider-direct
+  covers:
+    - jido_memory.provider_facade.provider_configurable_plugin
+    - jido_memory.provider_facade.canonical_dispatch_boundary
+    - jido_memory.provider_facade.narrow_runtime_boundary
+    - jido_memory.provider_facade.provider_native_extension_boundary
+    - jido_memory.provider_facade.built_in_provider_selection
 - id: jido_memory.provider_facade.external_provider_path
   given:
     - a plugin configuration that selects an explicit external provider bundle
