@@ -109,3 +109,6 @@ Choose `jido_memory_os` when you need its native advanced workflows, such as:
 `jido_memory_os` remains a standalone advanced library with its own facade and
 plugin. It is no longer part of the release-critical built-in provider story for
 `jido_memory`.
+
+If you want to plug in another provider implementation instead of using the
+built-in matrix, see [External Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md).

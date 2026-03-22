@@ -265,6 +265,29 @@ provider_opts = [
 ]
 ```
 
+## External Provider Interop
+
+External providers are now an opt-in path on top of the same common runtime and
+plugin surface.
+
+- Direct modules and `{module, opts}` tuples work without registration.
+- Alias-based selection is helper-only through `provider_aliases`.
+- Provider-owned runtime processes stay caller-owned through `Jido.Memory.ProviderBootstrap`.
+
+```elixir
+aliases = %{external_demo: MyApp.Memory.ExternalProvider}
+
+{Jido.Memory.Plugin,
+ %{
+   provider: :external_demo,
+   provider_aliases: aliases,
+   provider_opts: [store: {Jido.Memory.Store.ETS, [table: :external_memory]}]
+ }}
+```
+
+Guide:
+- `/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md`
+
 ## Compatibility Guarantees
 
 The built-in provider expansion keeps the existing public contract stable:
@@ -285,7 +308,9 @@ The built-in provider expansion keeps the existing public contract stable:
 - approvals and governance
 - framework-specific plugin flows
 
-The built-in release story for `jido_memory` is now `:basic` and `:tiered`. Optional external-provider interop is follow-on work, not a release blocker.
+The built-in release story for `jido_memory` is still `:basic` and `:tiered`.
+External-provider interop is now available as an opt-in seam, but it does not
+change the built-in defaults or make `jido_memory_os` a required dependency.
 
 ## Examples
 

@@ -84,6 +84,7 @@ defmodule JidoMemory.MixProject do
       extras: [
         "README.md",
         "docs/guides/built_in_providers.md",
+        "docs/guides/external_providers.md",
         "CONTRIBUTING.md",
         "CHANGELOG.md",
         "docs/rfcs/0001-canonical-memory-provider-architecture.md"

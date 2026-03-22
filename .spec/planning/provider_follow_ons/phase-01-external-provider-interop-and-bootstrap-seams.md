@@ -37,15 +37,15 @@ Description: document what `jido_memory` guarantees to external provider authors
 
 ### Task 1.3.1 - Publish external-provider authoring guidance
 Description: explain how another library can satisfy the canonical provider contract without relying on built-in internals.
-- [ ] Add a guide for implementing `Jido.Memory.Provider` in an external package.
-- [ ] Document required versus optional capability behaviors for interop.
-- [ ] Explain how external providers should normalize errors for compatibility callers.
+- [x] Add a guide for implementing `Jido.Memory.Provider` in an external package.
+- [x] Document required versus optional capability behaviors for interop.
+- [x] Explain how external providers should normalize errors for compatibility callers.
 
 ### Task 1.3.2 - Clarify the `jido_memory_os` interop boundary
 Description: keep optional MemoryOS interop from being confused with a required dependency.
-- [ ] Document `jido_memory_os` as one possible external provider candidate rather than a built-in path.
-- [ ] Keep MemoryOS-specific bootstrap, manager ownership, and plugin flows outside the core release-critical path.
-- [ ] Capture any remaining open questions about provider bootstrap ownership before implementation begins.
+- [x] Document `jido_memory_os` as one possible external provider candidate rather than a built-in path.
+- [x] Keep MemoryOS-specific bootstrap, manager ownership, and plugin flows outside the core release-critical path.
+- [x] Capture any remaining open questions about provider bootstrap ownership before implementation begins.
 
 ## Section 1.4 - Phase 1 Integration Tests
 Description: validate that external-provider interop is real and safe without regressing built-in provider behavior.
