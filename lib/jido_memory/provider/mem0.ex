@@ -90,6 +90,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          }
        })
        |> Map.put(:advanced_operations, advanced_operations_meta())
+       |> Map.put(:surface_boundary, surface_boundary_meta())
        |> Map.put(:extraction_context, extraction_context_meta(opts))
        |> Map.put(:retrieval_context, retrieval_context_meta(opts))
        |> Map.put(:scoped_identity, scoped_identity)}
@@ -734,6 +735,14 @@ defmodule Jido.Memory.Provider.Mem0 do
       history: %{access: :provider_direct, functions: [:history]},
       export: %{access: :provider_direct, functions: [:export]},
       maintenance: %{access: :provider_direct, functions: [:refresh_summary, :rerun_reconciliation]}
+    }
+  end
+
+  defp surface_boundary_meta do
+    %{
+      shared_runtime: [:remember, :get, :retrieve, :forget, :prune, :capabilities, :info, :explain_retrieval],
+      shared_plugin_routes: [:remember, :retrieve, :recall, :forget],
+      provider_direct: [:feedback, :history, :export, :refresh_summary, :rerun_reconciliation]
     }
   end
 

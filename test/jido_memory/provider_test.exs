@@ -152,7 +152,14 @@ defmodule Jido.Memory.ProviderTest do
     assert capabilities.operations.maintenance == :provider_direct
 
     assert {:ok, info} =
-             Mem0.info(meta, [:provider, :provider_style, :topology, :scoped_identity, :advanced_operations])
+             Mem0.info(meta, [
+               :provider,
+               :provider_style,
+               :topology,
+               :scoped_identity,
+               :advanced_operations,
+               :surface_boundary
+             ])
 
     assert info.provider == Mem0
     assert info.provider_style == :mem0
@@ -170,6 +177,27 @@ defmodule Jido.Memory.ProviderTest do
     assert info.advanced_operations.feedback.functions == [:feedback]
     assert info.advanced_operations.export.functions == [:export]
     assert info.advanced_operations.maintenance.functions == [:refresh_summary, :rerun_reconciliation]
+
+    assert info.surface_boundary.shared_runtime == [
+             :remember,
+             :get,
+             :retrieve,
+             :forget,
+             :prune,
+             :capabilities,
+             :info,
+             :explain_retrieval
+           ]
+
+    assert info.surface_boundary.shared_plugin_routes == [:remember, :retrieve, :recall, :forget]
+
+    assert info.surface_boundary.provider_direct == [
+             :feedback,
+             :history,
+             :export,
+             :refresh_summary,
+             :rerun_reconciliation
+           ]
   end
 
   test "mem0 provider resolves scope ids from runtime opts then target data then provider config", %{store: store} do

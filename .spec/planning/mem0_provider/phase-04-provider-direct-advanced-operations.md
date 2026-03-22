@@ -39,15 +39,16 @@ Back to index: [README](./README.md)
       [x] 4.2.1.2 Subtask - Add provider-direct maintenance helpers for summary refresh, reconciliation re-runs, or cleanup workflows.
       [x] 4.2.1.3 Subtask - Surface available advanced operations through structured capability or info metadata.
 
-  [ ] 4.3 Section - Runtime and Plugin Boundary Hardening
+  [x] 4.3 Section - Runtime and Plugin Boundary Hardening
     Reconfirm that Mem0 advanced operations stay additive and do not leak onto the common plugin or runtime path accidentally.
+    Completed by making the boundary explicit in Mem0 provider info metadata so callers can discover shared-vs-provider-direct operations without adding new common runtime helpers or plugin routes.
 
-    [ ] 4.3.1 Task - Keep the common surface selective
+    [x] 4.3.1 Task - Keep the common surface selective
       Preserve the current architectural boundary even as Mem0 grows richer.
 
-      [ ] 4.3.1.1 Subtask - Avoid adding shared runtime wrappers for Mem0 feedback, export, or history in v1.
-      [ ] 4.3.1.2 Subtask - Keep shared plugin signal routes limited to core memory operations.
-      [ ] 4.3.1.3 Subtask - Keep capability discovery and provider info rich enough that advanced Mem0 operations remain discoverable without becoming canonical.
+      [x] 4.3.1.1 Subtask - Avoid adding shared runtime wrappers for Mem0 feedback, export, or history in v1.
+      [x] 4.3.1.2 Subtask - Keep shared plugin signal routes limited to core memory operations.
+      [x] 4.3.1.3 Subtask - Keep capability discovery and provider info rich enough that advanced Mem0 operations remain discoverable without becoming canonical.
 
   [ ] 4.4 Section - Phase 4 Integration Tests
     Validate provider-direct advanced operations while preserving the shared runtime and plugin boundaries.
