@@ -52,12 +52,12 @@ Description: validate explainability and lifecycle inspection end to end through
 
 ### Task 2.4.1 - Retrieval explanation scenarios
 Description: prove Tiered explanation data is returned consistently through the runtime facade.
-- [ ] Verify `Runtime.explain_retrieval/3` returns tier-aware explanation data for Tiered.
-- [ ] Verify explanation payloads line up with actual retrieval results and selected tiers.
-- [ ] Verify Basic and other non-explainable providers continue to return unsupported-capability results.
+- [x] Verify `Runtime.explain_retrieval/3` returns tier-aware explanation data for Tiered.
+- [x] Verify explanation payloads line up with actual retrieval results and selected tiers.
+- [x] Verify Basic and other non-explainable providers continue to return unsupported-capability results.
 
 ### Task 2.4.2 - Lifecycle inspection scenarios
 Description: prove promotion reasoning is inspectable and consistent with consolidation behavior.
-- [ ] Verify consolidation results include promotion rationale for promoted and skipped records.
-- [ ] Verify lifecycle inspection helpers reflect actual tier transitions and counts.
-- [ ] Verify the docs-backed explainability examples execute against tested Tiered configurations.
+- [x] Verify consolidation results include promotion rationale for promoted and skipped records.
+- [x] Verify lifecycle inspection helpers reflect actual tier transitions and counts.
+- [x] Verify the docs-backed explainability examples execute against tested Tiered configurations.

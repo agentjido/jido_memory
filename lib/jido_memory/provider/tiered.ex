@@ -249,7 +249,7 @@ defmodule Jido.Memory.Provider.Tiered do
   def inspect_lifecycle(target, opts \\ [])
 
   def inspect_lifecycle(target, opts) when is_list(opts) do
-    with {:ok, normalized_opts} <- normalize_direct_opts(opts),
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
          {:ok, context} <- resolve_context(target, %{}, normalized_opts),
          {:ok, tiers} <- resolve_tiers(%{}, normalized_opts, default: :all),
          {:ok, query} <- Query.new(%{namespace: context.namespace, limit: 1_000, order: :desc}),
@@ -1135,7 +1135,24 @@ defmodule Jido.Memory.Provider.Tiered do
   defp normalize_optional_namespace(namespace) when is_atom(namespace), do: Atom.to_string(namespace)
   defp normalize_optional_namespace(_namespace), do: nil
 
-  defp normalize_direct_opts(opts) when is_list(opts) do
+  defp normalize_direct_opts(target, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- unwrap_direct_opts(opts) do
+      case {Keyword.has_key?(normalized_opts, :provider_opts), target_provider_opts(target)} do
+        {true, _provider_opts} ->
+          {:ok, normalized_opts}
+
+        {false, provider_opts} when is_list(provider_opts) ->
+          {:ok, Keyword.put(normalized_opts, :provider_opts, provider_opts)}
+
+        {false, _provider_opts} ->
+          {:ok, normalized_opts}
+      end
+    end
+  end
+
+  defp normalize_direct_opts(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  defp unwrap_direct_opts(opts) when is_list(opts) do
     case Keyword.get(opts, :provider) do
       nil ->
         {:ok, opts}
@@ -1154,7 +1171,22 @@ defmodule Jido.Memory.Provider.Tiered do
     end
   end
 
-  defp normalize_direct_opts(_opts), do: {:error, :invalid_provider_opts}
+  defp unwrap_direct_opts(_opts), do: {:error, :invalid_provider_opts}
+
+  defp target_provider_opts(%{state: %{} = state}) do
+    state
+    |> Map.get(Jido.Memory.Runtime.plugin_state_key(), %{})
+    |> target_provider_opts()
+  end
+
+  defp target_provider_opts(%{} = map) do
+    case Map.get(map, :provider) do
+      %{module: __MODULE__, opts: opts} when is_list(opts) -> opts
+      _ -> nil
+    end
+  end
+
+  defp target_provider_opts(_target), do: nil
 
   defp normalize_keyword(opts) when is_list(opts), do: opts
   defp normalize_keyword(_opts), do: []
