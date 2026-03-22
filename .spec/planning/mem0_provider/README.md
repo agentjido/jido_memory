@@ -18,7 +18,7 @@ This planning set tracks the implementation of a Mem0-style provider in `jido_me
 - Phase 1 is complete.
 - Phase 2 is complete.
 - Phase 3 is complete.
-- Phase 4 is pending.
+- Phase 4 is complete.
 - Phase 5 is pending.
 
 ## Delivery Rules

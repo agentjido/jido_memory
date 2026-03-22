@@ -14,8 +14,9 @@ Back to index: [README](./README.md)
 - The shared runtime and plugin surfaces stay unchanged unless a cross-provider pattern becomes obvious.
 - Phase 4 is where Mem0-specific operational affordances become explicit.
 
-[ ] 4 Phase 4 - Provider-Direct Advanced Operations
+[x] 4 Phase 4 - Provider-Direct Advanced Operations
   Implement the Mem0-specific operational APIs that are valuable for this provider but not yet justified as common runtime or plugin features.
+  Completed by adding provider-direct feedback, history, export, and maintenance operations; surfacing those boundaries through Mem0 provider metadata; and finishing dedicated integration coverage that keeps the shared runtime and plugin surfaces selective.
 
   [x] 4.1 Section - Feedback and History APIs
     Add provider-direct feedback and history surfaces that support Mem0-style memory maintenance and inspection.
@@ -50,19 +51,20 @@ Back to index: [README](./README.md)
       [x] 4.3.1.2 Subtask - Keep shared plugin signal routes limited to core memory operations.
       [x] 4.3.1.3 Subtask - Keep capability discovery and provider info rich enough that advanced Mem0 operations remain discoverable without becoming canonical.
 
-  [ ] 4.4 Section - Phase 4 Integration Tests
+  [x] 4.4 Section - Phase 4 Integration Tests
     Validate provider-direct advanced operations while preserving the shared runtime and plugin boundaries.
+    Completed by adding Mem0 Phase 4 integration coverage for scoped feedback and history, export and maintenance controls, shared-boundary checks, and regression coverage for non-Mem0 providers.
 
-    [ ] 4.4.1 Task - Provider-direct advanced-operation scenarios
+    [x] 4.4.1 Task - Provider-direct advanced-operation scenarios
       Verify Mem0 advanced operations work and stay explicitly provider-owned.
 
-      [ ] 4.4.1.1 Subtask - Verify feedback and history APIs behave deterministically for scoped memory data.
-      [ ] 4.4.1.2 Subtask - Verify export and maintenance APIs work without introducing new shared runtime routes.
-      [ ] 4.4.1.3 Subtask - Verify advanced-operation metadata is discoverable through capabilities or `info/2`.
+      [x] 4.4.1.1 Subtask - Verify feedback and history APIs behave deterministically for scoped memory data.
+      [x] 4.4.1.2 Subtask - Verify export and maintenance APIs work without introducing new shared runtime routes.
+      [x] 4.4.1.3 Subtask - Verify advanced-operation metadata is discoverable through capabilities or `info/2`.
 
-    [ ] 4.4.2 Task - Shared boundary scenarios
+    [x] 4.4.2 Task - Shared boundary scenarios
       Verify the common runtime and plugin surfaces stay selective.
 
-      [ ] 4.4.2.1 Subtask - Verify no common plugin routes exist for Mem0-specific feedback, export, or history workflows.
-      [ ] 4.4.2.2 Subtask - Verify no new shared runtime helpers leak in for Mem0-only advanced operations.
-      [ ] 4.4.2.3 Subtask - Verify existing built-in and external-provider paths remain unaffected.
+      [x] 4.4.2.1 Subtask - Verify no common plugin routes exist for Mem0-specific feedback, export, or history workflows.
+      [x] 4.4.2.2 Subtask - Verify no new shared runtime helpers leak in for Mem0-only advanced operations.
+      [x] 4.4.2.3 Subtask - Verify existing built-in and external-provider paths remain unaffected.

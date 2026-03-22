@@ -343,7 +343,13 @@ defmodule Jido.Memory.Provider.Mem0 do
              include_history: false,
              history_limit: 0
            }),
-         {:ok, events} <- history_records(context, scope, %{record_id: nil, fact_key: nil, event_types: [], limit: 100}) do
+         {:ok, events} <-
+           history_records(context, scope, %{
+             record_id: nil,
+             fact_key: nil,
+             event_types: [],
+             limit: 100
+           }) do
       {:ok,
        %{
          provider: __MODULE__,
@@ -546,8 +552,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          {:ok, records} <- context.store_mod.query(query, context.store_opts) do
       {:ok,
        records
-       |> Enum.filter(&scope_matches?(&1, scope))
-       |> Enum.filter(&history_record_matches?(&1, filters))
+       |> Enum.filter(&(scope_matches?(&1, scope) and history_record_matches?(&1, filters)))
        |> Enum.sort_by(&{&1.observed_at, &1.id}, :desc)
        |> Enum.take(filters.limit)}
     end
@@ -707,8 +712,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          {:ok, records} <- context.store_mod.query(query, context.store_opts) do
       {:ok,
        records
-       |> Enum.filter(&scope_matches?(&1, scope))
-       |> Enum.filter(&mem0_managed_record?/1)
+       |> Enum.filter(&(scope_matches?(&1, scope) and mem0_managed_record?(&1)))
        |> Enum.take(filters.limit)}
     end
   end
@@ -1883,7 +1887,11 @@ defmodule Jido.Memory.Provider.Mem0 do
     if scope_matches?(record, scope) do
       :ok = context.store_mod.delete({context.namespace, id}, context.store_opts)
 
-      maybe_log_history_event(context, scope, :forget, %{record_id: id, fact_key: fact_key(record), write_mode: :direct})
+      maybe_log_history_event(context, scope, :forget, %{
+        record_id: id,
+        fact_key: fact_key(record),
+        write_mode: :direct
+      })
 
       {:ok, true}
     else
