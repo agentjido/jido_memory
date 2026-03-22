@@ -7,15 +7,15 @@ Description: validate the combined architecture after the follow-on phases land.
 
 ### Task 4.1.1 - Define the follow-on acceptance matrix
 Description: make the supported combinations of providers, capabilities, and long-term backends explicit.
-- [ ] Define the tested matrix for built-in Basic, built-in Tiered, and the external-provider reference path.
-- [ ] Define the tested matrix for ETS and the first durable long-term backend.
-- [ ] Keep unsupported combinations explicit rather than inferred.
+- [x] Define the tested matrix for built-in Basic, built-in Tiered, and the external-provider reference path.
+- [x] Define the tested matrix for ETS and the first durable long-term backend.
+- [x] Keep unsupported combinations explicit rather than inferred.
 
 ### Task 4.1.2 - Add end-to-end acceptance fixtures
 Description: provide a consumer-level test path that exercises the combined architecture.
-- [ ] Add end-to-end fixtures that mount the common plugin against built-in and external providers.
-- [ ] Include Tiered explainability and durable long-term promotion in the acceptance flow.
-- [ ] Keep the fixture paths suitable for release gating and documentation examples.
+- [x] Add end-to-end fixtures that mount the common plugin against built-in and external providers.
+- [x] Include Tiered explainability and durable long-term promotion in the acceptance flow.
+- [x] Keep the fixture paths suitable for release gating and documentation examples.
 
 ## Section 4.2 - Documentation and Release Narrative
 Description: tell one coherent story for users choosing between built-in and optional paths.
