@@ -15,7 +15,7 @@ This planning set tracks the implementation of a Mem0-style provider in `jido_me
 - `phase-05-adoption-docs-and-release-gated-acceptance.md`
 
 ## Current Status
-- Phase 1 is pending.
+- Phase 1 is complete.
 - Phase 2 is pending.
 - Phase 3 is pending.
 - Phase 4 is pending.

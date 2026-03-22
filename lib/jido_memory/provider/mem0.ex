@@ -10,8 +10,8 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   @behaviour Jido.Memory.Provider
 
-  alias Jido.Memory.{Query, Record, Store}
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.{Query, Record, Store}
 
   @scope_dimensions [:user_id, :agent_id, :app_id, :run_id]
   @scope_source_precedence [:runtime_opts, :target, :provider_config]
@@ -35,9 +35,8 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   @impl true
   def validate_config(opts) when is_list(opts) do
-    with :ok <- Basic.validate_config(opts),
-         :ok <- validate_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
-      :ok
+    with :ok <- Basic.validate_config(opts) do
+      validate_scoped_identity(Keyword.get(opts, :scoped_identity, []))
     end
   end
 
@@ -126,12 +125,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          :ok <- context.store_mod.ensure_ready(context.store_opts) do
       case context.store_mod.get({context.namespace, id}, context.store_opts) do
         {:ok, record} ->
-          if scope_matches?(record, scope) do
-            :ok = context.store_mod.delete({context.namespace, id}, context.store_opts)
-            {:ok, true}
-          else
-            {:ok, false}
-          end
+          maybe_forget_scoped_record(record, context, scope, id)
 
         :not_found ->
           {:ok, false}
@@ -291,6 +285,15 @@ defmodule Jido.Memory.Provider.Mem0 do
       |> Map.put_new("source_provider", "mem0")
 
     Map.put(metadata, "mem0", mem0)
+  end
+
+  defp maybe_forget_scoped_record(record, context, scope, id) do
+    if scope_matches?(record, scope) do
+      :ok = context.store_mod.delete({context.namespace, id}, context.store_opts)
+      {:ok, true}
+    else
+      {:ok, false}
+    end
   end
 
   defp scope_matches?(%Record{metadata: metadata}, effective_scope) when is_map(effective_scope) do

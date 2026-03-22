@@ -16,8 +16,9 @@ Back to index: [README](./README.md)
 - Scoped identities remain provider-level configuration and metadata, not a new provider-selection dimension.
 - Phase 1 establishes the provider substrate and scoped-identity model before extraction, reconciliation, or graph augmentation land.
 
-[ ] 1 Phase 1 - Mem0 Provider Baseline and Scoped Identity
+[x] 1 Phase 1 - Mem0 Provider Baseline and Scoped Identity
   Implement the built-in Mem0-style provider module, reserve its built-in alias, and establish how scoped long-term memory identities fit behind the canonical provider contract.
+  Completed by adding the built-in Mem0 provider, reserving the `:mem0` alias, defining scoped-identity config and metadata behavior, mapping canonical reads and writes through the scoped model, and finishing dedicated integration coverage.
 
   [x] 1.1 Section - Built-In Provider Module and Catalog Baseline
     Introduce the Mem0 provider module and make it available as a first-class built-in provider choice without changing the default provider path.
@@ -66,19 +67,20 @@ Back to index: [README](./README.md)
       [x] 1.3.1.2 Subtask - Support canonical `get/3`, `retrieve/3`, `forget/3`, and `prune/2` within the configured scope model.
       [x] 1.3.1.3 Subtask - Keep `child_specs/1` empty in the first cut unless background maintenance processes become mandatory later.
 
-  [ ] 1.4 Section - Phase 1 Integration Tests
+  [x] 1.4 Section - Phase 1 Integration Tests
     Validate the built-in provider baseline, the scoped-identity model, and canonical runtime compatibility before extraction-and-reconciliation behavior is added.
+    Completed by adding dedicated Mem0 phase integration coverage for alias and module selection, plugin-backed scoped flows, namespace isolation alongside scope metadata, and regression checks against existing built-in providers.
 
-    [ ] 1.4.1 Task - Built-in provider baseline scenarios
+    [x] 1.4.1 Task - Built-in provider baseline scenarios
       Verify the Mem0 provider satisfies the canonical provider contract and built-in alias path.
 
-      [ ] 1.4.1.1 Subtask - Verify `provider: :mem0` and `provider: Jido.Memory.Provider.Mem0` are equivalent.
-      [ ] 1.4.1.2 Subtask - Verify `ProviderContract.exercise_core_flow/5` passes for Mem0 through the baseline scoped path.
-      [ ] 1.4.1.3 Subtask - Verify `info/2` exposes provider and scope metadata without changing the shared runtime result shape.
+      [x] 1.4.1.1 Subtask - Verify `provider: :mem0` and `provider: Jido.Memory.Provider.Mem0` are equivalent.
+      [x] 1.4.1.2 Subtask - Verify `ProviderContract.exercise_core_flow/5` passes for Mem0 through the baseline scoped path.
+      [x] 1.4.1.3 Subtask - Verify `info/2` exposes provider and scope metadata without changing the shared runtime result shape.
 
-    [ ] 1.4.2 Task - Scoped identity scenarios
+    [x] 1.4.2 Task - Scoped identity scenarios
       Verify Mem0-style scope handling stays deterministic and additive.
 
-      [ ] 1.4.2.1 Subtask - Verify user, agent, app, and run scope ids resolve predictably from target data and opts.
-      [ ] 1.4.2.2 Subtask - Verify canonical namespace support still works alongside provider-native scope ids.
-      [ ] 1.4.2.3 Subtask - Verify existing built-in providers remain unaffected by the new Mem0 provider baseline.
+      [x] 1.4.2.1 Subtask - Verify user, agent, app, and run scope ids resolve predictably from target data and opts.
+      [x] 1.4.2.2 Subtask - Verify canonical namespace support still works alongside provider-native scope ids.
+      [x] 1.4.2.3 Subtask - Verify existing built-in providers remain unaffected by the new Mem0 provider baseline.
