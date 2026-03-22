@@ -8,6 +8,19 @@ defmodule Jido.Memory.Provider.Mem0 do
   work.
   """
 
+  # covers: jido_memory.provider_architecture.built_in_provider_choices
+  # covers: jido_memory.provider_architecture.provider_roles
+  # covers: jido_memory.provider_capabilities.additive_extension_boundary
+  # covers: jido_memory.provider_capabilities.structured_discovery
+  # covers: jido_memory.provider_capabilities.ingestion_capability_family
+  # covers: jido_memory.provider_capabilities.explainability_routing_trace_boundary
+  # covers: jido_memory.provider_facade.narrow_runtime_boundary
+  # covers: jido_memory.provider_facade.provider_native_extension_boundary
+  # covers: jido_memory.provider_mem0.extraction_reconciliation_boundary
+  # covers: jido_memory.provider_mem0.scoped_memory_identity
+  # covers: jido_memory.provider_mem0.graph_augmentation_boundary
+  # covers: jido_memory.provider_mem0.provider_direct_advanced_ops
+
   @behaviour Jido.Memory.Provider
   @behaviour Jido.Memory.Capability.Ingestion
   @behaviour Jido.Memory.Capability.ExplainableRetrieval

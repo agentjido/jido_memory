@@ -1,6 +1,8 @@
 defmodule Jido.Memory.Mem0Phase03IntegrationTest do
   use ExUnit.Case, async: true
 
+  # covers: jido_memory.provider_mem0.graph_augmentation_boundary
+
   alias Jido.Memory.Provider.Mem0
   alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderFixtures

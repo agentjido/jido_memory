@@ -10,11 +10,12 @@ external-provider reference path in `jido_memory`.
 <!-- covers: jido_memory.matrix.benchmarking.reproducible_fixtures -->
 <!-- covers: jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core -->
 - Add a reproducible benchmark harness that compares overlapping canonical memory
-  flows across `:basic`, `:tiered`, `:mirix`, and the external-provider reference
-  path.
+  flows across `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider
+  reference path.
 - Keep provider-specific advanced benchmark packs explicit so MIRIX ingestion,
-  MIRIX vault isolation, Tiered lifecycle, and durable long-term storage checks do
-  not redefine the required common facade.
+  MIRIX vault isolation, Tiered lifecycle and durable long-term storage, and
+  Mem0 extraction-and-reconciliation maintenance do not redefine the required
+  common facade.
 - Use benchmark output to guide future core changes only after the results prove a
   cross-provider pattern is reusable.
 

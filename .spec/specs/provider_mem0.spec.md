@@ -1,19 +1,20 @@
-# Mem0-Style Provider Direction
+# Mem0 Provider Boundary
 
 This subject records the draft direction for a Mem0-style provider inside the
 canonical `jido_memory` architecture.
 
 ## Intent
 
-Capture the repository-level contract for an extraction-and-reconciliation
-memory provider that emphasizes scoped long-term memory, incremental updates,
-and optional graph augmentation without widening the canonical core.
+Capture the repository-level contract for the built-in extraction-and-reconciliation
+provider that emphasizes scoped long-term memory, incremental updates, optional
+graph augmentation, and provider-direct maintenance workflows without widening
+the canonical core.
 
 ```spec-meta
 id: jido_memory.provider_mem0
 kind: architecture
 status: draft
-summary: Draft Mem0-style provider direction for extraction-and-reconciliation memory, scoped retrieval, and optional graph augmentation in jido_memory.
+summary: Draft boundary for the built-in Mem0 provider in jido_memory, covering extraction-and-reconciliation memory, scoped retrieval, and optional graph augmentation.
 surface:
   - .spec/specs/provider_architecture.spec.md
   - .spec/specs/provider_capabilities.spec.md
@@ -21,6 +22,10 @@ surface:
   - .spec/specs/matrix/provider_surface_matrix.spec.md
   - .spec/specs/matrix/ingestion_matrix.spec.md
   - .spec/specs/matrix/retrieval_matrix.spec.md
+  - lib/jido_memory/provider/mem0.ex
+  - test/jido_memory/mem0_phase_01_integration_test.exs
+  - test/jido_memory/mem0_phase_03_integration_test.exs
+  - test/jido_memory/mem0_phase_04_integration_test.exs
 ```
 
 ## Requirements
@@ -49,7 +54,7 @@ surface:
 ```spec-scenarios
 - id: jido_memory.provider_mem0.shared_facade_path
   given:
-    - a plugin configuration that selects a Mem0-style provider
+    - a plugin configuration that selects the built-in Mem0 provider
   when:
     - agent memory calls use the common plugin and runtime surface
   then:
@@ -82,11 +87,19 @@ surface:
 
 ```spec-verification
 - kind: source_file
-  target: .spec/specs/provider_mem0.spec.md
+  target: lib/jido_memory/provider/mem0.ex
   covers:
     - jido_memory.provider_mem0.extraction_reconciliation_boundary
     - jido_memory.provider_mem0.scoped_memory_identity
     - jido_memory.provider_mem0.graph_augmentation_boundary
+    - jido_memory.provider_mem0.provider_direct_advanced_ops
+- kind: source_file
+  target: test/jido_memory/mem0_phase_03_integration_test.exs
+  covers:
+    - jido_memory.provider_mem0.graph_augmentation_boundary
+- kind: source_file
+  target: test/jido_memory/mem0_phase_04_integration_test.exs
+  covers:
     - jido_memory.provider_mem0.provider_direct_advanced_ops
 ```
 

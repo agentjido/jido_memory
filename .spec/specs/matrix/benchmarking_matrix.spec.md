@@ -47,7 +47,7 @@ decisions:
 ```spec-scenarios
 - id: jido_memory.matrix.benchmarking.shared_provider_matrix_path
   given:
-    - a benchmark run that compares built-in `:basic`, built-in `:tiered`, built-in `:mirix`, and the external-provider reference path
+    - a benchmark run that compares built-in `:basic`, built-in `:tiered`, built-in `:mirix`, built-in `:mem0`, and the external-provider reference path
   when:
     - the run evaluates canonical remember, retrieve, recall, explainability, and provider selection flows that overlap across those paths
   then:
@@ -56,7 +56,7 @@ decisions:
     - jido_memory.matrix.benchmarking.shared_overlap_first
 - id: jido_memory.matrix.benchmarking.provider_specific_advanced_path
   given:
-    - a benchmark run that includes MIRIX ingestion and vault isolation or Tiered lifecycle and durable long-term promotion
+    - a benchmark run that includes MIRIX ingestion and vault isolation, Tiered lifecycle and durable long-term promotion, or Mem0 extraction-and-reconciliation maintenance and graph-augmented explanation paths
   when:
     - those scenarios are evaluated alongside the shared provider matrix
   then:

@@ -1,6 +1,10 @@
 defmodule Jido.Memory.Mem0Phase04IntegrationTest do
   use ExUnit.Case, async: true
 
+  # covers: jido_memory.provider_facade.provider_configurable_plugin
+  # covers: jido_memory.provider_facade.mem0_style_provider_path
+  # covers: jido_memory.provider_mem0.provider_direct_advanced_ops
+
   alias Jido.Memory.Plugin
   alias Jido.Memory.Provider.Mem0
   alias Jido.Memory.ProviderContract

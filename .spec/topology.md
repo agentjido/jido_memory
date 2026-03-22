@@ -29,12 +29,14 @@ flowchart LR
     ProviderRef --> Basic["Basic Provider"]
     ProviderRef --> Tiered["Tiered Provider"]
     ProviderRef --> Mirix["Mirix Provider"]
+    ProviderRef --> Mem0["Mem0 Provider"]
     ProviderRef --> External["External Provider"]
 
     Basic --> Store["Jido.Memory.Store"]
     Tiered --> ShortMid["Short + Mid Stores"]
     Tiered --> LongTerm["Jido.Memory.LongTermStore"]
     Mirix --> MirixStores["Typed memory stores"]
+    Mem0 --> Mem0Store["Scoped reconciliation store"]
     External --> ExtImpl["Provider-Owned Implementation"]
 ```
 
@@ -45,6 +47,7 @@ flowchart TB
     Runtime["Jido.Memory.Runtime"] --> Basic["Jido.Memory.Provider.Basic"]
     Runtime --> Tiered["Jido.Memory.Provider.Tiered"]
     Runtime --> Mirix["Jido.Memory.Provider.Mirix"]
+    Runtime --> Mem0["Jido.Memory.Provider.Mem0"]
 
     Basic --> SingleStore["Single Jido.Memory.Store backend"]
 
@@ -66,6 +69,10 @@ flowchart TB
     Mirix --> Vault["Vault store"]
     Mirix --> Active["Active retrieval explanations"]
     Mirix --> Direct["Provider-direct ingest + vault APIs"]
+
+    Mem0 --> Mem0Facts["Scoped fact store"]
+    Mem0 --> Mem0Explain["Scoped retrieval + graph explanations"]
+    Mem0 --> Mem0Direct["Provider-direct ingest + maintenance APIs"]
 ```
 
 ## Long-Term Storage Topology
@@ -109,6 +116,7 @@ Current built-in support:
 | `:tiered` + ETS long-term | yes | yes | yes | ETS only | no | no |
 | `:tiered` + Postgres long-term | yes | yes | yes | yes | no | no |
 | `:mirix` | yes | yes | no | ETS-backed typed stores | provider-direct | provider-direct |
+| `:mem0` | yes | yes | no | scoped ETS-backed store | provider-direct | no |
 | External reference path | yes | provider-specific | provider-specific | provider-specific | provider-specific | provider-specific |
 
 ## Boundary With `jido_memory_os`

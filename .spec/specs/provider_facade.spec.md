@@ -114,7 +114,7 @@ decisions:
     - jido_memory.provider_facade.shared_record_query_contract
 - id: jido_memory.provider_facade.mem0_style_provider_path
   given:
-    - a plugin configuration that selects a Mem0-style provider
+    - a plugin configuration that selects the built-in Mem0 provider
   when:
     - agent memory actions are executed through the common plugin and runtime surface
   then:
@@ -142,4 +142,14 @@ decisions:
     - jido_memory.provider_facade.narrow_runtime_boundary
     - jido_memory.provider_facade.provider_native_extension_boundary
     - jido_memory.provider_facade.shared_record_query_contract
+- kind: source_file
+  target: lib/jido_memory/provider/mem0.ex
+  covers:
+    - jido_memory.provider_facade.narrow_runtime_boundary
+    - jido_memory.provider_facade.provider_native_extension_boundary
+- kind: source_file
+  target: test/jido_memory/mem0_phase_04_integration_test.exs
+  covers:
+    - jido_memory.provider_facade.provider_configurable_plugin
+    - jido_memory.provider_facade.mem0_style_provider_path
 ```

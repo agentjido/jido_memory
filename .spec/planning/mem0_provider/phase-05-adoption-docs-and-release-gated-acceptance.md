@@ -28,15 +28,15 @@ Back to index: [README](./README.md)
     [x] 5.1.1.2 Subtask - Add examples showing provider-direct Mem0 ingestion, feedback, history, or export workflows.
     [x] 5.1.1.3 Subtask - Add acceptance fixtures that switch the same agent between `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider reference path without changing common plugin code.
 
-  [ ] 5.2 Section - Spec, Topology, and Benchmark-Hook Alignment
+  [x] 5.2 Section - Spec, Topology, and Benchmark-Hook Alignment
     Bring the implementation and support docs into line once the Mem0 provider is real.
 
-    [ ] 5.2.1 Task - Update current-truth and support documents for Mem0
+    [x] 5.2.1 Task - Update current-truth and support documents for Mem0
       Keep the Spec Led workspace and user-facing docs aligned with the implemented provider boundary.
 
-      [ ] 5.2.1.1 Subtask - Update provider architecture, capability, facade, and matrix subjects to reflect implemented Mem0 behavior.
-      [ ] 5.2.1.2 Subtask - Update `.spec/topology.md` to add Mem0 to the provider topology if it becomes part of the implemented built-in matrix.
-      [ ] 5.2.1.3 Subtask - Add benchmark fixture and scenario hooks that align with the separate provider benchmarking plan without implementing benchmark infrastructure inside this phase.
+      [x] 5.2.1.1 Subtask - Update provider architecture, capability, facade, and matrix subjects to reflect implemented Mem0 behavior.
+      [x] 5.2.1.2 Subtask - Update `.spec/topology.md` to add Mem0 to the provider topology if it becomes part of the implemented built-in matrix.
+      [x] 5.2.1.3 Subtask - Add benchmark fixture and scenario hooks that align with the separate provider benchmarking plan without implementing benchmark infrastructure inside this phase.
 
   [ ] 5.3 Section - Release Matrix and Acceptance Hardening
     Decide how Mem0 enters the support matrix and lock the final compatibility expectations.

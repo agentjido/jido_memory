@@ -222,7 +222,7 @@
         "id": "jido_memory.provider_architecture.provider_roles",
         "priority": "must",
         "stability": "evolving",
-        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, leave room for a Mem0-style extraction-and-reconciliation provider archetype in jido_memory, and keep jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
+        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position native Tiered, Mirix, and Mem0 providers in jido_memory as built-in advanced paths for lifecycle-oriented, routed memory-type, and extraction-and-reconciliation memory respectively, and keep jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
         "subject_id": "jido_memory.provider_architecture"
       },
       {
@@ -474,7 +474,7 @@
         ],
         "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
         "given": [
-          "a benchmark run that includes MIRIX ingestion and vault isolation or Tiered lifecycle and durable long-term promotion"
+          "a benchmark run that includes MIRIX ingestion and vault isolation, Tiered lifecycle and durable long-term promotion, or Mem0 extraction-and-reconciliation maintenance and graph-augmented explanation paths"
         ],
         "id": "jido_memory.matrix.benchmarking.provider_specific_advanced_path",
         "subject_id": "jido_memory.matrix.benchmarking",
@@ -508,7 +508,7 @@
         ],
         "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
         "given": [
-          "a benchmark run that compares built-in `:basic`, built-in `:tiered`, built-in `:mirix`, and the external-provider reference path"
+          "a benchmark run that compares built-in `:basic`, built-in `:tiered`, built-in `:mirix`, built-in `:mem0`, and the external-provider reference path"
         ],
         "id": "jido_memory.matrix.benchmarking.shared_provider_matrix_path",
         "subject_id": "jido_memory.matrix.benchmarking",
@@ -778,7 +778,7 @@
         ],
         "file": ".spec/specs/provider_capabilities.spec.md",
         "given": [
-          "a Mem0-style provider that extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context"
+          "the built-in Mem0 provider extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context"
         ],
         "id": "jido_memory.provider_capabilities.extraction_reconciliation_negotiation",
         "subject_id": "jido_memory.provider_capabilities",
@@ -1024,7 +1024,7 @@
         ],
         "file": ".spec/specs/provider_facade.spec.md",
         "given": [
-          "a plugin configuration that selects a Mem0-style provider"
+          "a plugin configuration that selects the built-in Mem0 provider"
         ],
         "id": "jido_memory.provider_facade.mem0_style_provider_path",
         "subject_id": "jido_memory.provider_facade",
@@ -1096,7 +1096,7 @@
         ],
         "file": ".spec/specs/provider_mem0.spec.md",
         "given": [
-          "a plugin configuration that selects a Mem0-style provider"
+          "a plugin configuration that selects the built-in Mem0 provider"
         ],
         "id": "jido_memory.provider_mem0.shared_facade_path",
         "subject_id": "jido_memory.provider_mem0",
@@ -1300,7 +1300,7 @@
           "id": "jido_memory.provider_architecture",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving room for additional provider archetypes such as a Mem0-style extraction-and-reconciliation path and keeping jido_memory_os as a standalone advanced library.",
+          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, Mirix, and Mem0, while keeping jido_memory_os as a standalone advanced library.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -1385,18 +1385,22 @@
           "id": "jido_memory.provider_mem0",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft Mem0-style provider direction for extraction-and-reconciliation memory, scoped retrieval, and optional graph augmentation in jido_memory.",
+          "summary": "Draft boundary for the built-in Mem0 provider in jido_memory, covering extraction-and-reconciliation memory, scoped retrieval, and optional graph augmentation.",
           "surface": [
             ".spec/specs/provider_architecture.spec.md",
             ".spec/specs/provider_capabilities.spec.md",
             ".spec/specs/provider_facade.spec.md",
             ".spec/specs/matrix/provider_surface_matrix.spec.md",
             ".spec/specs/matrix/ingestion_matrix.spec.md",
-            ".spec/specs/matrix/retrieval_matrix.spec.md"
+            ".spec/specs/matrix/retrieval_matrix.spec.md",
+            "lib/jido_memory/provider/mem0.ex",
+            "test/jido_memory/mem0_phase_01_integration_test.exs",
+            "test/jido_memory/mem0_phase_03_integration_test.exs",
+            "test/jido_memory/mem0_phase_04_integration_test.exs"
           ],
           "verification_minimum_strength": null
         },
-        "title": "Mem0-Style Provider Direction"
+        "title": "Mem0 Provider Boundary"
       },
       {
         "file": ".spec/specs/provider_migration.spec.md",
@@ -1558,6 +1562,16 @@
       },
       {
         "covers": [
+          "jido_memory.provider_architecture.built_in_provider_choices",
+          "jido_memory.provider_architecture.provider_roles"
+        ],
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "lib/jido_memory/provider/mem0.ex"
+      },
+      {
+        "covers": [
           "jido_memory.provider_capabilities.optional_behaviours",
           "jido_memory.provider_capabilities.structured_discovery",
           "jido_memory.provider_capabilities.typed_unsupported_error"
@@ -1579,6 +1593,18 @@
         "kind": "source_file",
         "subject_id": "jido_memory.provider_capabilities",
         "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.structured_discovery",
+          "jido_memory.provider_capabilities.ingestion_capability_family",
+          "jido_memory.provider_capabilities.explainability_routing_trace_boundary"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": "lib/jido_memory/provider/mem0.ex"
       },
       {
         "covers": [
@@ -1628,6 +1654,26 @@
       },
       {
         "covers": [
+          "jido_memory.provider_facade.narrow_runtime_boundary",
+          "jido_memory.provider_facade.provider_native_extension_boundary"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "lib/jido_memory/provider/mem0.ex"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_facade.provider_configurable_plugin",
+          "jido_memory.provider_facade.mem0_style_provider_path"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "test/jido_memory/mem0_phase_04_integration_test.exs"
+      },
+      {
+        "covers": [
           "jido_memory.provider_mem0.extraction_reconciliation_boundary",
           "jido_memory.provider_mem0.scoped_memory_identity",
           "jido_memory.provider_mem0.graph_augmentation_boundary",
@@ -1636,7 +1682,25 @@
         "file": ".spec/specs/provider_mem0.spec.md",
         "kind": "source_file",
         "subject_id": "jido_memory.provider_mem0",
-        "target": ".spec/specs/provider_mem0.spec.md"
+        "target": "lib/jido_memory/provider/mem0.ex"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_mem0.graph_augmentation_boundary"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": "test/jido_memory/mem0_phase_03_integration_test.exs"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_mem0.provider_direct_advanced_ops"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": "test/jido_memory/mem0_phase_04_integration_test.exs"
       },
       {
         "covers": [
@@ -1697,7 +1761,7 @@
     "requirements": 54,
     "scenarios": 38,
     "subjects": 13,
-    "verifications": 22
+    "verifications": 28
   },
   "verification": {
     "claims": [
@@ -2076,6 +2140,28 @@
         "verification_index": 0
       },
       {
+        "cover_id": "jido_memory.provider_architecture.built_in_provider_choices",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_architecture.provider_roles",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 1
+      },
+      {
         "cover_id": "jido_memory.provider_capabilities.optional_behaviours",
         "file": ".spec/specs/provider_capabilities.spec.md",
         "kind": "source_file",
@@ -2162,6 +2248,50 @@
         "subject_id": "jido_memory.provider_capabilities",
         "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
         "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.additive_extension_boundary",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.explainability_routing_trace_boundary",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.ingestion_capability_family",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.structured_discovery",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
       },
       {
         "cover_id": "jido_memory.provider_core.bootstrap_boundary",
@@ -2318,6 +2448,50 @@
         "verification_index": 1
       },
       {
+        "cover_id": "jido_memory.provider_facade.narrow_runtime_boundary",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.provider_native_extension_boundary",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "lib/jido_memory/provider/mem0.ex",
+        "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.mem0_style_provider_path",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "test/jido_memory/mem0_phase_04_integration_test.exs",
+        "verification_index": 3
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.provider_configurable_plugin",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": "test/jido_memory/mem0_phase_04_integration_test.exs",
+        "verification_index": 3
+      },
+      {
         "cover_id": "jido_memory.provider_mem0.extraction_reconciliation_boundary",
         "file": ".spec/specs/provider_mem0.spec.md",
         "kind": "source_file",
@@ -2325,7 +2499,7 @@
         "required_strength": "claimed",
         "strength": "linked",
         "subject_id": "jido_memory.provider_mem0",
-        "target": ".spec/specs/provider_mem0.spec.md",
+        "target": "lib/jido_memory/provider/mem0.ex",
         "verification_index": 0
       },
       {
@@ -2336,7 +2510,7 @@
         "required_strength": "claimed",
         "strength": "linked",
         "subject_id": "jido_memory.provider_mem0",
-        "target": ".spec/specs/provider_mem0.spec.md",
+        "target": "lib/jido_memory/provider/mem0.ex",
         "verification_index": 0
       },
       {
@@ -2347,7 +2521,7 @@
         "required_strength": "claimed",
         "strength": "linked",
         "subject_id": "jido_memory.provider_mem0",
-        "target": ".spec/specs/provider_mem0.spec.md",
+        "target": "lib/jido_memory/provider/mem0.ex",
         "verification_index": 0
       },
       {
@@ -2358,8 +2532,30 @@
         "required_strength": "claimed",
         "strength": "linked",
         "subject_id": "jido_memory.provider_mem0",
-        "target": ".spec/specs/provider_mem0.spec.md",
+        "target": "lib/jido_memory/provider/mem0.ex",
         "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_mem0.graph_augmentation_boundary",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": "test/jido_memory/mem0_phase_03_integration_test.exs",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_mem0.provider_direct_advanced_ops",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": "test/jido_memory/mem0_phase_04_integration_test.exs",
+        "verification_index": 2
       },
       {
         "cover_id": "jido_memory.provider_migration.basic_provider_default",
@@ -2455,7 +2651,7 @@
     "strength_summary": {
       "claimed": 0,
       "executed": 6,
-      "linked": 62
+      "linked": 74
     },
     "threshold_failures": 0
   },

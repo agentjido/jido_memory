@@ -99,7 +99,7 @@ decisions:
     - jido_memory.provider_capabilities.explainability_routing_trace_boundary
 - id: jido_memory.provider_capabilities.extraction_reconciliation_negotiation
   given:
-    - a Mem0-style provider that extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context
+    - the built-in Mem0 provider extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context
   when:
     - tooling inspects the provider capability and explanation surfaces
   then:
@@ -137,4 +137,11 @@ decisions:
     - jido_memory.provider_capabilities.explainability_routing_trace_boundary
     - jido_memory.provider_capabilities.governance_protected_memory
     - jido_memory.provider_capabilities.typed_unsupported_error
+- kind: source_file
+  target: lib/jido_memory/provider/mem0.ex
+  covers:
+    - jido_memory.provider_capabilities.additive_extension_boundary
+    - jido_memory.provider_capabilities.structured_discovery
+    - jido_memory.provider_capabilities.ingestion_capability_family
+    - jido_memory.provider_capabilities.explainability_routing_trace_boundary
 ```
