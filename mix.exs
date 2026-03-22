@@ -49,7 +49,9 @@ defmodule JidoMemory.MixProject do
       setup: ["deps.get", "cmd npm install"],
       "test.acceptance": [
         "cmd env MIX_ENV=test mix test test/jido_memory/follow_on_acceptance_fixture_test.exs",
-        "cmd env MIX_ENV=test mix test test/jido_memory/phase_03_integration_test.exs"
+        "cmd env MIX_ENV=test mix test test/jido_memory/phase_03_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mirix_phase_03_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mirix_phase_04_integration_test.exs"
       ],
       quality: [
         "cmd env MIX_ENV=test mix format --check-formatted",
