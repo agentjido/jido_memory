@@ -1,0 +1,123 @@
+# Current Architecture Topology
+
+This document describes the implemented topology of `jido_memory` after the
+provider rollout and follow-on phases.
+
+It is a support document for the Spec Led workspace, not a current-truth subject
+in `.spec/specs/`.
+
+## Topology Summary
+
+`jido_memory` is the unified Jido-facing memory package.
+
+The implemented architecture has five main layers:
+
+1. Agent-facing integration through `Jido.Memory.Plugin` and compatibility `Jido.Memory.ETSPlugin`
+2. Common runtime and action facade through `Jido.Memory.Runtime`
+3. Provider selection and capability negotiation through `Jido.Memory.ProviderRef` and `Jido.Memory.Capabilities`
+4. Built-in and external provider implementations
+5. Storage substrates for short, mid, and long-term memory
+
+## High-Level Runtime Topology
+
+```mermaid
+flowchart LR
+    App["Agent / App"] --> Plugin["Jido.Memory.Plugin\nJido.Memory.ETSPlugin"]
+    Plugin --> Runtime["Jido.Memory.Runtime"]
+    Runtime --> ProviderRef["ProviderRef + Capabilities"]
+
+    ProviderRef --> Basic["Basic Provider"]
+    ProviderRef --> Tiered["Tiered Provider"]
+    ProviderRef --> External["External Provider"]
+
+    Basic --> Store["Jido.Memory.Store"]
+    Tiered --> ShortMid["Short + Mid Stores"]
+    Tiered --> LongTerm["Jido.Memory.LongTermStore"]
+    External --> ExtImpl["Provider-Owned Implementation"]
+```
+
+## Built-In Provider Topology
+
+```mermaid
+flowchart TB
+    Runtime["Jido.Memory.Runtime"] --> Basic["Jido.Memory.Provider.Basic"]
+    Runtime --> Tiered["Jido.Memory.Provider.Tiered"]
+
+    Basic --> SingleStore["Single Jido.Memory.Store backend"]
+
+    Tiered --> Short["Short tier"]
+    Tiered --> Mid["Mid tier"]
+    Tiered --> Long["Long tier"]
+    Tiered --> Explain["Explainable retrieval"]
+    Tiered --> Lifecycle["Lifecycle inspection + consolidate"]
+
+    Short --> StoreShort["Jido.Memory.Store"]
+    Mid --> StoreMid["Jido.Memory.Store"]
+    Long --> LongStore["Jido.Memory.LongTermStore"]
+```
+
+## Long-Term Storage Topology
+
+```mermaid
+flowchart LR
+    Tiered["Tiered Provider"] --> LongTerm["Jido.Memory.LongTermStore"]
+    LongTerm --> ETS["LongTermStore.ETS"]
+    LongTerm --> PG["LongTermStore.Postgres"]
+    LongTerm --> Custom["Custom backend"]
+
+    ETS --> ETSStore["Jido.Memory.Store.ETS"]
+    PG --> Postgres["Postgres via postgrex"]
+    Custom --> UserBackend["Application-defined implementation"]
+```
+
+## Capability Topology
+
+Required core path:
+
+- `remember/3`
+- `get/3`
+- `retrieve/3`
+- `forget/3`
+- `prune/2`
+- `info/2`
+
+Optional capability path:
+
+- `Lifecycle`
+- `ExplainableRetrieval`
+- `Operations`
+- `Governance`
+- `TurnHooks`
+
+Current built-in support:
+
+| Path | Core | Explainability | Lifecycle | Durable Long-Term |
+| --- | --- | --- | --- | --- |
+| `:basic` | yes | no | no | no |
+| `:tiered` + ETS long-term | yes | yes | yes | ETS only |
+| `:tiered` + Postgres long-term | yes | yes | yes | yes |
+| External reference path | yes | provider-specific | provider-specific | provider-specific |
+
+## Boundary With `jido_memory_os`
+
+`jido_memory_os` is not part of the built-in topology.
+
+Current boundary:
+
+- `jido_memory` owns the common runtime, plugin, provider contract, built-in providers, and long-term backend seam
+- `jido_memory_os` remains a standalone advanced library for manager-driven workflows such as journaling, replay, and governance-heavy orchestration
+
+## Release-Gated Paths
+
+The release-gated matrix currently includes:
+
+- built-in `:basic`
+- built-in `:tiered` with ETS long-term storage
+- built-in `:tiered` with Postgres long-term storage
+- the external-provider reference path
+
+Reference material:
+
+- `.spec/specs/provider_architecture.spec.md`
+- `docs/rfcs/0001-canonical-memory-provider-architecture.md`
+- `docs/guides/follow_on_acceptance_matrix.md`

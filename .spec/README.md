@@ -12,6 +12,7 @@ the code, tests, and docs that prove it.
 - `README.md` - this file
 - `AGENTS.md` - local operating guidance for agents working in `.spec/`
 - `decisions/README.md` - ADR guidance for durable cross-cutting decisions
+- `topology.md` - current implemented architecture topology and boundaries
 - `specs/spec_system.spec.md` - workspace rules and boundaries
 - `specs/package.spec.md` - current package-level behavior
 - `specs/provider_architecture.spec.md` - draft provider architecture direction
