@@ -29,10 +29,18 @@ defmodule Jido.Memory.Provider.Tiered do
 
   @capabilities %{
     core: true,
-    retrieval: %{explainable: true, tiers: true, explanation_scope: :result_reasons},
+    retrieval: %{
+      explainable: true,
+      tiers: true,
+      active: false,
+      memory_types: false,
+      provider_extensions: true,
+      explanation_scope: :result_reasons
+    },
     lifecycle: %{consolidate: true, promote: true, inspect: true},
+    ingestion: %{batch: false, multimodal: false, routed: false, access: :none},
     operations: %{},
-    governance: %{},
+    governance: %{protected_memory: false, exact_preservation: false, access: :none},
     hooks: %{}
   }
 
@@ -168,7 +176,7 @@ defmodule Jido.Memory.Provider.Tiered do
   @impl true
   def retrieve(target, %Query{} = query, opts) when is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{namespace: query.namespace}, opts),
-         {:ok, tiers} <- resolve_tiers(%{}, opts, default: :all) do
+         {:ok, tiers} <- resolve_tiers(query, opts, default: :all) do
       retrieve_records(target, query, context, tiers)
     end
   end
@@ -189,7 +197,7 @@ defmodule Jido.Memory.Provider.Tiered do
   @impl true
   def explain_retrieval(target, %Query{} = query, opts) when is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{namespace: query.namespace}, opts),
-         {:ok, tiers} <- resolve_tiers(%{}, opts, default: :all),
+         {:ok, tiers} <- resolve_tiers(query, opts, default: :all),
          {:ok, bundles} <- do_retrieve_bundles(target, query, context, tiers) do
       {:ok, build_explanation(query, context, tiers, bundles)}
     end
@@ -686,15 +694,67 @@ defmodule Jido.Memory.Provider.Tiered do
     end
   end
 
+  defp resolve_tiers(%Query{} = query, opts, config) do
+    value =
+      pick_value(opts, %{}, :tiers) ||
+        pick_value(opts, %{}, :tier_mode) ||
+        pick_value(opts, %{}, :tier) ||
+        tiered_extension_value(query.extensions, :tiers) ||
+        tiered_extension_value(query.extensions, :tier_mode) ||
+        tiered_extension_value(query.extensions, :tier) ||
+        Keyword.get(config, :default, :all)
+
+    normalize_tiers(value)
+  end
+
   defp resolve_tiers(attrs, opts, config) do
     value =
       pick_value(opts, attrs, :tiers) ||
         pick_value(opts, attrs, :tier_mode) ||
         pick_value(opts, attrs, :tier) ||
+        tiered_extension_value(attrs, :tiers) ||
+        tiered_extension_value(attrs, :tier_mode) ||
+        tiered_extension_value(attrs, :tier) ||
         Keyword.get(config, :default, :all)
 
     normalize_tiers(value)
   end
+
+  defp tiered_extension_value(%{} = attrs, key) when is_atom(key) do
+    with %{} = tiered <- resolve_tiered_extension(attrs) do
+      Map.get(tiered, key, Map.get(tiered, Atom.to_string(key)))
+    else
+      _ -> nil
+    end
+  end
+
+  defp tiered_extension_value(_attrs, _key), do: nil
+
+  defp resolve_tiered_extension(%{} = attrs) do
+    direct_tiered = Map.get(attrs, :tiered, Map.get(attrs, "tiered"))
+    query_extensions = Map.get(attrs, :query_extensions, Map.get(attrs, "query_extensions"))
+
+    case direct_tiered do
+      %{} = tiered ->
+        tiered
+
+      _ ->
+        with nil <- extract_tiered_extension(query_extensions),
+             %{} = extensions <- Map.get(attrs, :extensions, Map.get(attrs, "extensions")),
+             %{} = tiered <- Map.get(extensions, :tiered, Map.get(extensions, "tiered")) do
+          tiered
+        else
+          %{} = tiered -> tiered
+          _ -> nil
+        end
+    end
+  end
+
+  defp extract_tiered_extension(%{} = extensions) do
+    Map.get(extensions, :tiered, Map.get(extensions, "tiered"))
+  end
+
+  defp extract_tiered_extension(_extensions), do: nil
 
   defp normalize_tiers(:all), do: {:ok, [:short, :mid, :long]}
   defp normalize_tiers(nil), do: {:ok, [:short, :mid, :long]}

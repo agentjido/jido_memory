@@ -6,6 +6,7 @@ defmodule Jido.Memory.Phase01IntegrationTest do
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderBootstrap
   alias Jido.Memory.ProviderFixtures
+  alias Jido.Memory.Query
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
   alias Jido.Memory.Support.ExternalProvider
@@ -108,6 +109,41 @@ defmodule Jido.Memory.Phase01IntegrationTest do
               bootstrap: %{ownership: :caller}
             }} =
              example_agent.run_demo("docs-external-agent", prefix)
+  end
+
+  test "query extensions survive runtime dispatch and tiered explanation parity" do
+    provider = ProviderFixtures.tiered_provider("phase01_query_ext")
+    agent = mounted_agent("phase01-query-ext", %{provider: provider})
+
+    assert {:ok, %Record{id: short_id}} =
+             Runtime.remember(
+               agent,
+               %{class: :episodic, kind: :event, text: "phase01 query extension short", tier: :short},
+               []
+             )
+
+    assert {:ok, %Record{id: mid_id}} =
+             Runtime.remember(
+               agent,
+               %{class: :semantic, kind: :fact, text: "phase01 query extension mid", tier: :mid, importance: 1.0},
+               []
+             )
+
+    assert {:ok, query} =
+             Query.new(%{
+               text_contains: "phase01 query extension",
+               query_extensions: %{tiered: %{tiers: [:mid]}}
+             })
+
+    assert query.extensions == %{tiered: %{tiers: [:mid]}}
+
+    assert {:ok, [%Record{id: ^mid_id}]} = Runtime.retrieve(agent, query, [])
+
+    assert {:ok, explanation} = Runtime.explain_retrieval(agent, query, [])
+    assert explanation.requested_tiers == [:mid]
+    assert explanation.participating_tiers == [:mid]
+    assert Enum.map(explanation.results, & &1.id) == [mid_id]
+    refute short_id == mid_id
   end
 
   defp mounted_agent(agent_id, config) do

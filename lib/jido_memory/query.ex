@@ -22,6 +22,7 @@ defmodule Jido.Memory.Query do
               text_contains: Zoi.string(description: "Case-insensitive text substring") |> Zoi.optional(),
               since: Zoi.integer(description: "Start timestamp in milliseconds") |> Zoi.optional(),
               until: Zoi.integer(description: "End timestamp in milliseconds") |> Zoi.optional(),
+              extensions: Zoi.map(description: "Provider-native query extensions") |> Zoi.default(%{}),
               limit: Zoi.integer(description: "Maximum result count") |> Zoi.default(@default_limit),
               order:
                 Zoi.atom(description: "Sort order by observed_at")
@@ -53,6 +54,7 @@ defmodule Jido.Memory.Query do
          {:ok, text_contains} <- normalize_text_filter(get_attr(attrs, :text_contains)),
          {:ok, since} <- normalize_optional_time(get_attr(attrs, :since)),
          {:ok, until} <- normalize_optional_time(get_attr(attrs, :until)),
+         {:ok, extensions} <- normalize_extensions(attrs),
          {:ok, limit} <- normalize_limit(get_attr(attrs, :limit, @default_limit)),
          {:ok, order} <- normalize_order(get_attr(attrs, :order, @default_order)) do
       {:ok,
@@ -65,6 +67,7 @@ defmodule Jido.Memory.Query do
          text_contains: text_contains,
          since: since,
          until: until,
+         extensions: extensions,
          limit: limit,
          order: order
        })}
@@ -98,6 +101,10 @@ defmodule Jido.Memory.Query do
 
   def downcased_text_filter(%__MODULE__{text_contains: text}),
     do: String.downcase(text)
+
+  @doc "Returns provider-native query extensions."
+  @spec extensions(t()) :: map()
+  def extensions(%__MODULE__{extensions: extensions}), do: extensions
 
   @spec normalize_namespace(term()) :: {:ok, String.t() | nil} | {:error, term()}
   defp normalize_namespace(nil), do: {:ok, nil}
@@ -173,6 +180,44 @@ defmodule Jido.Memory.Query do
   defp normalize_optional_time(value) when is_integer(value), do: {:ok, value}
   defp normalize_optional_time(other), do: {:error, {:invalid_timestamp, other}}
 
+  @spec normalize_extensions(map()) :: {:ok, map()} | {:error, term()}
+  defp normalize_extensions(attrs) when is_map(attrs) do
+    with {:ok, query_extensions} <- normalize_extension_map(get_attr(attrs, :query_extensions, %{})),
+         {:ok, direct_extensions} <- normalize_extension_map(get_attr(attrs, :extensions, %{})) do
+      normalized =
+        query_extensions
+        |> deep_merge(direct_extensions)
+        |> normalize_legacy_tiered_extensions(attrs)
+
+      {:ok, normalized}
+    end
+  end
+
+  @spec normalize_extension_map(term()) :: {:ok, map()} | {:error, term()}
+  defp normalize_extension_map(nil), do: {:ok, %{}}
+  defp normalize_extension_map(%{} = extensions), do: {:ok, extensions}
+  defp normalize_extension_map(other), do: {:error, {:invalid_extensions, other}}
+
+  @spec normalize_legacy_tiered_extensions(map(), map()) :: map()
+  defp normalize_legacy_tiered_extensions(extensions, attrs) do
+    legacy_tiered =
+      %{}
+      |> maybe_put(:tier, get_attr(attrs, :tier))
+      |> maybe_put(:tiers, get_attr(attrs, :tiers))
+      |> maybe_put(:tier_mode, get_attr(attrs, :tier_mode))
+
+    if legacy_tiered == %{} do
+      extensions
+    else
+      Map.update(extensions, :tiered, legacy_tiered, fn existing ->
+        deep_merge(normalize_extension_value(existing), legacy_tiered)
+      end)
+    end
+  end
+
+  defp normalize_extension_value(%{} = value), do: value
+  defp normalize_extension_value(_value), do: %{}
+
   @spec normalize_limit(term()) :: {:ok, pos_integer()} | {:error, term()}
   defp normalize_limit(limit) when is_integer(limit) and limit > 0 do
     {:ok, min(limit, 1000)}
@@ -192,4 +237,19 @@ defmodule Jido.Memory.Query do
   defp get_attr(map, key, default \\ nil) do
     Map.get(map, key, Map.get(map, Atom.to_string(key), default))
   end
+
+  @spec deep_merge(map(), map()) :: map()
+  defp deep_merge(left, right) when is_map(left) and is_map(right) do
+    Map.merge(left, right, fn _key, left_value, right_value ->
+      if is_map(left_value) and is_map(right_value) do
+        deep_merge(left_value, right_value)
+      else
+        right_value
+      end
+    end)
+  end
+
+  @spec maybe_put(map(), atom(), term()) :: map()
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

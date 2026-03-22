@@ -5,10 +5,11 @@ defmodule Jido.Memory.Capabilities do
 
   @default %{
     core: false,
-    retrieval: %{explainable: false},
-    lifecycle: %{consolidate: false},
+    retrieval: %{explainable: false, active: false, memory_types: false, provider_extensions: false},
+    lifecycle: %{consolidate: false, inspect: false},
+    ingestion: %{batch: false, multimodal: false, routed: false, access: :none},
     operations: %{},
-    governance: %{},
+    governance: %{protected_memory: false, exact_preservation: false, access: :none},
     hooks: %{}
   }
 

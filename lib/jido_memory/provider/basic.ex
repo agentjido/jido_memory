@@ -10,10 +10,11 @@ defmodule Jido.Memory.Provider.Basic do
   @default_store {Jido.Memory.Store.ETS, [table: :jido_memory]}
   @core_capabilities %{
     core: true,
-    retrieval: %{explainable: false},
-    lifecycle: %{consolidate: false},
+    retrieval: %{explainable: false, active: false, memory_types: false, provider_extensions: false},
+    lifecycle: %{consolidate: false, inspect: false},
+    ingestion: %{batch: false, multimodal: false, routed: false, access: :none},
     operations: %{},
-    governance: %{},
+    governance: %{protected_memory: false, exact_preservation: false, access: :none},
     hooks: %{}
   }
 

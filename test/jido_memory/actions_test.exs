@@ -113,4 +113,52 @@ defmodule Jido.Memory.ActionsTest do
 
     assert {:ok, %{last_memory_deleted?: true}} = Forget.run(%{id: id, tier: :mid}, context)
   end
+
+  test "retrieve and recall accept query_extensions for provider-native filters" do
+    unique = System.unique_integer([:positive])
+    agent_id = "actions-tiered-ext-#{unique}"
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_actions_ext_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_actions_ext_mid_#{unique}"]},
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_actions_ext_long_#{unique}"]}]}
+       ]}
+
+    {:ok, provider_ref} = ProviderRef.normalize(provider)
+
+    context = %{
+      id: agent_id,
+      state: %{
+        __memory__: %{
+          provider: provider_ref,
+          auto_capture: true,
+          capture_signal_patterns: []
+        }
+      }
+    }
+
+    assert {:ok, %{last_memory_id: short_id}} =
+             Remember.run(
+               %{class: :episodic, kind: :event, text: "extension short result", tier: :short},
+               context
+             )
+
+    assert {:ok, %{last_memory_id: mid_id}} =
+             Remember.run(
+               %{class: :semantic, kind: :fact, text: "extension mid result", tier: :mid, importance: 1.0},
+               context
+             )
+
+    params = %{
+      text_contains: "extension",
+      query_extensions: %{tiered: %{tiers: [:mid]}},
+      order: :asc
+    }
+
+    assert {:ok, %{memory_results: [%Record{id: ^mid_id}]}} = Retrieve.run(params, context)
+    assert {:ok, %{memory_results: [%Record{id: ^mid_id}]}} = Recall.run(params, context)
+    refute short_id == mid_id
+  end
 end

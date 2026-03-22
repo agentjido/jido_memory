@@ -2,15 +2,16 @@ defmodule Jido.Memory.ProviderRegistry do
   @moduledoc """
   Helper APIs for built-in and optional external provider aliases.
 
-  `jido_memory` always ships the built-in `:basic` and `:tiered` aliases. Any
-  additional aliases are opt-in and can be passed explicitly through
-  `provider_aliases` in plugin config or runtime opts.
+  `jido_memory` always ships the built-in `:basic`, `:tiered`, and `:mirix`
+  aliases. Any additional aliases are opt-in and can be passed explicitly
+  through `provider_aliases` in plugin config or runtime opts.
 
   This registry is intentionally helper-only: direct provider modules and direct
   `{module, opts}` tuples continue to work without registration.
   """
 
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Mirix
   alias Jido.Memory.Provider.Tiered
 
   @type aliases_input :: keyword(module()) | map() | nil
@@ -18,7 +19,8 @@ defmodule Jido.Memory.ProviderRegistry do
 
   @built_in_aliases %{
     basic: Basic,
-    tiered: Tiered
+    tiered: Tiered,
+    mirix: Mirix
   }
 
   @spec built_in_aliases() :: aliases()

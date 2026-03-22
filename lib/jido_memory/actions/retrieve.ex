@@ -20,6 +20,7 @@ defmodule Jido.Memory.Actions.Retrieve do
       tier: [type: :any, required: false, doc: "Tiered provider tier override"],
       tiers: [type: :any, required: false, doc: "Tiered provider tier list"],
       tier_mode: [type: :any, required: false, doc: "Tiered provider retrieval mode"],
+      query_extensions: [type: :any, required: false, doc: "Provider-native query extensions"],
       store: [type: :any, required: false, doc: "Store declaration"],
       store_opts: [type: :any, required: false, doc: "Store options"],
       memory_result_key: [type: :any, required: false, doc: "Output map key"]

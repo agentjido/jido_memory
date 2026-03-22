@@ -31,6 +31,10 @@ defmodule Jido.Memory.ProviderTest do
     assert {:ok, %ProviderRef{module: Tiered, opts: []}} = ProviderRef.normalize(:tiered)
   end
 
+  test "provider registry reserves the built-in :mirix alias" do
+    assert {:ok, Jido.Memory.Provider.Mirix} = ProviderRegistry.resolve_alias(:mirix)
+  end
+
   test "provider registry merges built-in and external aliases" do
     assert {:ok, aliases} =
              ProviderRegistry.registered(external_demo: ExternalProvider)
@@ -109,6 +113,8 @@ defmodule Jido.Memory.ProviderTest do
 
     assert Basic.capabilities(meta).core == true
     assert Basic.capabilities(meta).retrieval.explainable == false
+    assert Basic.capabilities(meta).ingestion.batch == false
+    assert Basic.capabilities(meta).governance.protected_memory == false
 
     assert {:ok, %{provider: Basic, defaults: %{store: ^store}}} = Basic.info(meta, :all)
   end
@@ -185,8 +191,11 @@ defmodule Jido.Memory.ProviderTest do
     assert capabilities.core == true
     assert capabilities.retrieval.tiers == true
     assert capabilities.retrieval.explainable == true
+    assert capabilities.retrieval.provider_extensions == true
     assert capabilities.lifecycle.consolidate == true
     assert capabilities.lifecycle.inspect == true
+    assert capabilities.ingestion.batch == false
+    assert capabilities.governance.protected_memory == false
     assert meta.explainability.payload_version == 1
     assert meta.lifecycle_inspection.access == :provider_direct
   end
