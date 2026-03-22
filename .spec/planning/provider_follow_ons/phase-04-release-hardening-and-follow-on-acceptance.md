@@ -52,12 +52,12 @@ Description: validate the full follow-on architecture from the point of view of 
 
 ### Task 4.4.1 - Cross-provider and cross-backend scenarios
 Description: prove the common plugin and runtime can span the supported matrix cleanly.
-- [ ] Verify the same core memory workflow succeeds with built-in Basic, built-in Tiered, and the external-provider reference path.
-- [ ] Verify Tiered explainability and durable long-term promotion remain correct under the accepted backend matrix.
-- [ ] Verify unsupported capabilities still fail cleanly outside the supported matrix.
+- [x] Verify the same core memory workflow succeeds with built-in Basic, built-in Tiered, and the external-provider reference path.
+- [x] Verify Tiered explainability and durable long-term promotion remain correct under the accepted backend matrix.
+- [x] Verify unsupported capabilities still fail cleanly outside the supported matrix.
 
 ### Task 4.4.2 - Release and migration scenarios
 Description: prove the follow-on work is safe to ship and safe to adopt incrementally.
-- [ ] Verify existing `jido_memory` consumers can keep using built-in Basic or Tiered without opting into external-provider interop.
-- [ ] Verify new consumers can add explainability or durable long-term storage without changing the common plugin contract.
-- [ ] Verify published guides and release notes match the tested follow-on architecture.
+- [x] Verify existing `jido_memory` consumers can keep using built-in Basic or Tiered without opting into external-provider interop.
+- [x] Verify new consumers can add explainability or durable long-term storage without changing the common plugin contract.
+- [x] Verify published guides and release notes match the tested follow-on architecture.

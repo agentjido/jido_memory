@@ -17,7 +17,7 @@ This planning set tracks the next wave of work after the built-in provider rollo
 - Phase 1 is implemented on the current branch.
 - Phase 2 is implemented on the current branch.
 - Phase 3 is implemented on the current branch.
-- Phase 4 remains pending.
+- Phase 4 is implemented on the current branch.
 
 ## Delivery Rules
 - `Jido.Memory.Runtime`, `recall/2`, `Jido.Memory.ETSPlugin`, and tuple-style public results stay compatible.
