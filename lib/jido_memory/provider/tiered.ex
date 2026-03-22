@@ -719,9 +719,8 @@ defmodule Jido.Memory.Provider.Tiered do
   end
 
   defp tiered_extension_value(%{} = attrs, key) when is_atom(key) do
-    with %{} = tiered <- resolve_tiered_extension(attrs) do
-      Map.get(tiered, key, Map.get(tiered, Atom.to_string(key)))
-    else
+    case resolve_tiered_extension(attrs) do
+      %{} = tiered -> Map.get(tiered, key, Map.get(tiered, Atom.to_string(key)))
       _ -> nil
     end
   end

@@ -28,6 +28,19 @@ defmodule Jido.Memory.ProviderFixtures do
      ]}
   end
 
+  def mirix_provider(prefix \\ "jido_memory_mirix") do
+    {:mirix,
+     [
+       core_store: unique_store("#{prefix}_core"),
+       episodic_store: unique_store("#{prefix}_episodic"),
+       semantic_store: unique_store("#{prefix}_semantic"),
+       procedural_store: unique_store("#{prefix}_procedural"),
+       resource_store: unique_store("#{prefix}_resource"),
+       vault_store: unique_store("#{prefix}_vault"),
+       retrieval: [planner_mode: :broad]
+     ]}
+  end
+
   def postgres_tiered_provider(prefix \\ "jido_memory_tiered_pg") do
     {:tiered,
      [

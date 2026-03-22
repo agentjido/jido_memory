@@ -4,8 +4,8 @@ defmodule Jido.Memory.Phase02IntegrationTest do
   alias Jido.Memory.Plugin
   alias Jido.Memory.PluginSupport
   alias Jido.Memory.Provider.Basic
-  alias Jido.Memory.ProviderContract
   alias Jido.Memory.Provider.Tiered
+  alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
@@ -75,8 +75,11 @@ defmodule Jido.Memory.Phase02IntegrationTest do
     assert ProviderContract.supports?(basic_provider, [:governance, :protected_memory]) == false
     assert ProviderContract.supports?(tiered_provider, [:governance, :protected_memory]) == false
 
-    assert {:ok, %{provider: Basic}} = Runtime.info(%{id: "phase02-boundary-basic"}, [:provider], provider: basic_provider)
-    assert {:ok, %{provider: Tiered}} = Runtime.info(%{id: "phase02-boundary-tiered"}, [:provider], provider: tiered_provider)
+    assert {:ok, %{provider: Basic}} =
+             Runtime.info(%{id: "phase02-boundary-basic"}, [:provider], provider: basic_provider)
+
+    assert {:ok, %{provider: Tiered}} =
+             Runtime.info(%{id: "phase02-boundary-tiered"}, [:provider], provider: tiered_provider)
   end
 
   test "consolidation rationale and lifecycle inspection reflect actual tier transitions" do

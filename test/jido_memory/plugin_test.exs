@@ -105,7 +105,9 @@ defmodule Jido.Memory.PluginTest do
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Plugin
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Mirix
   alias Jido.Memory.Provider.Tiered
+  alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.ProviderRef
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
@@ -190,5 +192,26 @@ defmodule Jido.Memory.PluginTest do
     assert %ProviderRef{module: ExternalProvider, opts: provider_opts} = state.provider
     assert state.provider_aliases == %{external_demo: ExternalProvider}
     assert Keyword.get(provider_opts, :namespace) == "provider:external"
+  end
+
+  test "mount accepts the built-in MIRIX provider and common retrieval still works" do
+    provider = ProviderFixtures.mirix_provider("plugin_mirix")
+
+    assert {:ok, state} = Plugin.mount(%{id: "agent-mirix"}, %{provider: provider})
+    assert %ProviderRef{module: Mirix} = state.provider
+
+    agent = %{id: "agent-mirix", state: %{__memory__: state}}
+
+    assert {:ok, %Record{id: id}} =
+             Runtime.remember(agent, %{class: :semantic, text: "plugin mirix memory"}, [])
+
+    assert {:ok, [%Record{id: ^id}]} =
+             Runtime.retrieve(agent, %{text_contains: "plugin mirix memory", classes: [:semantic]}, [])
+
+    assert {:ok, %{memory_results: [%Record{id: ^id}]}} =
+             Retrieve.run(
+               %{text_contains: "plugin mirix memory", classes: [:semantic]},
+               %{id: "agent-mirix", state: %{__memory__: state}}
+             )
   end
 end

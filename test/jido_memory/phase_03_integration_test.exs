@@ -14,12 +14,14 @@ defmodule Jido.Memory.Phase03IntegrationTest do
   end
 
   test "shared long-term store contract passes for ETS and Postgres" do
+    run_id = System.unique_integer([:positive])
+
     for {name, backend} <- [
-          {:ets, LongTermStoreFixtures.backend("phase03_contract_ets")},
-          {:postgres, LongTermStoreFixtures.postgres_backend("phase03_contract_pg")}
+          {:ets, LongTermStoreFixtures.backend("phase03_contract_ets_#{run_id}")},
+          {:postgres, LongTermStoreFixtures.postgres_backend("phase03_contract_pg_#{run_id}")}
         ] do
-      target = LongTermStoreFixtures.target("phase03-contract-#{name}")
-      namespace = LongTermStoreFixtures.namespace("phase03-contract-#{name}")
+      target = LongTermStoreFixtures.target("phase03-contract-#{name}-#{run_id}")
+      namespace = LongTermStoreFixtures.namespace("phase03-contract-#{name}-#{run_id}")
 
       assert {:ok, %{record: %Record{}, upserted: %Record{}, fetched: %Record{}, deleted?: true}} =
                LongTermStoreContract.exercise_core_flow(
@@ -33,16 +35,17 @@ defmodule Jido.Memory.Phase03IntegrationTest do
   end
 
   test "ETS and Postgres return the same overlapping durable query subset and prune semantics" do
+    run_id = System.unique_integer([:positive])
     query = %{classes: [:semantic], tags_any: ["important"], text_contains: "shared durable", order: :asc}
 
     results_by_backend =
       for {name, backend} <- [
-            {:ets, LongTermStoreFixtures.backend("phase03_query_ets")},
-            {:postgres, LongTermStoreFixtures.postgres_backend("phase03_query_pg")}
+            {:ets, LongTermStoreFixtures.backend("phase03_query_ets_#{run_id}")},
+            {:postgres, LongTermStoreFixtures.postgres_backend("phase03_query_pg_#{run_id}")}
           ],
           into: %{} do
-        target = LongTermStoreFixtures.target("phase03-query-#{name}")
-        namespace = LongTermStoreFixtures.namespace("phase03-query-#{name}")
+        target = LongTermStoreFixtures.target("phase03-query-#{name}-#{run_id}")
+        namespace = LongTermStoreFixtures.namespace("phase03-query-#{name}-#{run_id}")
         runtime_opts = backend_runtime_opts(backend, namespace)
         {module, backend_opts} = backend
 
@@ -66,7 +69,7 @@ defmodule Jido.Memory.Phase03IntegrationTest do
                    target,
                    LongTermStoreFixtures.expired_attrs("expired #{name}", System.system_time(:millisecond)),
                    LongTermStoreFixtures.active_attrs("active #{name}", System.system_time(:millisecond)),
-                   namespace: LongTermStoreFixtures.namespace("phase03-prune-#{name}")
+                   namespace: LongTermStoreFixtures.namespace("phase03-prune-#{name}-#{run_id}")
                  )
 
         {name, Enum.map(records, & &1.text)}
@@ -76,7 +79,13 @@ defmodule Jido.Memory.Phase03IntegrationTest do
   end
 
   test "Tiered works over Postgres long-term storage and the operational example executes" do
-    agent = mounted_agent("phase03-tiered-agent", ProviderFixtures.postgres_tiered_provider("phase03_tiered_pg"))
+    run_id = System.unique_integer([:positive])
+
+    agent =
+      mounted_agent(
+        "phase03-tiered-agent-#{run_id}",
+        ProviderFixtures.postgres_tiered_provider("phase03_tiered_pg_#{run_id}")
+      )
 
     assert {:ok, %Record{id: id}} =
              Runtime.remember(

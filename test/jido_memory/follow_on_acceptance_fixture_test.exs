@@ -9,25 +9,28 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
   alias Jido.Memory.Support.ExternalProvider
 
   test "consumer-level plugin flow works across the supported provider matrix" do
+    run_id = System.unique_integer([:positive])
+
     cases = [
-      {"basic", %{provider: ProviderFixtures.basic_provider("follow_on_basic")}, :basic, "follow on basic memory"},
-      {"tiered_ets", %{provider: ProviderFixtures.tiered_provider("follow_on_tiered_ets")}, :tiered_ets,
+      {"basic", %{provider: ProviderFixtures.basic_provider("follow_on_basic_#{run_id}")}, :basic,
+       "follow on basic memory"},
+      {"tiered_ets", %{provider: ProviderFixtures.tiered_provider("follow_on_tiered_ets_#{run_id}")}, :tiered_ets,
        "follow on tiered ets memory"},
-      {"tiered_postgres", %{provider: ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg")},
+      {"tiered_postgres", %{provider: ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_#{run_id}")},
        :tiered_postgres, "follow on tiered postgres memory"},
       {"external",
        %{
          provider: :external_demo,
          provider_aliases: %{external_demo: ExternalProvider},
          provider_opts: [
-           store: ProviderFixtures.unique_store("follow_on_external_store"),
-           namespace: "provider:follow-on-external"
+           store: ProviderFixtures.unique_store("follow_on_external_store_#{run_id}"),
+           namespace: "provider:follow-on-external-#{run_id}"
          ]
        }, :external, "follow on external memory"}
     ]
 
     Enum.each(cases, fn {agent_suffix, config, expected_path, text} ->
-      agent = mounted_agent("follow-on-#{agent_suffix}", config)
+      agent = mounted_agent("follow-on-#{agent_suffix}-#{run_id}", config)
 
       assert {:ok, %Record{id: id}} =
                Runtime.remember(agent, ProviderFixtures.important_attrs(text), [])
@@ -52,11 +55,13 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
   end
 
   test "acceptance fixture includes Tiered explainability and durable long-term promotion" do
+    run_id = System.unique_integer([:positive])
+
     for {provider, expected_long_tier} <- [
-          {ProviderFixtures.tiered_provider("follow_on_tiered_matrix"), :long},
-          {ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_matrix"), :long}
+          {ProviderFixtures.tiered_provider("follow_on_tiered_matrix_#{run_id}"), :long},
+          {ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_matrix_#{run_id}"), :long}
         ] do
-      agent = mounted_agent("follow-on-tiered-matrix", %{provider: provider})
+      agent = mounted_agent("follow-on-tiered-matrix-#{run_id}-#{expected_long_tier}", %{provider: provider})
 
       assert {:ok, %Record{id: id}} =
                Runtime.remember(
@@ -82,9 +87,11 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
   end
 
   test "unsupported capabilities fail cleanly outside the supported matrix" do
+    run_id = System.unique_integer([:positive])
+
     basic_agent =
       mounted_agent("follow-on-basic-unsupported", %{
-        provider: ProviderFixtures.basic_provider("follow_on_basic_unsupported")
+        provider: ProviderFixtures.basic_provider("follow_on_basic_unsupported_#{run_id}")
       })
 
     external_agent =
@@ -92,8 +99,8 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
         provider: :external_demo,
         provider_aliases: %{external_demo: ExternalProvider},
         provider_opts: [
-          store: ProviderFixtures.unique_store("follow_on_external_unsupported"),
-          namespace: "provider:follow-on-external-unsupported"
+          store: ProviderFixtures.unique_store("follow_on_external_unsupported_#{run_id}"),
+          namespace: "provider:follow-on-external-unsupported-#{run_id}"
         ]
       })
 

@@ -3,8 +3,10 @@ defmodule Jido.Memory.ProviderTest do
 
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Mirix
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderContract
+  alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.ProviderRef
   alias Jido.Memory.ProviderRegistry
   alias Jido.Memory.Record
@@ -415,5 +417,57 @@ defmodule Jido.Memory.ProviderTest do
   test "tiered provider rejects invalid lifecycle thresholds" do
     assert {:error, :invalid_lifecycle_threshold} =
              ProviderRef.normalize({Tiered, [lifecycle: [short_to_mid_threshold: 2.0]]})
+  end
+
+  test "mirix provider exposes manager topology and built-in capability metadata" do
+    provider = ProviderFixtures.mirix_provider("provider_mirix_meta")
+
+    assert {:ok, meta} = ProviderContract.provider_meta(provider)
+
+    assert meta.provider == Mirix
+    assert meta.explainability.payload_version == 1
+    assert meta.explainability.extensions == [:mirix]
+
+    assert Enum.map(meta.managers, & &1.memory_type) == [:core, :episodic, :semantic, :procedural, :resource, :vault]
+    assert Enum.any?(meta.managers, &(&1.memory_type == :vault and &1.public? == false))
+
+    capabilities = Mirix.capabilities(meta)
+    assert capabilities.core == true
+    assert capabilities.retrieval.explainable == true
+    assert capabilities.retrieval.active == true
+    assert capabilities.retrieval.memory_types == true
+    assert capabilities.ingestion.batch == true
+    assert capabilities.ingestion.multimodal == true
+    assert capabilities.ingestion.routed == true
+    assert capabilities.governance.protected_memory == true
+    assert capabilities.governance.exact_preservation == true
+    assert capabilities.governance.access == :provider_direct
+
+    assert {:ok, %{provider: Mirix, managers: managers, defaults: %{stores: stores}}} =
+             Mirix.info(meta, [:provider, :managers, :defaults])
+
+    assert length(managers) == 6
+
+    assert MapSet.new(Map.keys(stores)) ==
+             MapSet.new([:core, :episodic, :procedural, :resource, :semantic, :vault])
+  end
+
+  test "mirix provider supports the canonical core flow and alias equivalence" do
+    provider = ProviderFixtures.mirix_provider("provider_mirix_core")
+    {:mirix, provider_opts} = provider
+    target = %{id: "mirix-core-agent-#{System.unique_integer([:positive])}"}
+
+    assert {:ok, %{module: Mirix, opts: normalized_opts}} = ProviderRef.normalize(provider)
+    assert {:ok, %{module: Mirix, opts: ^normalized_opts}} = ProviderRef.normalize({Mirix, provider_opts})
+
+    assert {:ok, %{record: %Record{id: id}, fetched: %Record{id: fetched_id}, deleted?: true}} =
+             ProviderContract.exercise_core_flow(
+               provider,
+               target,
+               %{class: :semantic, kind: :fact, text: "mirix provider core flow"},
+               %{text_contains: "mirix provider core flow", classes: [:semantic]}
+             )
+
+    assert fetched_id == id
   end
 end
