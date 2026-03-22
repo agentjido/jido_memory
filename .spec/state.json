@@ -16,6 +16,16 @@
         "id": "jido_memory.provider_extension_boundary",
         "status": "accepted",
         "title": "ADR 0001: Additive Provider Extension Boundary"
+      },
+      {
+        "affects": [
+          "jido_memory.matrix.benchmarking"
+        ],
+        "date": "2026-03-22",
+        "file": ".spec/decisions/0002-provider-benchmarking-boundary.md",
+        "id": "jido_memory.provider_benchmarking_boundary",
+        "status": "accepted",
+        "title": "ADR 0002: Provider Benchmarking Boundary"
       }
     ]
   },
@@ -23,6 +33,38 @@
   "index": {
     "exceptions": [],
     "requirements": [
+      {
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "id": "jido_memory.matrix.benchmarking.provider_specific_lane",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Provider-specific benchmark scenarios shall be tracked separately from the shared cross-provider benchmark matrix so advanced features do not redefine the required common facade.",
+        "subject_id": "jido_memory.matrix.benchmarking"
+      },
+      {
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "id": "jido_memory.matrix.benchmarking.reproducible_fixtures",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Planned benchmark fixtures and datasets shall be repository-owned, reproducible, and runnable without external services by default, with optional durable-backend or provider-direct extensions layered on deliberately.",
+        "subject_id": "jido_memory.matrix.benchmarking"
+      },
+      {
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "id": "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Benchmark outputs shall inform future provider and facade decisions, but they shall not widen the canonical runtime, plugin, or required provider contract automatically.",
+        "subject_id": "jido_memory.matrix.benchmarking"
+      },
+      {
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "id": "jido_memory.matrix.benchmarking.shared_overlap_first",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Cross-provider benchmark runs shall compare overlapping canonical memory flows before comparing provider-specific advanced features.",
+        "subject_id": "jido_memory.matrix.benchmarking"
+      },
       {
         "file": ".spec/specs/matrix/governance_matrix.spec.md",
         "id": "jido_memory.matrix.governance.no_mandatory_vault_core",
@@ -393,6 +435,58 @@
       }
     ],
     "scenarios": [
+      {
+        "covers": [
+          "jido_memory.matrix.benchmarking.provider_specific_lane",
+          "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core"
+        ],
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "given": [
+          "a benchmark run that includes MIRIX ingestion and vault isolation or Tiered lifecycle and durable long-term promotion"
+        ],
+        "id": "jido_memory.matrix.benchmarking.provider_specific_advanced_path",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "then": [
+          "they are recorded as provider-specific benchmark packs rather than treated as new required common-surface obligations"
+        ],
+        "when": [
+          "those scenarios are evaluated alongside the shared provider matrix"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.benchmarking.reproducible_fixtures"
+        ],
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "given": [
+          "a repository-owned benchmark fixture set"
+        ],
+        "id": "jido_memory.matrix.benchmarking.reproducible_local_path",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "then": [
+          "the default path avoids mandatory external services and keeps durable-backend or provider-direct expansions opt-in"
+        ],
+        "when": [
+          "benchmark runs are executed in the default local development environment"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.benchmarking.shared_overlap_first"
+        ],
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "given": [
+          "a benchmark run that compares built-in `:basic`, built-in `:tiered`, built-in `:mirix`, and the external-provider reference path"
+        ],
+        "id": "jido_memory.matrix.benchmarking.shared_provider_matrix_path",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "then": [
+          "the benchmark focuses on comparable shared behavior before any provider-specific advanced scenarios are considered"
+        ],
+        "when": [
+          "the run evaluates canonical remember, retrieve, recall, explainability, and provider selection flows that overlap across those paths"
+        ]
+      },
       {
         "covers": [
           "jido_memory.matrix.governance.no_mandatory_vault_core"
@@ -889,6 +983,25 @@
     ],
     "subjects": [
       {
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "id": "jido_memory.matrix.benchmarking",
+        "meta": {
+          "decisions": [
+            "jido_memory.provider_benchmarking_boundary"
+          ],
+          "id": "jido_memory.matrix.benchmarking",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft matrix for cross-provider benchmarking, provider-specific scenario packs, and benchmark result boundaries.",
+          "surface": [
+            ".spec/decisions/0002-provider-benchmarking-boundary.md",
+            ".spec/planning/provider_benchmarking/*.md"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Benchmarking Matrix"
+      },
+      {
         "file": ".spec/specs/matrix/governance_matrix.spec.md",
         "id": "jido_memory.matrix.governance",
         "meta": {
@@ -1128,6 +1241,30 @@
     "verifications": [
       {
         "covers": [
+          "jido_memory.matrix.benchmarking.shared_overlap_first",
+          "jido_memory.matrix.benchmarking.provider_specific_lane",
+          "jido_memory.matrix.benchmarking.reproducible_fixtures",
+          "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core"
+        ],
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/decisions/0002-provider-benchmarking-boundary.md"
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.benchmarking.shared_overlap_first",
+          "jido_memory.matrix.benchmarking.provider_specific_lane",
+          "jido_memory.matrix.benchmarking.reproducible_fixtures",
+          "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core"
+        ],
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/planning/provider_benchmarking/README.md"
+      },
+      {
+        "covers": [
           "jido_memory.matrix.governance.protected_memory_lane",
           "jido_memory.matrix.governance.no_mandatory_vault_core",
           "jido_memory.matrix.governance.selective_runtime_exposure"
@@ -1341,16 +1478,104 @@
   "specification_version": "1.0",
   "summary": {
     "decision_parse_errors": 0,
-    "decisions": 1,
+    "decisions": 2,
     "exceptions": 0,
     "findings": 0,
-    "requirements": 46,
-    "scenarios": 27,
-    "subjects": 11,
-    "verifications": 19
+    "requirements": 50,
+    "scenarios": 30,
+    "subjects": 12,
+    "verifications": 21
   },
   "verification": {
     "claims": [
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.provider_specific_lane",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/decisions/0002-provider-benchmarking-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.reproducible_fixtures",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/decisions/0002-provider-benchmarking-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/decisions/0002-provider-benchmarking-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.shared_overlap_first",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/decisions/0002-provider-benchmarking-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.provider_specific_lane",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/planning/provider_benchmarking/README.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.reproducible_fixtures",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/planning/provider_benchmarking/README.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.results_inform_but_do_not_redefine_core",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/planning/provider_benchmarking/README.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.matrix.benchmarking.shared_overlap_first",
+        "file": ".spec/specs/matrix/benchmarking_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.benchmarking",
+        "target": ".spec/planning/provider_benchmarking/README.md",
+        "verification_index": 1
+      },
       {
         "cover_id": "jido_memory.matrix.governance.no_mandatory_vault_core",
         "file": ".spec/specs/matrix/governance_matrix.spec.md",
@@ -1973,12 +2198,12 @@
     "strength_summary": {
       "claimed": 0,
       "executed": 6,
-      "linked": 50
+      "linked": 58
     },
     "threshold_failures": 0
   },
   "workspace": {
-    "decision_count": 1,
-    "spec_count": 11
+    "decision_count": 2,
+    "spec_count": 12
   }
 }

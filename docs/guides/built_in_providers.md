@@ -11,6 +11,16 @@ runtime, plugin, and actions plus a small set of built-in provider choices.
 | `:tiered` | Standard short/mid/long memory workflows inside `jido_memory` | ETS-backed short, mid, and long-term layers | Tier-aware retrieval and lifecycle consolidation |
 | `:mirix` | Routed typed memory with explicit ingestion and protected-memory APIs | ETS-backed stores for core, episodic, semantic, procedural, resource, and vault memory | Active retrieval traces through `Runtime.explain_retrieval/3`, provider-direct ingest, provider-direct vault workflows |
 
+## Selection Notes
+
+Built-in provider selection is still explicit and config-driven, but the full
+resolution rules live in
+[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/provider_selection.md).
+
+Use this guide to decide which built-in provider you want. Use the provider
+selection guide when you need precedence rules, runtime override behavior, or
+alias-based selection details.
+
 ## Basic Provider
 
 Use `:basic` when you want the smallest possible memory setup with a single

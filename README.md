@@ -36,6 +36,17 @@ That lets the same core plugin and runtime calls target any built-in provider wi
 | `:tiered` | You want short/mid/long memory and built-in promotion | Ships in `jido_memory` and uses `Jido.Memory.LongTermStore` for long-term persistence |
 | `:mirix` | You want routed memory types, active retrieval traces, and provider-direct ingestion or vault workflows | Ships in `jido_memory`; keeps common runtime/plugin flows for retrieval while leaving ingest and protected memory explicit |
 
+## Provider Selection
+
+Provider selection is explicit and config-driven. Agents do not auto-switch
+between `:basic`, `:tiered`, `:mirix`, or an external provider per query.
+
+Use the shared plugin or runtime with a chosen provider, and let that provider
+handle any internal routing it supports.
+
+For precedence, alias handling, and runtime override examples, see
+[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/provider_selection.md).
+
 ## Adoption Paths
 
 The supported adoption story is incremental:

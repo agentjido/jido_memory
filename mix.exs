@@ -93,6 +93,7 @@ defmodule JidoMemory.MixProject do
       extras: [
         "README.md",
         "docs/guides/built_in_providers.md",
+        "docs/guides/provider_selection.md",
         "docs/guides/external_providers.md",
         "docs/guides/durable_long_term_storage.md",
         "docs/guides/follow_on_acceptance_matrix.md",
