@@ -97,7 +97,17 @@ defmodule Jido.Memory.Provider.Mem0 do
     with {:ok, context, scope} <- resolve_mem0_context(target, attrs, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
          {:ok, record} <- build_record(attrs, context.namespace, context.now, scope, %{write_mode: :direct}) do
-      context.store_mod.put(record, context.store_opts)
+      with {:ok, stored_record} <- context.store_mod.put(record, context.store_opts) do
+        maybe_log_history_event(context, scope, :remember, %{
+          record_id: stored_record.id,
+          class: stored_record.class,
+          kind: stored_record.kind,
+          text: stored_record.text,
+          write_mode: :direct
+        })
+
+        {:ok, stored_record}
+      end
     end
   end
 
@@ -193,6 +203,72 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   def ingest(_target, _payload, _opts), do: {:error, :invalid_ingest_payload}
 
+  @doc """
+  Records provider-direct feedback for a scoped Mem0 memory record.
+  """
+  @spec feedback(map() | struct(), binary(), atom() | map() | keyword(), keyword()) ::
+          {:ok, map()} | {:error, term()}
+  def feedback(target, record_id, feedback, opts \\ [])
+
+  def feedback(target, record_id, feedback, opts) when is_binary(record_id) and is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
+         {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, record} <- Store.fetch(context.store_mod, {context.namespace, record_id}, context.store_opts),
+         true <- scope_matches?(record, scope) || {:error, :not_found},
+         {:ok, feedback_attrs} <- normalize_feedback(feedback),
+         {:ok, updated_record} <- persist_feedback(record, context, feedback_attrs) do
+      maybe_log_history_event(context, scope, :feedback, %{
+        record_id: updated_record.id,
+        fact_key: fact_key(updated_record),
+        status: feedback_attrs.status,
+        note: feedback_attrs.note,
+        source: feedback_attrs.source
+      })
+
+      {:ok,
+       %{
+         provider: __MODULE__,
+         record_id: updated_record.id,
+         feedback: %{
+           status: feedback_attrs.status,
+           note: feedback_attrs.note,
+           source: feedback_attrs.source,
+           count: feedback_count(updated_record)
+         },
+         scope: scope
+       }}
+    end
+  end
+
+  def feedback(_target, _record_id, _feedback, _opts), do: {:error, :invalid_feedback}
+
+  @doc """
+  Returns provider-direct Mem0 history events for the current effective scope.
+  """
+  @spec history(map() | struct(), keyword()) :: {:ok, map()} | {:error, term()}
+  def history(target, opts \\ [])
+
+  def history(target, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
+         {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, filters} <- history_filters(normalized_opts),
+         {:ok, records} <- history_records(context, scope, filters) do
+      {:ok,
+       %{
+         provider: __MODULE__,
+         namespace: context.namespace,
+         scope: scope,
+         filters: filters,
+         count: length(records),
+         events: Enum.map(records, &history_event/1)
+       }}
+    end
+  end
+
+  def history(_target, _opts), do: {:error, :invalid_provider_opts}
+
   @impl true
   def info(provider_meta, :all), do: {:ok, provider_meta}
 
@@ -257,6 +333,241 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   defp normalize_direct_opts(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  defp normalize_feedback(feedback) when is_atom(feedback) do
+    with {:ok, status} <- normalize_feedback_status(feedback) do
+      {:ok, %{status: status, note: nil, source: :provider_direct}}
+    end
+  end
+
+  defp normalize_feedback(feedback) when is_list(feedback), do: normalize_feedback(Map.new(feedback))
+
+  defp normalize_feedback(%{} = feedback) do
+    with {:ok, status} <- normalize_feedback_status(value(feedback, :status, value(feedback, :feedback))) do
+      {:ok,
+       %{
+         status: status,
+         note: normalize_optional_string_value(value(feedback, :note)),
+         source: value(feedback, :source, :provider_direct)
+       }}
+    end
+  end
+
+  defp normalize_feedback(_feedback), do: {:error, :invalid_feedback}
+
+  defp normalize_feedback_status(status) when status in [:useful, :positive], do: {:ok, :useful}
+  defp normalize_feedback_status(status) when status in [:not_useful, :negative], do: {:ok, :not_useful}
+
+  defp normalize_feedback_status(status) when is_binary(status) do
+    status
+    |> String.trim()
+    |> String.downcase()
+    |> case do
+      "useful" -> {:ok, :useful}
+      "positive" -> {:ok, :useful}
+      "not_useful" -> {:ok, :not_useful}
+      "negative" -> {:ok, :not_useful}
+      _ -> {:error, :invalid_feedback}
+    end
+  end
+
+  defp normalize_feedback_status(_status), do: {:error, :invalid_feedback}
+
+  defp persist_feedback(%Record{} = record, context, feedback_attrs) do
+    mem0_metadata =
+      record.metadata
+      |> provider_metadata("mem0")
+      |> normalize_metadata()
+      |> stringify_map_keys()
+      |> Map.put(
+        "feedback",
+        %{
+          "status" => feedback_attrs.status,
+          "note" => feedback_attrs.note,
+          "source" => feedback_attrs.source,
+          "updated_at" => context.now
+        }
+      )
+      |> Map.update("feedback_count", 1, &(&1 + 1))
+
+    updated_record =
+      %Record{
+        record
+        | metadata:
+            record.metadata
+            |> normalize_metadata()
+            |> Map.put("mem0", mem0_metadata)
+      }
+
+    context.store_mod.put(updated_record, context.store_opts)
+  end
+
+  defp feedback_count(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> map_get("feedback_count") || 0
+  end
+
+  defp history_filters(opts) when is_list(opts) do
+    with {:ok, event_types} <- normalize_history_event_types(Keyword.get(opts, :event_types, [])),
+         {:ok, limit} <- normalize_history_limit(Keyword.get(opts, :limit, 50)) do
+      {:ok,
+       %{
+         record_id: Keyword.get(opts, :record_id),
+         fact_key: normalize_optional_string_value(Keyword.get(opts, :fact_key)),
+         event_types: event_types,
+         limit: limit
+       }}
+    end
+  end
+
+  defp history_records(context, scope, filters) do
+    query_limit = min(max(filters.limit * 5, 50), 1_000)
+
+    with {:ok, query} <-
+           Query.new(%{
+             namespace: history_namespace(context.namespace),
+             kinds: [:mem0_history],
+             limit: query_limit,
+             order: :desc
+           }),
+         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
+      {:ok,
+       records
+       |> Enum.filter(&scope_matches?(&1, scope))
+       |> Enum.filter(&history_record_matches?(&1, filters))
+       |> Enum.sort_by(&{&1.observed_at, &1.id}, :desc)
+       |> Enum.take(filters.limit)}
+    end
+  end
+
+  defp history_record_matches?(%Record{} = record, filters) do
+    mem0 = record.metadata |> provider_metadata("mem0") |> normalize_metadata() |> stringify_map_keys()
+
+    record_id_match = is_nil(filters.record_id) or Map.get(mem0, "record_id") == filters.record_id
+    fact_key_match = is_nil(filters.fact_key) or Map.get(mem0, "fact_key") == filters.fact_key
+
+    event_type_match =
+      filters.event_types == [] or
+        history_event_type(record) in filters.event_types
+
+    record_id_match and fact_key_match and event_type_match
+  end
+
+  defp history_event(%Record{} = record) do
+    mem0 = record.metadata |> provider_metadata("mem0") |> normalize_metadata() |> stringify_map_keys()
+
+    %{
+      id: record.id,
+      event_type: history_event_type(record),
+      record_id: Map.get(mem0, "record_id"),
+      previous_record_id: Map.get(mem0, "previous_record_id"),
+      fact_key: Map.get(mem0, "fact_key"),
+      feedback_status: Map.get(mem0, "feedback_status"),
+      observed_at: record.observed_at,
+      details: Map.get(mem0, "event_details", %{})
+    }
+  end
+
+  defp history_event_type(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> map_get("event_type")
+  end
+
+  defp maybe_log_history_event(context, scope, event_type, details) do
+    case build_history_record(context, scope, event_type, details) do
+      {:ok, history_record} ->
+        case context.store_mod.put(history_record, context.store_opts) do
+          {:ok, _record} -> :ok
+          {:error, _reason} -> :ok
+        end
+
+      {:error, _reason} ->
+        :ok
+    end
+  end
+
+  defp build_history_record(context, scope, event_type, details) do
+    mem0_metadata = %{
+      event_type: event_type,
+      record_id: Map.get(details, :record_id),
+      previous_record_id: Map.get(details, :previous_record_id),
+      fact_key: Map.get(details, :fact_key),
+      feedback_status: Map.get(details, :status),
+      event_details: details
+    }
+
+    build_record(
+      %{
+        namespace: history_namespace(context.namespace),
+        class: :working,
+        kind: :mem0_history,
+        text: history_event_text(event_type, details),
+        tags: ["mem0", "history", Atom.to_string(event_type)],
+        content: stringify_map_keys(Map.new(details))
+      },
+      history_namespace(context.namespace),
+      context.now,
+      scope,
+      mem0_metadata
+    )
+  end
+
+  defp history_namespace(namespace), do: "#{namespace}:__mem0_history__"
+
+  defp history_event_text(event_type, details) do
+    detail =
+      Map.get(details, :record_id) ||
+        Map.get(details, :fact_key) ||
+        "scoped"
+
+    "mem0:#{event_type}:#{detail}"
+  end
+
+  defp history_outcome_event_type(:add), do: :ingest_add
+  defp history_outcome_event_type(:update), do: :ingest_update
+  defp history_outcome_event_type(:delete), do: :ingest_delete
+  defp history_outcome_event_type(:noop), do: :ingest_noop
+
+  defp normalize_history_event_types(event_types) when event_types in [nil, []], do: {:ok, []}
+
+  defp normalize_history_event_types(event_types) when is_list(event_types) do
+    event_types
+    |> Enum.map(&normalize_history_event_type/1)
+    |> Enum.reduce_while({:ok, []}, fn
+      {:ok, event_type}, {:ok, acc} -> {:cont, {:ok, acc ++ [event_type]}}
+      {:error, reason}, _acc -> {:halt, {:error, reason}}
+    end)
+  end
+
+  defp normalize_history_event_types(event_type),
+    do: normalize_history_event_types([event_type])
+
+  defp normalize_history_event_type(event_type)
+       when event_type in [:remember, :forget, :feedback, :ingest_add, :ingest_update, :ingest_delete, :ingest_noop],
+       do: {:ok, event_type}
+
+  defp normalize_history_event_type(event_type) when is_binary(event_type) do
+    event_type
+    |> String.trim()
+    |> String.downcase()
+    |> case do
+      "remember" -> {:ok, :remember}
+      "forget" -> {:ok, :forget}
+      "feedback" -> {:ok, :feedback}
+      "ingest_add" -> {:ok, :ingest_add}
+      "ingest_update" -> {:ok, :ingest_update}
+      "ingest_delete" -> {:ok, :ingest_delete}
+      "ingest_noop" -> {:ok, :ingest_noop}
+      _ -> {:error, :invalid_history_filter}
+    end
+  end
+
+  defp normalize_history_event_type(_event_type), do: {:error, :invalid_history_filter}
+
+  defp normalize_history_limit(limit) when is_integer(limit) and limit > 0, do: {:ok, limit}
+  defp normalize_history_limit(_limit), do: {:error, :invalid_history_filter}
 
   defp scoped_identity_meta(opts) do
     with {:ok, defaults} <- normalize_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
@@ -1134,6 +1445,14 @@ defmodule Jido.Memory.Provider.Mem0 do
       Enum.reduce(extracted.candidates, initial_ingest_summary(context, normalized_payload), fn candidate, acc ->
         case reconcile_candidate(candidate, context, scope) do
           {:ok, outcome, details} ->
+            maybe_log_history_event(context, scope, history_outcome_event_type(outcome), %{
+              record_id: details.record_id,
+              previous_record_id: Map.get(details, :previous_record_id),
+              fact_key: details.fact_key,
+              write_mode: :ingest,
+              summary_present: is_binary(normalized_payload.summary)
+            })
+
             acc
             |> track_maintenance_outcome(outcome, details)
             |> Map.update!(:extracted_candidates, &(&1 ++ [candidate_summary(candidate)]))
@@ -1365,6 +1684,9 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp maybe_forget_scoped_record(record, context, scope, id) do
     if scope_matches?(record, scope) do
       :ok = context.store_mod.delete({context.namespace, id}, context.store_opts)
+
+      maybe_log_history_event(context, scope, :forget, %{record_id: id, fact_key: fact_key(record), write_mode: :direct})
+
       {:ok, true}
     else
       {:ok, false}

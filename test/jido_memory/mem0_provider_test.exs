@@ -483,4 +483,128 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert explanation.extensions.mem0.graph.enabled == false
     assert explanation.extensions.mem0.graph.relationships == []
   end
+
+  test "mem0 feedback updates scoped record metadata and records provider-direct history" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase04_feedback"),
+         namespace: "agent:mem0-phase04-feedback"
+       ]}
+
+    target = %{id: "mem0-phase04-feedback-agent"}
+
+    assert {:ok, summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "I live in Denver."}]},
+               provider: provider,
+               user_id: "feedback-user",
+               now: 100
+             )
+
+    [record_id] = summary.created_ids
+
+    assert {:ok, feedback} =
+             Mem0.feedback(
+               target,
+               record_id,
+               %{status: :useful, note: "keep this fact"},
+               provider: provider,
+               user_id: "feedback-user",
+               now: 200
+             )
+
+    assert feedback.record_id == record_id
+    assert feedback.feedback.status == :useful
+    assert feedback.feedback.count == 1
+
+    assert {:ok, %Record{metadata: metadata}} =
+             Runtime.get(target, record_id, provider: provider, user_id: "feedback-user")
+
+    assert get_in(metadata, ["mem0", "feedback", "status"]) == :useful
+    assert get_in(metadata, ["mem0", "feedback", "note"]) == "keep this fact"
+
+    assert {:ok, history} =
+             Mem0.history(
+               target,
+               provider: provider,
+               user_id: "feedback-user",
+               record_id: record_id
+             )
+
+    assert Enum.map(history.events, & &1.event_type) == [:feedback, :ingest_add]
+    assert hd(history.events).details[:note] == "keep this fact"
+  end
+
+  test "mem0 history filters reconciliation events deterministically" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase04_history"),
+         namespace: "agent:mem0-phase04-history"
+       ]}
+
+    target = %{id: "mem0-phase04-history-agent"}
+
+    assert {:ok, add_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "history-user",
+               now: 100
+             )
+
+    [record_id] = add_summary.created_ids
+
+    assert {:ok, _noop_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "history-user",
+               now: 200
+             )
+
+    assert {:ok, _update_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Erlang."}]},
+               provider: provider,
+               user_id: "history-user",
+               now: 300
+             )
+
+    assert {:ok, _delete_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "Forget that my favorite language is Erlang."}]},
+               provider: provider,
+               user_id: "history-user",
+               now: 400
+             )
+
+    assert {:ok, history} =
+             Mem0.history(
+               target,
+               provider: provider,
+               user_id: "history-user",
+               fact_key: "favorite:language"
+             )
+
+    assert Enum.map(history.events, & &1.event_type) == [:ingest_delete, :ingest_update, :ingest_noop, :ingest_add]
+    assert Enum.all?(history.events, &(&1.record_id == record_id or &1.event_type == :ingest_delete))
+
+    assert {:ok, filtered_history} =
+             Mem0.history(
+               target,
+               provider: provider,
+               user_id: "history-user",
+               record_id: record_id,
+               event_types: [:ingest_update, :ingest_noop]
+             )
+
+    assert Enum.map(filtered_history.events, & &1.event_type) == [:ingest_update, :ingest_noop]
+  end
 end

@@ -17,15 +17,16 @@ Back to index: [README](./README.md)
 [ ] 4 Phase 4 - Provider-Direct Advanced Operations
   Implement the Mem0-specific operational APIs that are valuable for this provider but not yet justified as common runtime or plugin features.
 
-  [ ] 4.1 Section - Feedback and History APIs
+  [x] 4.1 Section - Feedback and History APIs
     Add provider-direct feedback and history surfaces that support Mem0-style memory maintenance and inspection.
+    Completed by adding scoped provider-direct feedback updates, a dedicated Mem0 history API, and internal event logging for direct writes, reconciliation outcomes, and feedback actions.
 
-    [ ] 4.1.1 Task - Add feedback and history operations
+    [x] 4.1.1 Task - Add feedback and history operations
       Make Mem0 advanced inspection and curation possible without widening the shared facade.
 
-      [ ] 4.1.1.1 Subtask - Add provider-direct feedback APIs for marking memories or maintenance outcomes as useful or not useful.
-      [ ] 4.1.1.2 Subtask - Add provider-direct history APIs for inspecting reconciliation events and memory evolution.
-      [ ] 4.1.1.3 Subtask - Keep feedback and history semantics out of the shared runtime until another provider demonstrates the same shape.
+      [x] 4.1.1.1 Subtask - Add provider-direct feedback APIs for marking memories or maintenance outcomes as useful or not useful.
+      [x] 4.1.1.2 Subtask - Add provider-direct history APIs for inspecting reconciliation events and memory evolution.
+      [x] 4.1.1.3 Subtask - Keep feedback and history semantics out of the shared runtime until another provider demonstrates the same shape.
 
   [ ] 4.2 Section - Export and Maintenance Controls
     Add provider-direct export and maintenance controls for Mem0-specific operational workflows.
