@@ -10,7 +10,7 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   @behaviour Jido.Memory.Provider
 
-  alias Jido.Memory.Record
+  alias Jido.Memory.{Query, Record, Store}
   alias Jido.Memory.Provider.Basic
 
   @scope_dimensions [:user_id, :agent_id, :app_id, :run_id]
@@ -72,8 +72,7 @@ defmodule Jido.Memory.Provider.Mem0 do
   def remember(target, attrs, opts) when is_list(attrs), do: remember(target, Map.new(attrs), opts)
 
   def remember(target, attrs, opts) when is_map(attrs) and is_list(opts) do
-    with {:ok, context} <- Basic.resolve_context(target, attrs, opts),
-         {:ok, scope} <- resolve_scope(target, opts),
+    with {:ok, context, scope} <- resolve_mem0_context(target, attrs, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
          {:ok, record} <- build_record(attrs, context.namespace, context.now, scope) do
       context.store_mod.put(record, context.store_opts)
@@ -83,13 +82,67 @@ defmodule Jido.Memory.Provider.Mem0 do
   def remember(_target, _attrs, _opts), do: {:error, :invalid_attrs}
 
   @impl true
-  def get(target, id, opts), do: Basic.get(target, id, opts)
+  def get(target, id, opts) when is_binary(id) and is_list(opts) do
+    with {:ok, context, scope} <- resolve_mem0_context(target, %{}, opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, record} <- Store.fetch(context.store_mod, {context.namespace, id}, context.store_opts),
+         true <- scope_matches?(record, scope) do
+      {:ok, record}
+    else
+      false -> {:error, :not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def get(_target, _id, _opts), do: {:error, :invalid_id}
 
   @impl true
-  def retrieve(target, query, opts), do: Basic.retrieve(target, query, opts)
+  def retrieve(target, %Query{} = query, opts) when is_list(opts) do
+    with {:ok, context, scope} <- resolve_mem0_context(target, %{namespace: query.namespace}, opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, effective_query} <- attach_namespace(query, context.namespace),
+         {:ok, records} <- context.store_mod.query(effective_query, context.store_opts) do
+      {:ok, Enum.filter(records, &scope_matches?(&1, scope))}
+    end
+  end
+
+  def retrieve(target, query_attrs, opts) when is_list(query_attrs),
+    do: retrieve(target, Map.new(query_attrs), opts)
+
+  def retrieve(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with {:ok, context, scope} <- resolve_mem0_context(target, query_attrs, opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, query} <- build_query(query_attrs, context.namespace),
+         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
+      {:ok, Enum.filter(records, &scope_matches?(&1, scope))}
+    end
+  end
+
+  def retrieve(_target, _query, _opts), do: {:error, :invalid_query}
 
   @impl true
-  def forget(target, id, opts), do: Basic.forget(target, id, opts)
+  def forget(target, id, opts) when is_binary(id) and is_list(opts) do
+    with {:ok, context, scope} <- resolve_mem0_context(target, %{}, opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts) do
+      case context.store_mod.get({context.namespace, id}, context.store_opts) do
+        {:ok, record} ->
+          if scope_matches?(record, scope) do
+            :ok = context.store_mod.delete({context.namespace, id}, context.store_opts)
+            {:ok, true}
+          else
+            {:ok, false}
+          end
+
+        :not_found ->
+          {:ok, false}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  def forget(_target, _id, _opts), do: {:error, :invalid_id}
 
   @impl true
   def prune(target, opts), do: Basic.prune(target, opts)
@@ -117,6 +170,13 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   def resolve_scope(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  defp resolve_mem0_context(target, attrs, opts) do
+    with {:ok, context} <- Basic.resolve_context(target, attrs, opts),
+         {:ok, scope} <- resolve_scope(target, opts) do
+      {:ok, context, scope}
+    end
+  end
 
   defp scoped_identity_meta(opts) do
     with {:ok, defaults} <- normalize_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
@@ -203,6 +263,24 @@ defmodule Jido.Memory.Provider.Mem0 do
     Record.new(attrs, now: now)
   end
 
+  defp build_query(attrs, namespace) do
+    attrs =
+      attrs
+      |> Map.drop([:provider, "provider"])
+      |> Map.put_new(:namespace, namespace)
+
+    Query.new(attrs)
+  end
+
+  defp attach_namespace(%Query{namespace: nil} = query, namespace) when is_binary(namespace),
+    do: {:ok, %{query | namespace: namespace}}
+
+  defp attach_namespace(%Query{namespace: query_namespace} = query, runtime_namespace)
+       when is_binary(query_namespace) and is_binary(runtime_namespace),
+       do: {:ok, query}
+
+  defp attach_namespace(%Query{}, _namespace), do: {:error, :namespace_required}
+
   defp annotate_mem0_metadata(metadata, scope) do
     mem0 =
       metadata
@@ -213,6 +291,22 @@ defmodule Jido.Memory.Provider.Mem0 do
       |> Map.put_new("source_provider", "mem0")
 
     Map.put(metadata, "mem0", mem0)
+  end
+
+  defp scope_matches?(%Record{metadata: metadata}, effective_scope) when is_map(effective_scope) do
+    record_scope =
+      metadata
+      |> provider_metadata("mem0")
+      |> map_get("scope")
+      |> normalize_metadata()
+      |> stringify_map_keys()
+
+    Enum.all?(@scope_dimensions, fn dimension ->
+      case Map.get(effective_scope, dimension) do
+        nil -> true
+        expected -> Map.get(record_scope, Atom.to_string(dimension)) == expected
+      end
+    end)
   end
 
   defp scope_to_metadata(scope) when is_map(scope) do
@@ -250,6 +344,15 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp normalize_metadata(%{} = metadata), do: metadata
   defp normalize_metadata(_metadata), do: %{}
 
+  defp provider_metadata(metadata, key) when is_map(metadata) do
+    case key do
+      "mem0" -> Map.get(metadata, "mem0", Map.get(metadata, :mem0, %{}))
+      _ -> Map.get(metadata, key, %{})
+    end
+  end
+
+  defp provider_metadata(_metadata, _key), do: %{}
+
   defp stringify_map_keys(%{} = map) do
     Enum.into(map, %{}, fn {key, value} ->
       {stringify_key(key), value}
@@ -259,6 +362,11 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp stringify_key(key) when is_atom(key), do: Atom.to_string(key)
   defp stringify_key(key), do: key
 
-  defp map_get(%{} = map, key), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
+  defp map_get(%{} = map, key) when is_atom(key),
+    do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
+
+  defp map_get(%{} = map, key) when is_binary(key),
+    do: Map.get(map, key)
+
   defp map_get(_value, _key), do: nil
 end

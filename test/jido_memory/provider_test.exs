@@ -189,6 +189,45 @@ defmodule Jido.Memory.ProviderTest do
            }
   end
 
+  test "mem0 canonical reads stay within the effective scope", %{store: store} do
+    target = %{id: "scope-target-agent"}
+
+    provider =
+      {Mem0,
+       [
+         store: store,
+         namespace: "agent:mem0-scope-reads"
+       ]}
+
+    assert {:ok, %Record{id: user_1_id}} =
+             Runtime.remember(
+               target,
+               %{class: :semantic, kind: :fact, text: "user one memory"},
+               provider: provider,
+               user_id: "user-1"
+             )
+
+    assert {:ok, %Record{id: user_2_id}} =
+             Runtime.remember(
+               target,
+               %{class: :semantic, kind: :fact, text: "user two memory"},
+               provider: provider,
+               user_id: "user-2"
+             )
+
+    assert {:ok, [%Record{id: ^user_1_id}]} =
+             Runtime.retrieve(target, %{text_contains: "user"}, provider: provider, user_id: "user-1")
+
+    assert {:error, :not_found} =
+             Runtime.get(target, user_2_id, provider: provider, user_id: "user-1")
+
+    assert {:ok, false} =
+             Runtime.forget(target, user_2_id, provider: provider, user_id: "user-1")
+
+    assert {:ok, %Record{id: ^user_2_id}} =
+             Runtime.get(target, user_2_id, provider: provider, user_id: "user-2")
+  end
+
   test "runtime retrieve and recall stay aligned for the Basic provider", %{store: store} do
     target = %{id: "provider-agent"}
     provider = {Basic, [store: store]}

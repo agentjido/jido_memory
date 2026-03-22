@@ -55,15 +55,16 @@ Back to index: [README](./README.md)
       [x] 1.2.2.2 Subtask - Expose scope configuration and effective scope policy through `info/2`.
       [x] 1.2.2.3 Subtask - Keep provider selection precedence independent from scope resolution precedence.
 
-  [ ] 1.3 Section - Canonical Core Flow Mapping
+  [x] 1.3 Section - Canonical Core Flow Mapping
     Route the shared remember, get, retrieve, forget, and prune flows through the Mem0 provider without introducing extraction or graph-specific behavior yet.
+    Completed by making Mem0 own its canonical remember/get/retrieve/forget flow over the shared store-backed substrate while enforcing the scoped-identity model on reads and deletes.
 
-    [ ] 1.3.1 Task - Implement the baseline canonical flow path
+    [x] 1.3.1 Task - Implement the baseline canonical flow path
       Make the Mem0 provider behave like a normal provider for core runtime and plugin use before advanced memory maintenance lands.
 
-      [ ] 1.3.1.1 Subtask - Support canonical `remember/3` for direct structured record writes into the Mem0 backing store.
-      [ ] 1.3.1.2 Subtask - Support canonical `get/3`, `retrieve/3`, `forget/3`, and `prune/2` within the configured scope model.
-      [ ] 1.3.1.3 Subtask - Keep `child_specs/1` empty in the first cut unless background maintenance processes become mandatory later.
+      [x] 1.3.1.1 Subtask - Support canonical `remember/3` for direct structured record writes into the Mem0 backing store.
+      [x] 1.3.1.2 Subtask - Support canonical `get/3`, `retrieve/3`, `forget/3`, and `prune/2` within the configured scope model.
+      [x] 1.3.1.3 Subtask - Keep `child_specs/1` empty in the first cut unless background maintenance processes become mandatory later.
 
   [ ] 1.4 Section - Phase 1 Integration Tests
     Validate the built-in provider baseline, the scoped-identity model, and canonical runtime compatibility before extraction-and-reconciliation behavior is added.
