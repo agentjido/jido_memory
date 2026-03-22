@@ -144,7 +144,7 @@ defmodule Jido.Memory.ProviderTest do
     assert capabilities.retrieval.explainable == true
     assert capabilities.retrieval.provider_extensions == true
     assert capabilities.retrieval.scoped == true
-    assert capabilities.retrieval.graph_augmentation == false
+    assert capabilities.retrieval.graph_augmentation == true
     assert capabilities.ingestion.access == :provider_direct
     assert capabilities.operations.feedback == :provider_direct
     assert capabilities.operations.export == :provider_direct
@@ -156,6 +156,7 @@ defmodule Jido.Memory.ProviderTest do
     assert info.topology.archetype == :extraction_reconciliation
     assert info.topology.retrieval.scoped == true
     assert info.topology.retrieval.explainable == true
+    assert info.topology.retrieval.graph_augmentation == true
     assert info.scoped_identity.enabled == true
     assert info.scoped_identity.defaults.user_id == "cfg-user"
     assert info.scoped_identity.defaults.app_id == "cfg-app"

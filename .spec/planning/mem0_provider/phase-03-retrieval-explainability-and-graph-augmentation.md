@@ -37,15 +37,15 @@ Back to index: [README](./README.md)
       [x] 3.2.1.2 Subtask - Include scope context, retrieval strategy, and reconciliation-aware retrieval notes under `extensions.mem0`.
       [x] 3.2.1.3 Subtask - Keep explanation output structured enough for contract tests without overfitting the canonical envelope to Mem0 internals.
 
-  [ ] 3.3 Section - Optional Graph Augmentation
+  [x] 3.3 Section - Optional Graph Augmentation
     Add entity and relationship augmentation as an additive retrieval enhancement rather than a replacement record model.
 
-    [ ] 3.3.1 Task - Implement graph augmentation behind the canonical retrieval boundary
+    [x] 3.3.1 Task - Implement graph augmentation behind the canonical retrieval boundary
       Make graph-aware retrieval available without redefining shared memory records.
 
-      [ ] 3.3.1.1 Subtask - Support optional graph augmentation through provider config and Mem0 query extensions.
-      [ ] 3.3.1.2 Subtask - Return graph-specific context through `extensions.mem0` or provider-direct helpers instead of replacing `retrieve/3` results.
-      [ ] 3.3.1.3 Subtask - Keep graph augmentation off by default and additive to the base retrieval path.
+      [x] 3.3.1.1 Subtask - Support optional graph augmentation through provider config and Mem0 query extensions.
+      [x] 3.3.1.2 Subtask - Return graph-specific context through `extensions.mem0` or provider-direct helpers instead of replacing `retrieve/3` results.
+      [x] 3.3.1.3 Subtask - Keep graph augmentation off by default and additive to the base retrieval path.
 
   [ ] 3.4 Section - Phase 3 Integration Tests
     Validate scoped retrieval, explainability, and optional graph augmentation while preserving the canonical retrieve/3 result shape.

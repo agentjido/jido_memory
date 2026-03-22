@@ -408,4 +408,71 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert hd(explanation.results).matched_on == [:class, :fact_key]
     assert hd(explanation.results).ranking_context.fact_key_match == true
   end
+
+  test "mem0 graph augmentation enriches explanation output without replacing canonical records" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase03_graph"),
+         namespace: "agent:mem0-phase03-graph",
+         retrieval: [graph_augmentation: [enabled: true, relationship_limit: 3]]
+       ]}
+
+    target = %{id: "mem0-phase03-graph-agent"}
+
+    assert {:ok, summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "user-graph"
+             )
+
+    [record_id] = summary.created_ids
+
+    query = %{
+      classes: [:semantic],
+      query_extensions: %{mem0: %{scope: %{user_id: "user-graph"}, graph: %{enabled: true, entity_focus: ["favorite:language"]}}}
+    }
+
+    assert {:ok, [%Record{id: ^record_id}]} = Runtime.retrieve(target, query, provider: provider)
+    assert {:ok, explanation} = Runtime.explain_retrieval(target, query, provider: provider)
+
+    assert explanation.result_count == 1
+    assert explanation.extensions.mem0.graph.enabled == true
+    assert explanation.extensions.mem0.graph.source == :query_extension
+    assert explanation.extensions.mem0.graph.entity_focus == ["favorite:language"]
+    assert explanation.extensions.mem0.graph.entity_count >= 1
+    assert explanation.extensions.mem0.graph.relationship_count == 1
+    assert Enum.any?(explanation.extensions.mem0.graph.entities, &(&1.type == :fact_key))
+    assert hd(explanation.extensions.mem0.graph.relationships).predicate == :value
+  end
+
+  test "mem0 graph augmentation can be disabled cleanly" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase03_graph_disabled"),
+         namespace: "agent:mem0-phase03-graph-disabled"
+       ]}
+
+    target = %{id: "mem0-phase03-graph-disabled-agent"}
+
+    assert {:ok, _summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "I live in Denver."}]},
+               provider: provider,
+               user_id: "user-graph-disabled"
+             )
+
+    query = %{
+      classes: [:semantic],
+      query_extensions: %{mem0: %{scope: %{user_id: "user-graph-disabled"}}}
+    }
+
+    assert {:ok, explanation} = Runtime.explain_retrieval(target, query, provider: provider)
+    assert explanation.extensions.mem0.graph.enabled == false
+    assert explanation.extensions.mem0.graph.relationships == []
+  end
 end

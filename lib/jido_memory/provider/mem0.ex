@@ -16,7 +16,7 @@ defmodule Jido.Memory.Provider.Mem0 do
   alias Jido.Memory.{Query, Record, Store}
 
   @default_extraction [recent_window: 6, summary_context: :optional]
-  @default_retrieval [mode: :balanced]
+  @default_retrieval [mode: :balanced, graph_augmentation: [enabled: false, include_relationships: true, relationship_limit: 5]]
   @scope_dimensions [:user_id, :agent_id, :app_id, :run_id]
   @scope_source_precedence [:runtime_opts, :target, :provider_config]
   @supported_mem0_query_extensions [:scope, :retrieval_mode, :fact_key, :graph]
@@ -29,7 +29,7 @@ defmodule Jido.Memory.Provider.Mem0 do
       memory_types: false,
       provider_extensions: true,
       scoped: true,
-      graph_augmentation: false
+      graph_augmentation: true
     },
     lifecycle: %{consolidate: false, inspect: false},
     ingestion: %{batch: true, multimodal: false, routed: true, access: :provider_direct},
@@ -69,7 +69,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          retrieval: %{
            scoped: true,
            explainable: true,
-           graph_augmentation: false,
+           graph_augmentation: true,
            query_extensions: @supported_mem0_query_extensions
          },
          maintenance: %{
@@ -294,6 +294,7 @@ defmodule Jido.Memory.Provider.Mem0 do
 
     %{
       default_mode: retrieval.mode,
+      graph_augmentation: retrieval.graph_augmentation,
       supported_query_extensions: @supported_mem0_query_extensions
     }
   end
@@ -331,7 +332,7 @@ defmodule Jido.Memory.Provider.Mem0 do
     with {:ok, defaults} <- normalize_retrieval_config(Keyword.get(provider_opts, :retrieval, @default_retrieval)),
          extensions <- mem0_query_extensions(query),
          {:ok, mode} <- normalize_retrieval_mode(value(extensions, :retrieval_mode, defaults.mode)),
-         graph <- normalize_graph_hint(value(extensions, :graph, %{})),
+         {:ok, graph} <- normalize_graph_hint(value(extensions, :graph, %{}), defaults.graph_augmentation),
          fact_key <- normalize_optional_string_value(value(extensions, :fact_key)),
          {:ok, query_scope} <- normalize_query_scope(value(extensions, :scope, %{})) do
       {:ok,
@@ -347,8 +348,9 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   defp normalize_retrieval_config(retrieval) when is_list(retrieval) do
-    with {:ok, mode} <- normalize_retrieval_mode(Keyword.get(retrieval, :mode, :balanced)) do
-      {:ok, %{mode: mode}}
+    with {:ok, mode} <- normalize_retrieval_mode(Keyword.get(retrieval, :mode, :balanced)),
+         {:ok, graph_augmentation} <- normalize_graph_config(Keyword.get(retrieval, :graph_augmentation, [])) do
+      {:ok, %{mode: mode, graph_augmentation: graph_augmentation}}
     end
   end
 
@@ -357,7 +359,8 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp normalize_retrieval_config!(retrieval) do
     case normalize_retrieval_config(retrieval) do
       {:ok, normalized} -> normalized
-      {:error, _reason} -> %{mode: :balanced}
+      {:error, _reason} ->
+        %{mode: :balanced, graph_augmentation: %{enabled: false, include_relationships: true, relationship_limit: 5, entity_focus: []}}
     end
   end
 
@@ -666,8 +669,69 @@ defmodule Jido.Memory.Provider.Mem0 do
     |> normalize_metadata()
   end
 
-  defp normalize_graph_hint(%{} = graph_hint), do: stringify_map_keys(graph_hint)
-  defp normalize_graph_hint(_graph_hint), do: %{}
+  defp normalize_graph_config(graph_augmentation) when graph_augmentation in [nil, [], %{}] do
+    {:ok, %{enabled: false, include_relationships: true, relationship_limit: 5, entity_focus: []}}
+  end
+
+  defp normalize_graph_config(graph_augmentation) when is_list(graph_augmentation) do
+    graph_augmentation
+    |> Enum.into(%{})
+    |> normalize_graph_config()
+  rescue
+    ArgumentError -> {:error, :invalid_retrieval_config}
+  end
+
+  defp normalize_graph_config(%{} = graph_augmentation) do
+    enabled = value(graph_augmentation, :enabled, false)
+    include_relationships = value(graph_augmentation, :include_relationships, true)
+    relationship_limit = value(graph_augmentation, :relationship_limit, 5)
+    entity_focus = normalize_graph_entity_focus(value(graph_augmentation, :entity_focus, []))
+
+    cond do
+      not is_boolean(enabled) -> {:error, :invalid_retrieval_config}
+      not is_boolean(include_relationships) -> {:error, :invalid_retrieval_config}
+      not (is_integer(relationship_limit) and relationship_limit > 0) -> {:error, :invalid_retrieval_config}
+      true ->
+        {:ok,
+         %{
+           enabled: enabled,
+           include_relationships: include_relationships,
+           relationship_limit: relationship_limit,
+           entity_focus: entity_focus
+         }}
+    end
+  end
+
+  defp normalize_graph_config(_graph_augmentation), do: {:error, :invalid_retrieval_config}
+
+  defp normalize_graph_hint(graph_hint, defaults) when graph_hint in [nil, [], %{}] do
+    {:ok, Map.put(defaults, :source, if(defaults.enabled, do: :provider_config, else: :disabled))}
+  end
+
+  defp normalize_graph_hint(true, defaults),
+    do: {:ok, defaults |> Map.merge(%{enabled: true}) |> Map.put(:source, :query_extension)}
+
+  defp normalize_graph_hint(false, defaults),
+    do: {:ok, defaults |> Map.merge(%{enabled: false}) |> Map.put(:source, :query_extension)}
+
+  defp normalize_graph_hint(graph_hint, defaults) when is_list(graph_hint) do
+    graph_hint
+    |> Enum.into(%{})
+    |> normalize_graph_hint(defaults)
+  rescue
+    ArgumentError -> {:error, :invalid_query}
+  end
+
+  defp normalize_graph_hint(%{} = graph_hint, defaults) do
+    with {:ok, normalized} <- normalize_graph_config(graph_hint) do
+      {:ok,
+       defaults
+       |> Map.merge(normalized)
+       |> Map.put(:source, :query_extension)}
+    end
+  end
+
+  defp normalize_graph_hint(_graph_hint, _defaults), do: {:error, :invalid_query}
 
   defp build_explanation(%Query{} = query, context, records) do
     result_entries =
@@ -696,6 +760,7 @@ defmodule Jido.Memory.Provider.Mem0 do
             query_extensions: context.retrieval.query_extensions,
             supported_query_extensions: @supported_mem0_query_extensions
           },
+          graph: graph_context(records, query, context.retrieval),
           reconciliation: %{
             maintenance_actions_present: maintenance_actions_present(records),
             results_with_maintenance: Enum.count(records, &(maintenance_action(&1) != nil)),
@@ -776,6 +841,111 @@ defmodule Jido.Memory.Provider.Mem0 do
       [] -> [:canonical_retrieval]
       actions -> [:reconciliation_aware_retrieval | Enum.map(actions, &{:maintenance_action, &1})]
     end
+  end
+
+  defp graph_context(records, %Query{} = query, retrieval) do
+    if retrieval.graph.enabled do
+      focus_terms = graph_focus_terms(query, retrieval)
+      entities = graph_entities(records, focus_terms)
+      relationships = graph_relationships(records, focus_terms, retrieval.graph)
+
+      %{
+        enabled: true,
+        source: retrieval.graph.source,
+        entity_focus: focus_terms,
+        entity_count: length(entities),
+        relationship_count: length(relationships),
+        entities: entities,
+        relationships: relationships
+      }
+    else
+      %{
+        enabled: false,
+        source: retrieval.graph.source,
+        entity_focus: [],
+        entity_count: 0,
+        relationship_count: 0,
+        entities: [],
+        relationships: []
+      }
+    end
+  end
+
+  defp graph_focus_terms(%Query{} = query, retrieval) do
+    retrieval.graph.entity_focus
+    |> Kernel.++(Enum.filter([retrieval.fact_key, query.text_contains], &is_binary/1))
+    |> Enum.map(&String.downcase/1)
+    |> Enum.uniq()
+  end
+
+  defp graph_entities(records, focus_terms) do
+    records
+    |> Enum.flat_map(&record_graph_entities(&1, focus_terms))
+    |> Enum.uniq_by(& &1.id)
+  end
+
+  defp record_graph_entities(%Record{} = record, focus_terms) do
+    [
+      graph_entity("fact_key", fact_key(record), :fact_key, record.id, focus_terms),
+      graph_entity("fact_value", fact_value(record), :fact_value, record.id, focus_terms)
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp graph_entity(_prefix, nil, _type, _record_id, _focus_terms), do: nil
+
+  defp graph_entity(prefix, value, type, record_id, focus_terms) do
+    label = to_string(value)
+
+    if focus_terms == [] or Enum.any?(focus_terms, &String.contains?(String.downcase(label), &1)) do
+      %{id: "#{prefix}:#{label}", label: label, type: type, record_id: record_id}
+    end
+  end
+
+  defp graph_relationships(_records, _focus_terms, %{include_relationships: false}), do: []
+
+  defp graph_relationships(records, focus_terms, %{relationship_limit: relationship_limit}) do
+    records
+    |> Enum.flat_map(&record_graph_relationships(&1, focus_terms))
+    |> Enum.take(relationship_limit)
+  end
+
+  defp record_graph_relationships(%Record{} = record, focus_terms) do
+    case {fact_key(record), fact_value(record)} do
+      {nil, _value} ->
+        []
+
+      {_key, nil} ->
+        []
+
+      {key, value} ->
+        labels = [to_string(key), to_string(value)] |> Enum.map(&String.downcase/1)
+
+        if focus_terms == [] or Enum.any?(focus_terms, fn term -> Enum.any?(labels, &String.contains?(&1, term)) end) do
+          [
+            %{
+              source: to_string(key),
+              predicate: :value,
+              target: to_string(value),
+              record_id: record.id
+            }
+          ]
+        else
+          []
+        end
+    end
+  end
+
+  defp normalize_graph_entity_focus(values) when is_list(values) do
+    values
+    |> Enum.map(&normalize_optional_string_value/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp normalize_graph_entity_focus(value) do
+    value
+    |> List.wrap()
+    |> normalize_graph_entity_focus()
   end
 
   defp extract_candidates(%{entries: entries, summary: summary}, extraction_config) do
