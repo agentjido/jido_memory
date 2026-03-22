@@ -404,7 +404,13 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert explanation.query.extensions.mem0.fact_key == "favorite:language"
     assert explanation.extensions.mem0.scope.effective.user_id == "user-explain"
     assert explanation.extensions.mem0.retrieval_strategy.mode == :fact_key_first
-    assert explanation.extensions.mem0.reconciliation.ranking_signals == [:retrieval_mode, :maintenance_action, :recency]
+
+    assert explanation.extensions.mem0.reconciliation.ranking_signals == [
+             :retrieval_mode,
+             :maintenance_action,
+             :recency
+           ]
+
     assert hd(explanation.results).matched_on == [:class, :fact_key]
     assert hd(explanation.results).ranking_context.fact_key_match == true
   end
@@ -432,7 +438,9 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
     query = %{
       classes: [:semantic],
-      query_extensions: %{mem0: %{scope: %{user_id: "user-graph"}, graph: %{enabled: true, entity_focus: ["favorite:language"]}}}
+      query_extensions: %{
+        mem0: %{scope: %{user_id: "user-graph"}, graph: %{enabled: true, entity_focus: ["favorite:language"]}}
+      }
     }
 
     assert {:ok, [%Record{id: ^record_id}]} = Runtime.retrieve(target, query, provider: provider)

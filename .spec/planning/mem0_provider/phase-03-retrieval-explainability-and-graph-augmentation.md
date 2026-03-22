@@ -14,11 +14,13 @@ Back to index: [README](./README.md)
 - Explainability is the canonical lane for richer Mem0 retrieval context.
 - Graph augmentation is optional and additive rather than a replacement for the base retrieval model.
 
-[ ] 3 Phase 3 - Retrieval, Explainability, and Graph Augmentation
+[x] 3 Phase 3 - Retrieval, Explainability, and Graph Augmentation
   Implement Mem0-style scoped retrieval, canonical explainability, and optional graph augmentation while preserving the shared record-oriented retrieve/3 result model.
+  Completed by adding scoped retrieval query extensions, canonical explainability output, additive graph augmentation, and dedicated runtime-level integration coverage for Mem0 and non-Mem0 providers.
 
   [x] 3.1 Section - Scoped Retrieval and Query Extension Baseline
     Add Mem0 retrieval behavior that respects scopes and provider-specific query hints without changing the base query contract.
+    Completed by adding scope-aware retrieval extensions, retrieval-mode hints, graph-related query hint reservation, and parity coverage for `retrieve/3` and `recall/2`.
 
     [x] 3.1.1 Task - Implement scoped retrieval behavior
       Make Mem0 retrieval useful for long-term memory access without requiring new shared query fields.
@@ -29,6 +31,7 @@ Back to index: [README](./README.md)
 
   [x] 3.2 Section - Explainability and Retrieval Traces
     Expose Mem0 retrieval context through the canonical explanation envelope rather than through a new shared result type.
+    Completed by implementing `explain_retrieval/3` for Mem0, advertising explainability in the provider capability map, and returning Mem0-specific retrieval and reconciliation context under `extensions.mem0`.
 
     [x] 3.2.1 Task - Implement canonical Mem0 explainability output
       Make retrieval reasoning inspectable without widening the core facade.
@@ -39,6 +42,7 @@ Back to index: [README](./README.md)
 
   [x] 3.3 Section - Optional Graph Augmentation
     Add entity and relationship augmentation as an additive retrieval enhancement rather than a replacement record model.
+    Completed by supporting graph-augmentation defaults in provider config, query-level graph hints, and explanation-only graph entity and relationship context while keeping `retrieve/3` result lists unchanged.
 
     [x] 3.3.1 Task - Implement graph augmentation behind the canonical retrieval boundary
       Make graph-aware retrieval available without redefining shared memory records.
@@ -47,19 +51,20 @@ Back to index: [README](./README.md)
       [x] 3.3.1.2 Subtask - Return graph-specific context through `extensions.mem0` or provider-direct helpers instead of replacing `retrieve/3` results.
       [x] 3.3.1.3 Subtask - Keep graph augmentation off by default and additive to the base retrieval path.
 
-  [ ] 3.4 Section - Phase 3 Integration Tests
+  [x] 3.4 Section - Phase 3 Integration Tests
     Validate scoped retrieval, explainability, and optional graph augmentation while preserving the canonical retrieve/3 result shape.
+    Completed by adding dedicated Mem0 Phase 3 integration coverage for scoped runtime retrieval, canonical explainability, additive graph augmentation, graph-disable behavior, and regression checks for Basic and Tiered providers.
 
-    [ ] 3.4.1 Task - Scoped retrieval and explainability scenarios
+    [x] 3.4.1 Task - Scoped retrieval and explainability scenarios
       Verify Mem0 retrieval works through the shared runtime boundary.
 
-      [ ] 3.4.1.1 Subtask - Verify Mem0 retrieves scoped canonical records through `Runtime.retrieve/3`.
-      [ ] 3.4.1.2 Subtask - Verify `Runtime.explain_retrieval/3` returns the canonical envelope with Mem0-specific additive context.
-      [ ] 3.4.1.3 Subtask - Verify Mem0 query extensions influence retrieval behavior without changing `Jido.Memory.Query` semantics for other providers.
+      [x] 3.4.1.1 Subtask - Verify Mem0 retrieves scoped canonical records through `Runtime.retrieve/3`.
+      [x] 3.4.1.2 Subtask - Verify `Runtime.explain_retrieval/3` returns the canonical envelope with Mem0-specific additive context.
+      [x] 3.4.1.3 Subtask - Verify Mem0 query extensions influence retrieval behavior without changing `Jido.Memory.Query` semantics for other providers.
 
-    [ ] 3.4.2 Task - Graph augmentation scenarios
+    [x] 3.4.2 Task - Graph augmentation scenarios
       Verify graph-style augmentation remains additive and optional.
 
-      [ ] 3.4.2.1 Subtask - Verify graph augmentation enriches explanation output without replacing canonical record results.
-      [ ] 3.4.2.2 Subtask - Verify graph augmentation can be disabled cleanly.
-      [ ] 3.4.2.3 Subtask - Verify non-Mem0 providers remain unaffected by Mem0 graph-related query extensions and tests.
+      [x] 3.4.2.1 Subtask - Verify graph augmentation enriches explanation output without replacing canonical record results.
+      [x] 3.4.2.2 Subtask - Verify graph augmentation can be disabled cleanly.
+      [x] 3.4.2.3 Subtask - Verify non-Mem0 providers remain unaffected by Mem0 graph-related query extensions and tests.
