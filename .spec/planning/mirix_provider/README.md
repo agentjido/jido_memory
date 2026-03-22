@@ -13,7 +13,8 @@ This planning set tracks the additive core changes and built-in MIRIX provider r
 - Phase 1 is implemented on the current branch.
 - Phase 2 is implemented on the current branch.
 - Phase 3 is implemented on the current branch.
-- Phases 4 and 5 are pending.
+- Phase 4 is implemented on the current branch.
+- Phase 5 is pending.
 
 ## Delivery Rules
 - `Jido.Memory.Provider` stays small and cross-provider.
