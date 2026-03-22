@@ -10,6 +10,16 @@ External-provider interop is opt-in:
 - direct `{module, opts}` tuples work without registration
 - alias-based selection is helper-only through `provider_aliases`
 
+Choose an external provider when:
+
+- the built-in `:basic` or `:tiered` paths do not fit your runtime architecture
+- you need a provider-specific storage or retrieval model that should not become a built-in default
+- you are willing to own any provider bootstrap that requires supervised processes
+
+Stay on the built-in provider paths when your needs match the release-gated
+matrix documented in
+[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+
 ## Provider Contract
 
 An external provider implements `Jido.Memory.Provider`.
@@ -147,3 +157,8 @@ The interop seam is implemented, but a few deliberate follow-ons remain:
 - whether helper-only alias registration is sufficient or should gain optional app-level config
 - how much provider-bootstrap guidance should move into release-grade examples
 - whether a reference external provider package should ship alongside the contract
+
+Known limits:
+
+- the release-gated external path is a reference implementation, not a promise of parity for every third-party provider
+- optional capabilities such as Tiered explainability remain provider-specific unless an external provider implements them explicitly

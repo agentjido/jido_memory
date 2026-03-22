@@ -98,6 +98,9 @@ Not yet first-party:
 - backend-native metadata querying
 - backend-native ranking beyond the canonical overlap
 
+For the broader supported release matrix, see
+[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+
 ## Open Questions
 
 - when should the Postgres backend move from namespace scans to more selective query pushdown

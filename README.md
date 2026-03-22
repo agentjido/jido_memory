@@ -34,6 +34,19 @@ That lets the same core plugin and runtime calls target either built-in provider
 | `:basic` | You want the smallest possible setup with one backing store | Default provider, keeps existing ETS-style usage simple |
 | `:tiered` | You want short/mid/long memory and built-in promotion | Ships in `jido_memory` and uses `Jido.Memory.LongTermStore` for long-term persistence |
 
+## Adoption Paths
+
+The supported adoption story is incremental:
+
+1. stay on built-in `:basic` if you only need the original store-backed path
+2. move to built-in `:tiered` when you want explainable short/mid/long memory inside `jido_memory`
+3. switch the Tiered long-term backend from ETS to Postgres when long-tier durability matters
+4. adopt an external provider only when the built-in paths no longer fit your architecture
+5. adopt `jido_memory_os` when you need manager-driven workflows that are intentionally outside the built-in package scope
+
+The release-gated support matrix is documented in
+[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+
 ## Installation
 
 Add dependencies in `mix.exs`:
@@ -336,6 +349,13 @@ inspection surfaces are intentionally lighter-weight.
 The built-in release story for `jido_memory` is still `:basic` and `:tiered`.
 External-provider interop is now available as an opt-in seam, but it does not
 change the built-in defaults or make `jido_memory_os` a required dependency.
+
+## Known Limits
+
+- external providers are only required to satisfy the core provider contract unless they explicitly implement optional capabilities
+- Tiered explainability is intentionally bounded and is not a substitute for journaling or replay
+- the built-in Postgres long-term backend currently evaluates the overlapping structured query subset in Elixir after a namespace-scoped fetch
+- Redis is not yet a first-party durable long-term backend
 
 ## Examples
 

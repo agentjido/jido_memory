@@ -22,15 +22,15 @@ Description: tell one coherent story for users choosing between built-in and opt
 
 ### Task 4.2.1 - Publish the follow-on user and developer docs
 Description: explain how the expanded provider system should be adopted after the initial rollout.
-- [ ] Update guides and README sections to cover external-provider interop, Tiered explainability, and durable long-term backends.
-- [ ] Clarify when to stay with built-in Tiered versus when to adopt an external provider or `jido_memory_os`.
-- [ ] Keep the migration story incremental and compatibility-first.
+- [x] Update guides and README sections to cover external-provider interop, Tiered explainability, and durable long-term backends.
+- [x] Clarify when to stay with built-in Tiered versus when to adopt an external provider or `jido_memory_os`.
+- [x] Keep the migration story incremental and compatibility-first.
 
 ### Task 4.2.2 - Add release notes and known limits
 Description: make the shipped scope explicit so support expectations stay realistic.
-- [ ] Add release notes for the new interop, explainability, and durable-backend capabilities.
-- [ ] Document any known limits around bootstrap ownership, explanation depth, and backend query parity.
-- [ ] Capture the next open questions that should become their own planning set rather than leaking into this one.
+- [x] Add release notes for the new interop, explainability, and durable-backend capabilities.
+- [x] Document any known limits around bootstrap ownership, explanation depth, and backend query parity.
+- [x] Capture the next open questions that should become their own planning set rather than leaking into this one.
 
 ## Section 4.3 - Quality Gates and Tooling Alignment
 Description: keep the release gate trustworthy as the provider system grows more capable.
