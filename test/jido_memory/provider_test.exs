@@ -235,9 +235,8 @@ defmodule Jido.Memory.ProviderTest do
                provider: provider
              )
 
+    assert ProviderContract.canonical_explanation?(explanation)
     assert explanation.provider == Tiered
-    assert explanation.requested_tiers == [:short, :mid, :long]
-    assert MapSet.new(explanation.participating_tiers) == MapSet.new([:short, :mid])
     assert explanation.result_count == 2
 
     ids = Enum.map(explanation.results, & &1.id)
@@ -250,6 +249,8 @@ defmodule Jido.Memory.ProviderTest do
                :text_contains in result.matched_on
            end)
 
+    assert explanation.extensions.tiered.requested_tiers == [:short, :mid, :long]
+    assert MapSet.new(explanation.extensions.tiered.participating_tiers) == MapSet.new([:short, :mid])
     assert explanation.extensions.tiered.counts_by_tier.short == 1
     assert explanation.extensions.tiered.counts_by_tier.mid == 1
     assert explanation.extensions.tiered.counts_by_tier.long == 0

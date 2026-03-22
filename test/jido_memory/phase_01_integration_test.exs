@@ -140,8 +140,8 @@ defmodule Jido.Memory.Phase01IntegrationTest do
     assert {:ok, [%Record{id: ^mid_id}]} = Runtime.retrieve(agent, query, [])
 
     assert {:ok, explanation} = Runtime.explain_retrieval(agent, query, [])
-    assert explanation.requested_tiers == [:mid]
-    assert explanation.participating_tiers == [:mid]
+    assert explanation.extensions.tiered.requested_tiers == [:mid]
+    assert explanation.extensions.tiered.participating_tiers == [:mid]
     assert Enum.map(explanation.results, & &1.id) == [mid_id]
     refute short_id == mid_id
   end

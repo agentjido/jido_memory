@@ -37,6 +37,18 @@ defmodule Jido.Memory.ProviderContract do
     end
   end
 
+  @spec canonical_explanation?(map()) :: boolean()
+  def canonical_explanation?(%{} = explanation) do
+    Map.has_key?(explanation, :provider) and
+      Map.has_key?(explanation, :namespace) and
+      Map.has_key?(explanation, :query) and
+      Map.has_key?(explanation, :result_count) and
+      Map.has_key?(explanation, :results) and
+      Map.has_key?(explanation, :extensions)
+  end
+
+  def canonical_explanation?(_explanation), do: false
+
   @type core_flow_result :: %{
           record: Jido.Memory.Record.t(),
           fetched: Jido.Memory.Record.t(),

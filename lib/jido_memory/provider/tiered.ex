@@ -133,14 +133,12 @@ defmodule Jido.Memory.Provider.Tiered do
              :provider,
              :namespace,
              :query,
-             :requested_tiers,
-             :participating_tiers,
              :result_count,
              :results,
              :extensions
            ],
            result_fields: [:id, :tier, :rank, :matched_on, :ranking_context],
-           extensions: [:tiered]
+           extensions: [:tiered, :mirix]
          },
          capabilities: @capabilities,
          long_term_meta: long_term_meta
@@ -935,13 +933,13 @@ defmodule Jido.Memory.Provider.Tiered do
       provider: __MODULE__,
       namespace: context.namespace,
       query: summarize_query(query),
-      requested_tiers: requested_tiers,
-      participating_tiers: participating_tiers(counts_by_tier, requested_tiers),
       result_count: length(result_entries),
       results: result_entries,
       extensions: %{
         tiered: %{
           payload_version: 1,
+          requested_tiers: requested_tiers,
+          participating_tiers: participating_tiers(counts_by_tier, requested_tiers),
           counts_by_tier: counts_by_tier,
           ranking: %{
             primary: :observed_at,

@@ -2,6 +2,9 @@ defmodule Jido.Memory.Phase02IntegrationTest do
   use ExUnit.Case, async: true
 
   alias Jido.Memory.Plugin
+  alias Jido.Memory.PluginSupport
+  alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.ProviderContract
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.Record
@@ -35,9 +38,8 @@ defmodule Jido.Memory.Phase02IntegrationTest do
     assert {:ok, records} = Runtime.retrieve(tiered_agent, query, [])
     assert {:ok, explanation} = Runtime.explain_retrieval(tiered_agent, query, [])
 
+    assert ProviderContract.canonical_explanation?(explanation)
     assert explanation.provider == Tiered
-    assert explanation.requested_tiers == [:short, :mid, :long]
-    assert MapSet.new(explanation.participating_tiers) == MapSet.new([:short, :mid])
     assert Enum.map(explanation.results, & &1.id) == Enum.map(records, & &1.id)
     assert short_id in Enum.map(records, & &1.id)
     assert mid_id in Enum.map(records, & &1.id)
@@ -46,8 +48,35 @@ defmodule Jido.Memory.Phase02IntegrationTest do
              result.tier in [:short, :mid] and :text_contains in result.matched_on
            end)
 
+    assert explanation.extensions.tiered.requested_tiers == [:short, :mid, :long]
+    assert MapSet.new(explanation.extensions.tiered.participating_tiers) == MapSet.new([:short, :mid])
+
     assert {:error, {:unsupported_capability, :explain_retrieval}} =
              Runtime.explain_retrieval(basic_agent, %{text_contains: "missing"}, [])
+  end
+
+  test "shared runtime and plugin surfaces stay selective while provider-direct lanes stay discoverable" do
+    basic_provider = ProviderFixtures.basic_provider("phase02_boundary_basic")
+    tiered_provider = ProviderFixtures.tiered_provider("phase02_boundary_tiered")
+
+    refute function_exported?(Runtime, :ingest, 3)
+    refute function_exported?(Runtime, :put_vault_entry, 3)
+    refute function_exported?(Runtime, :get_vault_entry, 3)
+    refute function_exported?(Runtime, :forget_vault_entry, 3)
+
+    signal_types = Enum.map(PluginSupport.signal_routes(), &elem(&1, 0))
+    refute "ingest" in signal_types
+    refute "vault_get" in signal_types
+    refute "vault_put" in signal_types
+    refute "vault_forget" in signal_types
+
+    assert ProviderContract.supports?(basic_provider, [:ingestion, :batch]) == false
+    assert ProviderContract.supports?(tiered_provider, [:ingestion, :batch]) == false
+    assert ProviderContract.supports?(basic_provider, [:governance, :protected_memory]) == false
+    assert ProviderContract.supports?(tiered_provider, [:governance, :protected_memory]) == false
+
+    assert {:ok, %{provider: Basic}} = Runtime.info(%{id: "phase02-boundary-basic"}, [:provider], provider: basic_provider)
+    assert {:ok, %{provider: Tiered}} = Runtime.info(%{id: "phase02-boundary-tiered"}, [:provider], provider: tiered_provider)
   end
 
   test "consolidation rationale and lifecycle inspection reflect actual tier transitions" do
