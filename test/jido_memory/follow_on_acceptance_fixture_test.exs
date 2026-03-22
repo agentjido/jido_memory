@@ -20,6 +20,7 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
        :tiered_postgres, "follow on tiered postgres memory"},
       {"mirix", %{provider: ProviderFixtures.mirix_provider("follow_on_mirix_#{run_id}")}, :mirix,
        "follow on mirix memory"},
+      {"mem0", %{provider: ProviderFixtures.mem0_provider("follow_on_mem0_#{run_id}")}, :mem0, "follow on mem0 memory"},
       {"external",
        %{
          provider: :external_demo,
@@ -50,6 +51,11 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
           assert capabilities.retrieval.explainable == true
           assert capabilities.ingestion.batch == true
           assert capabilities.governance.protected_memory == true
+
+        :mem0 ->
+          assert capabilities.retrieval.explainable == true
+          assert capabilities.ingestion.batch == true
+          assert capabilities.operations.feedback == :provider_direct
 
         :external ->
           assert capabilities.core == true

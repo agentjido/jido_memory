@@ -18,15 +18,15 @@ Back to index: [README](./README.md)
 [ ] 5 Phase 5 - Adoption, Docs, and Release-Gated Acceptance
   Complete the Mem0 provider rollout with examples, spec alignment, benchmark hooks, and final cross-provider acceptance coverage.
 
-  [ ] 5.1 Section - Plugin, Runtime, and Example Adoption
+[x] 5.1 Section - Plugin, Runtime, and Example Adoption
     Show how the Mem0 provider is used through the existing common memory surface and its provider-direct advanced operations.
 
-    [ ] 5.1.1 Task - Add Mem0 adoption examples and fixtures
+  [x] 5.1.1 Task - Add Mem0 adoption examples and fixtures
       Make the Mem0 provider practical to evaluate and adopt.
 
-      [ ] 5.1.1.1 Subtask - Add examples showing `Jido.Memory.Plugin` with `provider: :mem0` for canonical remember and retrieve flows.
-      [ ] 5.1.1.2 Subtask - Add examples showing provider-direct Mem0 ingestion, feedback, history, or export workflows.
-      [ ] 5.1.1.3 Subtask - Add acceptance fixtures that switch the same agent between `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider reference path without changing common plugin code.
+    [x] 5.1.1.1 Subtask - Add examples showing `Jido.Memory.Plugin` with `provider: :mem0` for canonical remember and retrieve flows.
+    [x] 5.1.1.2 Subtask - Add examples showing provider-direct Mem0 ingestion, feedback, history, or export workflows.
+    [x] 5.1.1.3 Subtask - Add acceptance fixtures that switch the same agent between `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider reference path without changing common plugin code.
 
   [ ] 5.2 Section - Spec, Topology, and Benchmark-Hook Alignment
     Bring the implementation and support docs into line once the Mem0 provider is real.

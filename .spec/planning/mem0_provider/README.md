@@ -19,7 +19,8 @@ This planning set tracks the implementation of a Mem0-style provider in `jido_me
 - Phase 2 is complete.
 - Phase 3 is complete.
 - Phase 4 is complete.
-- Phase 5 is pending.
+- Phase 5 is in progress.
+  - Section 5.1 is complete.
 
 ## Delivery Rules
 - `Jido.Memory.Provider` stays small and cross-provider.
