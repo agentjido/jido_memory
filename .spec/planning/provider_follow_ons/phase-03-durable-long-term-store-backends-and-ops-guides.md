@@ -7,15 +7,15 @@ Description: stabilize the long-term store seam for real persistence backends.
 
 ### Task 3.1.1 - Tighten long-term store behavior expectations
 Description: make the `Jido.Memory.LongTermStore` boundary explicit enough for durable backends to implement confidently.
-- [ ] Document required semantics for idempotency, delete behavior, query support, and prune support.
-- [ ] Clarify which long-term operations must preserve record shape and provider-managed metadata.
-- [ ] Decide what minimum query subset a durable backend must support to be considered production-ready.
+- [x] Document required semantics for idempotency, delete behavior, query support, and prune support.
+- [x] Clarify which long-term operations must preserve record shape and provider-managed metadata.
+- [x] Decide what minimum query subset a durable backend must support to be considered production-ready.
 
 ### Task 3.1.2 - Add durable backend test fixtures
 Description: create reusable fixtures that exercise long-term store behavior independently of a specific database.
-- [ ] Add a shared long-term store contract helper for backend tests.
-- [ ] Add fixture coverage for durable read/write/query/forget/prune behavior.
-- [ ] Keep the contract helper usable by first-party and third-party long-term backends.
+- [x] Add a shared long-term store contract helper for backend tests.
+- [x] Add fixture coverage for durable read/write/query/forget/prune behavior.
+- [x] Keep the contract helper usable by first-party and third-party long-term backends.
 
 ## Section 3.2 - First Durable Backend Path
 Description: establish one real durable backend path that proves the seam is practical.
