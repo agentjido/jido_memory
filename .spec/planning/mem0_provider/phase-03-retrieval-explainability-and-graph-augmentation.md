@@ -27,15 +27,15 @@ Back to index: [README](./README.md)
       [x] 3.1.1.2 Subtask - Add Mem0 query extension keys for scope control, retrieval mode, and graph augmentation hints.
       [x] 3.1.1.3 Subtask - Keep `recall/2` and `retrieve/3` aligned for the overlapping Mem0 query subset.
 
-  [ ] 3.2 Section - Explainability and Retrieval Traces
+  [x] 3.2 Section - Explainability and Retrieval Traces
     Expose Mem0 retrieval context through the canonical explanation envelope rather than through a new shared result type.
 
-    [ ] 3.2.1 Task - Implement canonical Mem0 explainability output
+    [x] 3.2.1 Task - Implement canonical Mem0 explainability output
       Make retrieval reasoning inspectable without widening the core facade.
 
-      [ ] 3.2.1.1 Subtask - Populate the canonical explanation envelope with provider metadata, query shape, result count, results, and Mem0-specific extensions.
-      [ ] 3.2.1.2 Subtask - Include scope context, retrieval strategy, and reconciliation-aware retrieval notes under `extensions.mem0`.
-      [ ] 3.2.1.3 Subtask - Keep explanation output structured enough for contract tests without overfitting the canonical envelope to Mem0 internals.
+      [x] 3.2.1.1 Subtask - Populate the canonical explanation envelope with provider metadata, query shape, result count, results, and Mem0-specific extensions.
+      [x] 3.2.1.2 Subtask - Include scope context, retrieval strategy, and reconciliation-aware retrieval notes under `extensions.mem0`.
+      [x] 3.2.1.3 Subtask - Keep explanation output structured enough for contract tests without overfitting the canonical envelope to Mem0 internals.
 
   [ ] 3.3 Section - Optional Graph Augmentation
     Add entity and relationship augmentation as an additive retrieval enhancement rather than a replacement record model.

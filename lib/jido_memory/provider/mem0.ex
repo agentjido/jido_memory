@@ -10,6 +10,7 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   @behaviour Jido.Memory.Provider
   @behaviour Jido.Memory.Capability.Ingestion
+  @behaviour Jido.Memory.Capability.ExplainableRetrieval
 
   alias Jido.Memory.Provider.Basic
   alias Jido.Memory.{Query, Record, Store}
@@ -23,7 +24,7 @@ defmodule Jido.Memory.Provider.Mem0 do
   @capabilities %{
     core: true,
     retrieval: %{
-      explainable: false,
+      explainable: true,
       active: false,
       memory_types: false,
       provider_extensions: true,
@@ -67,7 +68,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          archetype: :extraction_reconciliation,
          retrieval: %{
            scoped: true,
-           explainable: false,
+           explainable: true,
            graph_augmentation: false,
            query_extensions: @supported_mem0_query_extensions
          },
@@ -136,6 +137,27 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   def retrieve(_target, _query, _opts), do: {:error, :invalid_query}
+
+  @impl true
+  def explain_retrieval(target, %Query{} = query, opts) when is_list(opts) do
+    with {:ok, context} <- resolve_retrieval_context(target, query, opts),
+         {:ok, records} <- do_retrieve_records(query, context) do
+      {:ok, build_explanation(query, context, records)}
+    end
+  end
+
+  def explain_retrieval(target, query_attrs, opts) when is_list(query_attrs),
+    do: explain_retrieval(target, Map.new(query_attrs), opts)
+
+  def explain_retrieval(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with {:ok, query} <- build_query(query_attrs, nil),
+         {:ok, context} <- resolve_retrieval_context(target, query, opts),
+         {:ok, records} <- do_retrieve_records(query, context) do
+      {:ok, build_explanation(query, context, records)}
+    end
+  end
+
+  def explain_retrieval(_target, _query, _opts), do: {:error, :invalid_query}
 
   @impl true
   def forget(target, id, opts) when is_binary(id) and is_list(opts) do
@@ -646,6 +668,115 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp normalize_graph_hint(%{} = graph_hint), do: stringify_map_keys(graph_hint)
   defp normalize_graph_hint(_graph_hint), do: %{}
+
+  defp build_explanation(%Query{} = query, context, records) do
+    result_entries =
+      records
+      |> Enum.with_index(1)
+      |> Enum.map(fn {record, rank} ->
+        explain_result_entry(record, rank, query, context)
+      end)
+
+    %{
+      provider: __MODULE__,
+      namespace: context.namespace,
+      query: summarize_query(query),
+      result_count: length(result_entries),
+      results: result_entries,
+      extensions: %{
+        mem0: %{
+          payload_version: 1,
+          scope: %{
+            effective: context.scope,
+            query: context.retrieval.query_scope
+          },
+          retrieval_strategy: %{
+            mode: context.retrieval.mode,
+            fact_key: context.retrieval.fact_key,
+            query_extensions: context.retrieval.query_extensions,
+            supported_query_extensions: @supported_mem0_query_extensions
+          },
+          reconciliation: %{
+            maintenance_actions_present: maintenance_actions_present(records),
+            results_with_maintenance: Enum.count(records, &(maintenance_action(&1) != nil)),
+            ranking_signals: [:retrieval_mode, :maintenance_action, :recency]
+          },
+          notes: reconciliation_notes(records)
+        }
+      }
+    }
+  end
+
+  defp explain_result_entry(%Record{} = record, rank, %Query{} = query, context) do
+    %{
+      id: record.id,
+      rank: rank,
+      matched_on: matched_on(record, query, context.retrieval),
+      ranking_context: %{
+        mode: context.retrieval.mode,
+        fact_key_match: fact_key_match?(record, context.retrieval.fact_key),
+        maintenance_action: maintenance_action(record),
+        observed_at: record.observed_at
+      }
+    }
+  end
+
+  defp summarize_query(%Query{} = query) do
+    %{
+      namespace: query.namespace,
+      classes: query.classes,
+      kinds: query.kinds,
+      tags_any: query.tags_any,
+      tags_all: query.tags_all,
+      text_contains: query.text_contains,
+      since: query.since,
+      until: query.until,
+      limit: query.limit,
+      order: query.order,
+      extensions: query.extensions
+    }
+  end
+
+  defp matched_on(%Record{} = record, %Query{} = query, retrieval) do
+    []
+    |> maybe_add_match(query.classes != [], :class)
+    |> maybe_add_match(query.kinds != [], :kind)
+    |> maybe_add_match(query.tags_any != [], :tags_any)
+    |> maybe_add_match(query.tags_all != [], :tags_all)
+    |> maybe_add_match(is_binary(query.text_contains) and query_text_match?(record, query.text_contains), :text_contains)
+    |> maybe_add_match(is_integer(query.since), :since)
+    |> maybe_add_match(is_integer(query.until), :until)
+    |> maybe_add_match(fact_key_match?(record, retrieval.fact_key), :fact_key)
+    |> case do
+      [] -> [:scope]
+      matches -> matches
+    end
+  end
+
+  defp maybe_add_match(matches, true, match), do: matches ++ [match]
+  defp maybe_add_match(matches, false, _match), do: matches
+
+  defp fact_key_match?(%Record{} = record, fact_key) do
+    fact_key(record) == fact_key or fact_key_text_match?(record, fact_key)
+  end
+
+  defp maintenance_action(%Record{metadata: metadata}) do
+    get_in(metadata, ["mem0", "maintenance_action"])
+  end
+
+  defp maintenance_actions_present(records) do
+    records
+    |> Enum.map(&maintenance_action/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp reconciliation_notes(records) do
+    case maintenance_actions_present(records) do
+      [] -> [:canonical_retrieval]
+      actions -> [:reconciliation_aware_retrieval | Enum.map(actions, &{:maintenance_action, &1})]
+    end
+  end
 
   defp extract_candidates(%{entries: entries, summary: summary}, extraction_config) do
     result =

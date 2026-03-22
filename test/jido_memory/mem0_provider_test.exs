@@ -3,6 +3,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
   alias Jido.Memory.Plugin
   alias Jido.Memory.Provider.Mem0
+  alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
@@ -370,5 +371,41 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
     assert {:ok, [%Record{id: ^recent_id}, %Record{id: ^older_id}]} =
              Runtime.recall(agent, query)
+  end
+
+  test "mem0 explain_retrieval returns the canonical envelope with additive retrieval context" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase03_explain"),
+         namespace: "agent:mem0-phase03-explain",
+         retrieval: [mode: :fact_key_first]
+       ]}
+
+    target = %{id: "mem0-phase03-explain-agent"}
+
+    assert {:ok, _summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "user-explain"
+             )
+
+    query = %{
+      classes: [:semantic],
+      query_extensions: %{mem0: %{scope: %{user_id: "user-explain"}, fact_key: "favorite:language"}}
+    }
+
+    assert {:ok, explanation} = Runtime.explain_retrieval(target, query, provider: provider)
+    assert ProviderContract.canonical_explanation?(explanation)
+    assert explanation.provider == Mem0
+    assert explanation.result_count == 1
+    assert explanation.query.extensions.mem0.fact_key == "favorite:language"
+    assert explanation.extensions.mem0.scope.effective.user_id == "user-explain"
+    assert explanation.extensions.mem0.retrieval_strategy.mode == :fact_key_first
+    assert explanation.extensions.mem0.reconciliation.ranking_signals == [:retrieval_mode, :maintenance_action, :recency]
+    assert hd(explanation.results).matched_on == [:class, :fact_key]
+    assert hd(explanation.results).ranking_context.fact_key_match == true
   end
 end
