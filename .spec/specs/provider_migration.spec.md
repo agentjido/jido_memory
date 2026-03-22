@@ -4,13 +4,13 @@ This subject defines the draft migration path from the current runtime and store
 
 ## Intent
 
-Make the rollout sequence explicit so implementation can proceed in additive phases without breaking existing users.
+Make the rollout sequence explicit so implementation can proceed in additive phases without breaking existing users while moving the common advanced path into jido_memory itself.
 
 ```spec-meta
 id: jido_memory.provider_migration
 kind: architecture
 status: draft
-summary: Draft migration path for introducing the provider model while preserving current jido_memory behavior and integrating jido_memory_os later.
+summary: Draft migration path for introducing the provider model, preserving current jido_memory behavior, and adding a built-in Tiered provider while leaving jido_memory_os standalone.
 surface:
   - docs/rfcs/0001-canonical-memory-provider-architecture.md
   - lib/jido_memory.ex
@@ -26,8 +26,12 @@ surface:
   statement: The first provider implementation shall wrap the existing Jido.Memory.Runtime and Jido.Memory.Store path so current ETS-backed behavior remains the default.
   priority: must
   stability: evolving
-- id: jido_memory.provider_migration.memory_os_integration
-  statement: jido_memory_os shall be integrated as an advanced provider implementation that satisfies the canonical provider contract plus the applicable optional capabilities.
+- id: jido_memory.provider_migration.tiered_provider_in_core
+  statement: The common advanced memory path for Jido shall be implemented as a built-in Tiered provider inside jido_memory rather than requiring jido_memory_os as the standard provider choice.
+  priority: must
+  stability: evolving
+- id: jido_memory.provider_migration.standalone_memory_os_boundary
+  statement: jido_memory_os shall remain a standalone advanced library with its native facade and plugin rather than becoming a required dependency of jido_memory for standard memory context management.
   priority: must
   stability: evolving
 - id: jido_memory.provider_migration.incremental_compatibility
@@ -45,20 +49,29 @@ surface:
   when:
     - the provider architecture lands
   then:
-    - the application continues to work through the basic provider without requiring provider-specific migration
+    - the application continues to work through the Basic provider without requiring provider-specific migration
   covers:
     - jido_memory.provider_migration.basic_provider_default
     - jido_memory.provider_migration.incremental_compatibility
-- id: jido_memory.provider_migration.capability_first_adoption
+- id: jido_memory.provider_migration.built_in_tiered_adoption
   given:
-    - an application that later adopts jido_memory_os as an advanced provider
+    - an application that later adopts the built-in Tiered provider
   when:
-    - the application enables advanced memory features
+    - the application enables tiered memory through the shared plugin and runtime surface
   then:
-    - capability checks replace library-name assumptions while the shared plugin and record model remain intact
+    - the application gains tiered behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency
   covers:
-    - jido_memory.provider_migration.memory_os_integration
+    - jido_memory.provider_migration.tiered_provider_in_core
     - jido_memory.provider_migration.incremental_compatibility
+- id: jido_memory.provider_migration.standalone_memory_os_usage
+  given:
+    - an application that wants the standalone MemoryOS control plane and native workflows
+  when:
+    - the application adopts jido_memory_os directly
+  then:
+    - it continues to use MemoryOS through its native facade and plugin without forcing jido_memory to depend on that library for the common provider story
+  covers:
+    - jido_memory.provider_migration.standalone_memory_os_boundary
 ```
 
 ## Verification
@@ -68,6 +81,7 @@ surface:
   target: docs/rfcs/0001-canonical-memory-provider-architecture.md
   covers:
     - jido_memory.provider_migration.basic_provider_default
-    - jido_memory.provider_migration.memory_os_integration
+    - jido_memory.provider_migration.tiered_provider_in_core
+    - jido_memory.provider_migration.standalone_memory_os_boundary
     - jido_memory.provider_migration.incremental_compatibility
 ```

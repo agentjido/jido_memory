@@ -4,13 +4,13 @@ This subject defines the draft core contract that all pluggable memory providers
 
 ## Intent
 
-Make the minimum implementable provider surface explicit before capability-specific and provider-specific work lands.
+Make the minimum implementable provider surface explicit before built-in tiered-memory work and any optional external providers land.
 
 ```spec-meta
 id: jido_memory.provider_core
 kind: architecture
 status: draft
-summary: Draft core provider contract for configuration-driven pluggable memory providers in jido_memory.
+summary: Draft core provider contract for configuration-driven pluggable memory providers in jido_memory, including built-in provider choices.
 surface:
   - docs/rfcs/0001-canonical-memory-provider-architecture.md
   - lib/jido_memory.ex
@@ -30,7 +30,11 @@ surface:
   priority: must
   stability: evolving
 - id: jido_memory.provider_core.provider_bundle_selection
-  statement: Applications shall select memory implementations as provider bundles identified by module plus opts rather than by wiring low-level implementation details directly into agent code.
+  statement: Applications shall select memory implementations as provider bundles exposed through jido_memory, whether those bundles point at built-in providers or explicit external modules, rather than wiring low-level implementation details directly into agent code.
+  priority: must
+  stability: evolving
+- id: jido_memory.provider_core.built_in_provider_catalog
+  statement: jido_memory shall expose a stable built-in provider catalog for the common memory strategies it owns, so users can select those providers without importing additional libraries for the standard Jido memory path.
   priority: must
   stability: evolving
 ```
@@ -40,7 +44,7 @@ surface:
 ```spec-scenarios
 - id: jido_memory.provider_core.basic_provider_bootstrap
   given:
-    - a default basic provider configuration backed by the current runtime and store path
+    - a default Basic provider configuration backed by the current runtime and store path
   when:
     - the provider is initialized through the canonical contract
   then:
@@ -48,13 +52,25 @@ surface:
   covers:
     - jido_memory.provider_core.required_behaviour
     - jido_memory.provider_core.bootstrap_boundary
-- id: jido_memory.provider_core.advanced_provider_bootstrap
+    - jido_memory.provider_core.built_in_provider_catalog
+- id: jido_memory.provider_core.tiered_provider_bootstrap
   given:
-    - an advanced provider that needs its own supervised components
+    - a built-in Tiered provider configuration with short, mid, and long memory concerns
   when:
-    - the canonical facade resolves and starts that provider
+    - the provider is initialized through the canonical contract
   then:
-    - child specs and provider metadata enter through provider callbacks rather than plugin-specific special cases
+    - the provider reports its tiered capability metadata and any startup requirements through the same core callback surface
+  covers:
+    - jido_memory.provider_core.required_behaviour
+    - jido_memory.provider_core.bootstrap_boundary
+    - jido_memory.provider_core.built_in_provider_catalog
+- id: jido_memory.provider_core.external_provider_bootstrap
+  given:
+    - an optional external provider that needs its own supervised components
+  when:
+    - the canonical facade resolves and initializes that provider
+  then:
+    - provider metadata and child specs enter through provider callbacks rather than plugin-specific special cases
   covers:
     - jido_memory.provider_core.bootstrap_boundary
     - jido_memory.provider_core.provider_bundle_selection
@@ -69,4 +85,5 @@ surface:
     - jido_memory.provider_core.required_behaviour
     - jido_memory.provider_core.bootstrap_boundary
     - jido_memory.provider_core.provider_bundle_selection
+    - jido_memory.provider_core.built_in_provider_catalog
 ```

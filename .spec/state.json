@@ -40,10 +40,18 @@
       },
       {
         "file": ".spec/specs/provider_architecture.spec.md",
+        "id": "jido_memory.provider_architecture.built_in_provider_choices",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The proposal shall make jido_memory the package that ships the standard provider choices needed for unified memory context management in Jido, instead of requiring a second library for the common advanced path.",
+        "subject_id": "jido_memory.provider_architecture"
+      },
+      {
+        "file": ".spec/specs/provider_architecture.spec.md",
         "id": "jido_memory.provider_architecture.contract_owner",
         "priority": "must",
         "stability": "evolving",
-        "statement": "The canonical provider architecture proposal shall place the shared provider contract in jido_memory rather than in an implementation-specific advanced provider.",
+        "statement": "The canonical provider architecture proposal shall place the shared provider contract in jido_memory rather than in an implementation-specific advanced library.",
         "subject_id": "jido_memory.provider_architecture"
       },
       {
@@ -59,7 +67,7 @@
         "id": "jido_memory.provider_architecture.provider_roles",
         "priority": "must",
         "stability": "evolving",
-        "statement": "The proposal shall treat the current runtime and store stack as the basic provider path and position jido_memory_os as an advanced provider implementation of the shared contract.",
+        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in advanced path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
         "subject_id": "jido_memory.provider_architecture"
       },
       {
@@ -96,10 +104,18 @@
       },
       {
         "file": ".spec/specs/provider_core.spec.md",
+        "id": "jido_memory.provider_core.built_in_provider_catalog",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "jido_memory shall expose a stable built-in provider catalog for the common memory strategies it owns, so users can select those providers without importing additional libraries for the standard Jido memory path.",
+        "subject_id": "jido_memory.provider_core"
+      },
+      {
+        "file": ".spec/specs/provider_core.spec.md",
         "id": "jido_memory.provider_core.provider_bundle_selection",
         "priority": "must",
         "stability": "evolving",
-        "statement": "Applications shall select memory implementations as provider bundles identified by module plus opts rather than by wiring low-level implementation details directly into agent code.",
+        "statement": "Applications shall select memory implementations as provider bundles exposed through jido_memory, whether those bundles point at built-in providers or explicit external modules, rather than wiring low-level implementation details directly into agent code.",
         "subject_id": "jido_memory.provider_core"
       },
       {
@@ -109,6 +125,14 @@
         "stability": "evolving",
         "statement": "The canonical provider layer shall define a required core behaviour that covers configuration validation, child spec declaration, initialization, capability reporting, and the base remember, get, retrieve, forget, prune, and info operations.",
         "subject_id": "jido_memory.provider_core"
+      },
+      {
+        "file": ".spec/specs/provider_facade.spec.md",
+        "id": "jido_memory.provider_facade.built_in_provider_selection",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common plugin and runtime configuration shall allow library users to select built-in provider choices shipped by jido_memory without changing agent memory calls or depending on a second library for the standard advanced path.",
+        "subject_id": "jido_memory.provider_facade"
       },
       {
         "file": ".spec/specs/provider_facade.spec.md",
@@ -123,7 +147,7 @@
         "id": "jido_memory.provider_facade.provider_configurable_plugin",
         "priority": "must",
         "stability": "evolving",
-        "statement": "Jido.Memory.Plugin shall be provider-configurable so the same agent-facing plugin and action API can target different memory implementations.",
+        "statement": "Jido.Memory.Plugin shall be the unified memory-context entrypoint for Jido agents and shall be provider-configurable so the same agent-facing plugin and action API can target different memory implementations.",
         "subject_id": "jido_memory.provider_facade"
       },
       {
@@ -152,10 +176,18 @@
       },
       {
         "file": ".spec/specs/provider_migration.spec.md",
-        "id": "jido_memory.provider_migration.memory_os_integration",
+        "id": "jido_memory.provider_migration.standalone_memory_os_boundary",
         "priority": "must",
         "stability": "evolving",
-        "statement": "jido_memory_os shall be integrated as an advanced provider implementation that satisfies the canonical provider contract plus the applicable optional capabilities.",
+        "statement": "jido_memory_os shall remain a standalone advanced library with its native facade and plugin rather than becoming a required dependency of jido_memory for standard memory context management.",
+        "subject_id": "jido_memory.provider_migration"
+      },
+      {
+        "file": ".spec/specs/provider_migration.spec.md",
+        "id": "jido_memory.provider_migration.tiered_provider_in_core",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common advanced memory path for Jido shall be implemented as a built-in Tiered provider inside jido_memory rather than requiring jido_memory_os as the standard provider choice.",
         "subject_id": "jido_memory.provider_migration"
       },
       {
@@ -247,16 +279,17 @@
       },
       {
         "covers": [
+          "jido_memory.provider_capabilities.optional_behaviours",
           "jido_memory.provider_capabilities.structured_discovery"
         ],
         "file": ".spec/specs/provider_capabilities.spec.md",
         "given": [
-          "a provider that supports multiple advanced features"
+          "a built-in Tiered provider that supports lifecycle and tier-aware retrieval features"
         ],
-        "id": "jido_memory.provider_capabilities.tooling_inspection",
+        "id": "jido_memory.provider_capabilities.tiered_provider_inspection",
         "subject_id": "jido_memory.provider_capabilities",
         "then": [
-          "the supported lifecycle, governance, operations, and hook features are discoverable as structured metadata"
+          "the supported lifecycle and retrieval features are discoverable as structured metadata without changing the core provider contract"
         ],
         "when": [
           "tooling inspects the provider capability map"
@@ -264,30 +297,13 @@
       },
       {
         "covers": [
-          "jido_memory.provider_core.bootstrap_boundary",
-          "jido_memory.provider_core.provider_bundle_selection"
-        ],
-        "file": ".spec/specs/provider_core.spec.md",
-        "given": [
-          "an advanced provider that needs its own supervised components"
-        ],
-        "id": "jido_memory.provider_core.advanced_provider_bootstrap",
-        "subject_id": "jido_memory.provider_core",
-        "then": [
-          "child specs and provider metadata enter through provider callbacks rather than plugin-specific special cases"
-        ],
-        "when": [
-          "the canonical facade resolves and starts that provider"
-        ]
-      },
-      {
-        "covers": [
           "jido_memory.provider_core.required_behaviour",
-          "jido_memory.provider_core.bootstrap_boundary"
+          "jido_memory.provider_core.bootstrap_boundary",
+          "jido_memory.provider_core.built_in_provider_catalog"
         ],
         "file": ".spec/specs/provider_core.spec.md",
         "given": [
-          "a default basic provider configuration backed by the current runtime and store path"
+          "a default Basic provider configuration backed by the current runtime and store path"
         ],
         "id": "jido_memory.provider_core.basic_provider_bootstrap",
         "subject_id": "jido_memory.provider_core",
@@ -300,21 +316,78 @@
       },
       {
         "covers": [
+          "jido_memory.provider_core.bootstrap_boundary",
+          "jido_memory.provider_core.provider_bundle_selection"
+        ],
+        "file": ".spec/specs/provider_core.spec.md",
+        "given": [
+          "an optional external provider that needs its own supervised components"
+        ],
+        "id": "jido_memory.provider_core.external_provider_bootstrap",
+        "subject_id": "jido_memory.provider_core",
+        "then": [
+          "provider metadata and child specs enter through provider callbacks rather than plugin-specific special cases"
+        ],
+        "when": [
+          "the canonical facade resolves and initializes that provider"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_core.required_behaviour",
+          "jido_memory.provider_core.bootstrap_boundary",
+          "jido_memory.provider_core.built_in_provider_catalog"
+        ],
+        "file": ".spec/specs/provider_core.spec.md",
+        "given": [
+          "a built-in Tiered provider configuration with short, mid, and long memory concerns"
+        ],
+        "id": "jido_memory.provider_core.tiered_provider_bootstrap",
+        "subject_id": "jido_memory.provider_core",
+        "then": [
+          "the provider reports its tiered capability metadata and any startup requirements through the same core callback surface"
+        ],
+        "when": [
+          "the provider is initialized through the canonical contract"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.provider_facade.provider_configurable_plugin",
           "jido_memory.provider_facade.canonical_dispatch_boundary",
-          "jido_memory.provider_facade.shared_record_query_contract"
+          "jido_memory.provider_facade.shared_record_query_contract",
+          "jido_memory.provider_facade.built_in_provider_selection"
         ],
         "file": ".spec/specs/provider_facade.spec.md",
         "given": [
-          "a plugin configuration that selects an advanced provider bundle"
+          "a plugin configuration that selects the built-in Tiered provider"
         ],
-        "id": "jido_memory.provider_facade.advanced_provider_path",
+        "id": "jido_memory.provider_facade.built_in_tiered_provider_path",
         "subject_id": "jido_memory.provider_facade",
         "then": [
-          "the agent-facing API remains stable while provider-specific behavior stays behind the canonical facade and shared record and query contracts"
+          "the agent-facing API remains stable while tiered behavior stays behind the canonical facade and shared record and query contracts"
         ],
         "when": [
           "agent memory actions are executed"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_facade.provider_configurable_plugin",
+          "jido_memory.provider_facade.canonical_dispatch_boundary",
+          "jido_memory.provider_facade.built_in_provider_selection"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "given": [
+          "a plugin configuration that does not explicitly select a provider"
+        ],
+        "id": "jido_memory.provider_facade.default_basic_provider_path",
+        "subject_id": "jido_memory.provider_facade",
+        "then": [
+          "the default Basic provider path preserves the current ETS-backed experience behind the canonical facade"
+        ],
+        "when": [
+          "the plugin is mounted for an agent"
         ]
       },
       {
@@ -324,33 +397,33 @@
         ],
         "file": ".spec/specs/provider_facade.spec.md",
         "given": [
-          "a plugin configuration that does not explicitly select a provider"
+          "a plugin configuration that selects an explicit external provider bundle"
         ],
-        "id": "jido_memory.provider_facade.default_basic_provider_path",
+        "id": "jido_memory.provider_facade.external_provider_path",
         "subject_id": "jido_memory.provider_facade",
         "then": [
-          "the default basic provider path preserves the current ETS-backed experience behind the canonical facade"
+          "the same plugin and runtime surface dispatch through the canonical facade without introducing provider-specific call sites into agent code"
         ],
         "when": [
-          "the plugin is mounted for an agent"
+          "agent memory actions are executed"
         ]
       },
       {
         "covers": [
-          "jido_memory.provider_migration.memory_os_integration",
+          "jido_memory.provider_migration.tiered_provider_in_core",
           "jido_memory.provider_migration.incremental_compatibility"
         ],
         "file": ".spec/specs/provider_migration.spec.md",
         "given": [
-          "an application that later adopts jido_memory_os as an advanced provider"
+          "an application that later adopts the built-in Tiered provider"
         ],
-        "id": "jido_memory.provider_migration.capability_first_adoption",
+        "id": "jido_memory.provider_migration.built_in_tiered_adoption",
         "subject_id": "jido_memory.provider_migration",
         "then": [
-          "capability checks replace library-name assumptions while the shared plugin and record model remain intact"
+          "the application gains tiered behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency"
         ],
         "when": [
-          "the application enables advanced memory features"
+          "the application enables tiered memory through the shared plugin and runtime surface"
         ]
       },
       {
@@ -365,10 +438,27 @@
         "id": "jido_memory.provider_migration.existing_ets_flow",
         "subject_id": "jido_memory.provider_migration",
         "then": [
-          "the application continues to work through the basic provider without requiring provider-specific migration"
+          "the application continues to work through the Basic provider without requiring provider-specific migration"
         ],
         "when": [
           "the provider architecture lands"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_migration.standalone_memory_os_boundary"
+        ],
+        "file": ".spec/specs/provider_migration.spec.md",
+        "given": [
+          "an application that wants the standalone MemoryOS control plane and native workflows"
+        ],
+        "id": "jido_memory.provider_migration.standalone_memory_os_usage",
+        "subject_id": "jido_memory.provider_migration",
+        "then": [
+          "it continues to use MemoryOS through its native facade and plugin without forcing jido_memory to depend on that library for the common provider story"
+        ],
+        "when": [
+          "the application adopts jido_memory_os directly"
         ]
       }
     ],
@@ -408,7 +498,7 @@
           "id": "jido_memory.provider_architecture",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft provider architecture for making jido_memory the canonical contract layer and allowing pluggable memory implementations such as a basic provider and jido_memory_os.",
+          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic and Tiered, while leaving jido_memory_os as a standalone advanced library.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -446,7 +536,7 @@
           "id": "jido_memory.provider_core",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft core provider contract for configuration-driven pluggable memory providers in jido_memory.",
+          "summary": "Draft core provider contract for configuration-driven pluggable memory providers in jido_memory, including built-in provider choices.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -487,7 +577,7 @@
           "id": "jido_memory.provider_migration",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft migration path for introducing the provider model while preserving current jido_memory behavior and integrating jido_memory_os later.",
+          "summary": "Draft migration path for introducing the provider model, preserving current jido_memory behavior, and adding a built-in Tiered provider while leaving jido_memory_os standalone.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -561,6 +651,7 @@
         "covers": [
           "jido_memory.provider_architecture.contract_owner",
           "jido_memory.provider_architecture.core_plus_capabilities",
+          "jido_memory.provider_architecture.built_in_provider_choices",
           "jido_memory.provider_architecture.provider_roles"
         ],
         "file": ".spec/specs/provider_architecture.spec.md",
@@ -583,7 +674,8 @@
         "covers": [
           "jido_memory.provider_core.required_behaviour",
           "jido_memory.provider_core.bootstrap_boundary",
-          "jido_memory.provider_core.provider_bundle_selection"
+          "jido_memory.provider_core.provider_bundle_selection",
+          "jido_memory.provider_core.built_in_provider_catalog"
         ],
         "file": ".spec/specs/provider_core.spec.md",
         "kind": "source_file",
@@ -594,7 +686,8 @@
         "covers": [
           "jido_memory.provider_facade.provider_configurable_plugin",
           "jido_memory.provider_facade.canonical_dispatch_boundary",
-          "jido_memory.provider_facade.shared_record_query_contract"
+          "jido_memory.provider_facade.shared_record_query_contract",
+          "jido_memory.provider_facade.built_in_provider_selection"
         ],
         "file": ".spec/specs/provider_facade.spec.md",
         "kind": "source_file",
@@ -604,7 +697,8 @@
       {
         "covers": [
           "jido_memory.provider_migration.basic_provider_default",
-          "jido_memory.provider_migration.memory_os_integration",
+          "jido_memory.provider_migration.tiered_provider_in_core",
+          "jido_memory.provider_migration.standalone_memory_os_boundary",
           "jido_memory.provider_migration.incremental_compatibility"
         ],
         "file": ".spec/specs/provider_migration.spec.md",
@@ -656,8 +750,8 @@
     "decisions": 0,
     "exceptions": 0,
     "findings": 0,
-    "requirements": 23,
-    "scenarios": 10,
+    "requirements": 27,
+    "scenarios": 13,
     "subjects": 7,
     "verifications": 12
   },
@@ -713,7 +807,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -724,7 +818,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -735,7 +829,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory_test.exs",
         "verification_index": 1
@@ -746,7 +840,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
@@ -757,7 +851,7 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
@@ -768,10 +862,21 @@
         "kind": "command",
         "meets_minimum": true,
         "required_strength": "claimed",
-        "strength": "claimed",
+        "strength": "executed",
         "subject_id": "jido_memory.package",
         "target": "mix test test/jido_memory/plugin_test.exs test/jido_memory/actions_test.exs",
         "verification_index": 2
+      },
+      {
+        "cover_id": "jido_memory.provider_architecture.built_in_provider_choices",
+        "file": ".spec/specs/provider_architecture.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_architecture",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
       },
       {
         "cover_id": "jido_memory.provider_architecture.contract_owner",
@@ -851,6 +956,17 @@
         "verification_index": 0
       },
       {
+        "cover_id": "jido_memory.provider_core.built_in_provider_catalog",
+        "file": ".spec/specs/provider_core.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_core",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
         "cover_id": "jido_memory.provider_core.provider_bundle_selection",
         "file": ".spec/specs/provider_core.spec.md",
         "kind": "source_file",
@@ -869,6 +985,17 @@
         "required_strength": "claimed",
         "strength": "linked",
         "subject_id": "jido_memory.provider_core",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.built_in_provider_selection",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
         "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
         "verification_index": 0
       },
@@ -928,7 +1055,18 @@
         "verification_index": 0
       },
       {
-        "cover_id": "jido_memory.provider_migration.memory_os_integration",
+        "cover_id": "jido_memory.provider_migration.standalone_memory_os_boundary",
+        "file": ".spec/specs/provider_migration.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_migration",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_migration.tiered_provider_in_core",
         "file": ".spec/specs/provider_migration.spec.md",
         "kind": "source_file",
         "meets_minimum": true,
@@ -986,9 +1124,9 @@
     "cli_minimum_strength": null,
     "default_minimum_strength": "claimed",
     "strength_summary": {
-      "claimed": 6,
-      "executed": 0,
-      "linked": 23
+      "claimed": 0,
+      "executed": 6,
+      "linked": 27
     },
     "threshold_failures": 0
   },

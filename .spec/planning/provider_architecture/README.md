@@ -1,16 +1,21 @@
 # Canonical Memory Provider Architecture Plan
 
-This planning set tracks the rollout of the canonical memory provider system in `jido_memory` and the downstream MemoryOS provider adoption in `jido_memory_os`.
+This planning set tracks the rollout of the canonical memory provider system in `jido_memory` as the unified Jido memory package with built-in provider choices.
 
 ## Phases
 - `phase-01-provider-core-contract-and-basic-provider-backbone.md`
 - `phase-02-capability-negotiation-and-provider-aware-runtime-facade.md`
 - `phase-03-canonical-plugin-actions-and-compatibility-migration.md`
-- `phase-04-memory-os-provider-adoption-and-advanced-capability-bridge.md`
-- `phase-05-cross-repo-documentation-release-alignment-and-full-provider-validation.md`
+- `phase-04-native-tiered-provider-and-long-term-store.md`
+- `phase-05-unified-documentation-release-and-built-in-provider-validation.md`
+
+## Current Status
+- Phases 1 through 3 are implemented on the current branch.
+- Phases 4 and 5 are the revised remaining work after deciding that `jido_memory` should ship the standard advanced provider choice itself.
 
 ## Delivery Rules
 - `Jido.Memory.Runtime`, `recall/2`, `Jido.Memory.ETSPlugin`, and tuple-style public results stay compatible through the rollout.
-- `Jido.Memory.Plugin` is the common provider-aware plugin for core memory flows.
-- `Jido.MemoryOS.Plugin` remains the advanced plugin for MemoryOS-specific routes such as `pre_turn` and `post_turn`.
+- `Jido.Memory.Plugin` is the unified provider-aware plugin for core memory flows.
+- `jido_memory` ships the standard built-in provider choices for Jido memory context management.
+- `jido_memory_os` remains a standalone advanced library with its own native facade and plugin routes.
 - Every phase ends with explicit integration coverage.

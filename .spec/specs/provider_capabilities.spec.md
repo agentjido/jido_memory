@@ -4,7 +4,7 @@ This subject defines the draft capability model that sits on top of the required
 
 ## Intent
 
-Separate optional advanced behaviors from the minimum provider contract so basic and advanced providers can coexist cleanly.
+Separate optional advanced behaviors from the minimum provider contract so built-in and optional external providers can coexist cleanly.
 
 ```spec-meta
 id: jido_memory.provider_capabilities
@@ -48,14 +48,15 @@ surface:
   covers:
     - jido_memory.provider_capabilities.optional_behaviours
     - jido_memory.provider_capabilities.typed_unsupported_error
-- id: jido_memory.provider_capabilities.tooling_inspection
+- id: jido_memory.provider_capabilities.tiered_provider_inspection
   given:
-    - a provider that supports multiple advanced features
+    - a built-in Tiered provider that supports lifecycle and tier-aware retrieval features
   when:
     - tooling inspects the provider capability map
   then:
-    - the supported lifecycle, governance, operations, and hook features are discoverable as structured metadata
+    - the supported lifecycle and retrieval features are discoverable as structured metadata without changing the core provider contract
   covers:
+    - jido_memory.provider_capabilities.optional_behaviours
     - jido_memory.provider_capabilities.structured_discovery
 ```
 
