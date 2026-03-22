@@ -8,7 +8,7 @@ Version 1 provides:
 - Structured records (`Jido.Memory.Record`)
 - Structured query filters (`Jido.Memory.Query`)
 - A canonical provider contract (`Jido.Memory.Provider`)
-- Built-in providers (`Jido.Memory.Provider.Basic`, `Jido.Memory.Provider.Tiered`, and `Jido.Memory.Provider.Mirix`)
+- Built-in providers (`Jido.Memory.Provider.Basic`, `Jido.Memory.Provider.Tiered`, `Jido.Memory.Provider.Mem0`, and `Jido.Memory.Provider.Mirix`)
 - A long-term persistence behavior (`Jido.Memory.LongTermStore`)
 - A provider-aware plugin (`Jido.Memory.Plugin`)
 - A compatibility Jido plugin (`Jido.Memory.ETSPlugin`)
@@ -22,6 +22,7 @@ Version 1 provides:
 - `Jido.Memory.Runtime` stays the public API.
 - `Jido.Memory.Provider.Basic` is the default provider for store-backed memory.
 - `Jido.Memory.Provider.Tiered` is the built-in short/mid/long provider for standard advanced memory flows.
+- `Jido.Memory.Provider.Mem0` is the built-in extraction-and-reconciliation provider for scoped long-term memory, provider-direct maintenance workflows, and optional graph-augmented explanations.
 - `Jido.Memory.Provider.Mirix` is the built-in routed memory-type provider for typed retrieval, provider-direct ingestion, and protected vault workflows.
 - `Jido.Memory.Plugin` is the common provider-aware plugin for core memory flows.
 - `Jido.Memory.ETSPlugin` remains the compatibility wrapper for existing ETS-backed agents.
@@ -34,12 +35,13 @@ That lets the same core plugin and runtime calls target any built-in provider wi
 | --- | --- | --- |
 | `:basic` | You want the smallest possible setup with one backing store | Default provider, keeps existing ETS-style usage simple |
 | `:tiered` | You want short/mid/long memory and built-in promotion | Ships in `jido_memory` and uses `Jido.Memory.LongTermStore` for long-term persistence |
+| `:mem0` | You want scoped long-term memory with extraction, reconciliation, and provider-direct maintenance workflows | Ships in `jido_memory`; keeps common runtime/plugin flows for canonical writes and retrieval while leaving ingest, feedback, history, and export explicit |
 | `:mirix` | You want routed memory types, active retrieval traces, and provider-direct ingestion or vault workflows | Ships in `jido_memory`; keeps common runtime/plugin flows for retrieval while leaving ingest and protected memory explicit |
 
 ## Provider Selection
 
 Provider selection is explicit and config-driven. Agents do not auto-switch
-between `:basic`, `:tiered`, `:mirix`, or an external provider per query.
+between `:basic`, `:tiered`, `:mem0`, `:mirix`, or an external provider per query.
 
 Use the shared plugin or runtime with a chosen provider, and let that provider
 handle any internal routing it supports.
@@ -53,10 +55,11 @@ The supported adoption story is incremental:
 
 1. stay on built-in `:basic` if you only need the original store-backed path
 2. move to built-in `:tiered` when you want explainable short/mid/long memory inside `jido_memory`
-3. move to built-in `:mirix` when you want typed routed retrieval plus explicit provider-direct ingestion and protected memory
-4. switch the Tiered long-term backend from ETS to Postgres when long-tier durability matters
-5. adopt an external provider only when the built-in paths no longer fit your architecture
-6. adopt `jido_memory_os` when you need manager-driven workflows that are intentionally outside the built-in package scope
+3. move to built-in `:mem0` when you want scoped long-term memory with extraction, reconciliation, feedback, history, export, and optional graph-augmented explanations
+4. move to built-in `:mirix` when you want typed routed retrieval plus explicit provider-direct ingestion and protected memory
+5. switch the Tiered long-term backend from ETS to Postgres when long-tier durability matters
+6. adopt an external provider only when the built-in paths no longer fit your architecture
+7. adopt `jido_memory_os` when you need manager-driven workflows that are intentionally outside the built-in package scope
 
 The release-gated support matrix is documented in
 [Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
@@ -156,6 +159,34 @@ defmodule MyApp.Agent do
     ]
 end
 ```
+
+### Mem0 Provider Example
+
+Use `:mem0` when you want the common plugin/runtime flows for canonical memory
+operations plus provider-direct extraction, reconciliation, feedback, history,
+and export workflows:
+
+```elixir
+defmodule MyApp.Agent do
+  use Jido.Agent,
+    name: "my_agent",
+    default_plugins: %{__memory__: false},
+    plugins: [
+      {Jido.Memory.Plugin,
+       %{
+         provider: :mem0,
+         provider_opts: [
+           store: {Jido.Memory.Store.ETS, [table: :my_agent_mem0_memory]},
+           namespace: "agent:my_agent_mem0",
+           scoped_identity: [allow: [:user_id, :agent_id, :app_id, :run_id]],
+           retrieval: [mode: :balanced, graph_augmentation: [enabled: true]]
+         ]
+       }}
+    ]
+end
+```
+
+See [/Users/Pascal/code/agentjido/jido_memory/examples/mem0_provider_agent.exs](/Users/Pascal/code/agentjido/jido_memory/examples/mem0_provider_agent.exs) for a runnable example that combines canonical retrieval with provider-direct `Mem0.ingest/3`, `feedback/4`, `history/2`, and `export/2`.
 
 ### Compatibility ETS Plugin
 

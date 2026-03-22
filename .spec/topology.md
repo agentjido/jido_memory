@@ -135,6 +135,7 @@ The release-gated matrix currently includes:
 - built-in `:basic`
 - built-in `:tiered` with ETS long-term storage
 - built-in `:tiered` with Postgres long-term storage
+- built-in `:mem0`
 - built-in `:mirix`
 - the external-provider reference path
 

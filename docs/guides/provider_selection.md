@@ -21,6 +21,7 @@ provider.
 After selection, the chosen provider may still route internally:
 
 - `:tiered` can route across short, mid, and long memory surfaces
+- `:mem0` can route extraction, reconciliation, and scoped retrieval behavior internally
 - `:mirix` can route across its own memory types
 
 That internal routing happens inside the selected provider, not at the shared
@@ -42,8 +43,8 @@ path.
 
 You can select a provider with:
 
-- built-in aliases: `:basic`, `:tiered`, `:mirix`
-- direct modules such as `Jido.Memory.Provider.Mirix`
+- built-in aliases: `:basic`, `:tiered`, `:mem0`, `:mirix`
+- direct modules such as `Jido.Memory.Provider.Mem0` or `Jido.Memory.Provider.Mirix`
 - `{module, opts}` tuples
 - external aliases supplied through `provider_aliases`
 
@@ -55,6 +56,15 @@ provider: :basic
 
 ```elixir
 provider: Jido.Memory.Provider.Tiered
+```
+
+```elixir
+provider:
+  {Jido.Memory.Provider.Mem0,
+   [
+     store: {Jido.Memory.Store.ETS, [table: :agent_mem0_memory]},
+     namespace: "agent:mem0"
+   ]}
 ```
 
 ```elixir
@@ -132,6 +142,7 @@ Built-in aliases are always available:
 
 - `:basic`
 - `:tiered`
+- `:mem0`
 - `:mirix`
 
 External aliases are helper-only and local to the call or plugin config that
@@ -156,6 +167,7 @@ What can change is the behavior behind that surface:
 - available capabilities
 - explainability richness
 - lifecycle support
+- scoped identity and provider-direct maintenance workflows
 - provider-direct advanced APIs such as MIRIX ingest or vault workflows
 
 ## Related Guides

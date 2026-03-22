@@ -38,15 +38,15 @@ Back to index: [README](./README.md)
       [x] 5.2.1.2 Subtask - Update `.spec/topology.md` to add Mem0 to the provider topology if it becomes part of the implemented built-in matrix.
       [x] 5.2.1.3 Subtask - Add benchmark fixture and scenario hooks that align with the separate provider benchmarking plan without implementing benchmark infrastructure inside this phase.
 
-  [ ] 5.3 Section - Release Matrix and Acceptance Hardening
+  [x] 5.3 Section - Release Matrix and Acceptance Hardening
     Decide how Mem0 enters the support matrix and lock the final compatibility expectations.
 
-    [ ] 5.3.1 Task - Extend the release-gated provider acceptance matrix
+    [x] 5.3.1 Task - Extend the release-gated provider acceptance matrix
       Treat Mem0 as a release-aware provider path only once acceptance coverage is stable.
 
-      [ ] 5.3.1.1 Subtask - Add Mem0 to the release-gated acceptance matrix alongside the existing provider paths when it proves stable enough.
-      [ ] 5.3.1.2 Subtask - Keep `:basic` as the default provider and verify existing callers remain unchanged.
-      [ ] 5.3.1.3 Subtask - Keep benchmark work and release gating decoupled enough that unstable performance instrumentation does not block normal development.
+      [x] 5.3.1.1 Subtask - Add Mem0 to the release-gated acceptance matrix alongside the existing provider paths when it proves stable enough.
+      [x] 5.3.1.2 Subtask - Keep `:basic` as the default provider and verify existing callers remain unchanged.
+      [x] 5.3.1.3 Subtask - Keep benchmark work and release gating decoupled enough that unstable performance instrumentation does not block normal development.
 
   [ ] 5.4 Section - Phase 5 Integration Tests
     Validate the completed Mem0 provider path end to end from the consumer point of view.

@@ -9,6 +9,7 @@ runtime, plugin, and actions plus a small set of built-in provider choices.
 | --- | --- | --- | --- |
 | `:basic` | Lightweight agent memory with one backing store | ETS-backed store via `Jido.Memory.Store` | Core CRUD and query only |
 | `:tiered` | Standard short/mid/long memory workflows inside `jido_memory` | ETS-backed short, mid, and long-term layers | Tier-aware retrieval and lifecycle consolidation |
+| `:mem0` | Scoped long-term memory with extraction-and-reconciliation maintenance | ETS-backed store with scoped identity and reconciliation metadata | Explainable scoped retrieval, provider-direct ingest, feedback, history, export, and summary maintenance |
 | `:mirix` | Routed typed memory with explicit ingestion and protected-memory APIs | ETS-backed stores for core, episodic, semantic, procedural, resource, and vault memory | Active retrieval traces through `Runtime.explain_retrieval/3`, provider-direct ingest, provider-direct vault workflows |
 
 ## Selection Notes
@@ -126,6 +127,71 @@ agent = %{id: "agent-1"}
     agent,
     %{kind: :credential, text: "secret-token"},
     provider: provider
+  )
+```
+
+## Mem0 Provider
+
+Use `:mem0` when you want a built-in long-term memory path that extracts and
+reconciles scoped facts while keeping canonical runtime and plugin operations
+stable.
+
+```elixir
+{Jido.Memory.Plugin,
+ %{
+   provider: :mem0,
+   provider_opts: [
+     store: {Jido.Memory.Store.ETS, [table: :agent_mem0_memory]},
+     namespace: "agent:mem0",
+     scoped_identity: [allow: [:user_id, :agent_id, :app_id, :run_id]],
+     retrieval: [mode: :balanced, graph_augmentation: [enabled: true]]
+   ]
+ }}
+```
+
+The common surface remains intentionally selective:
+
+- canonical writes still use `Jido.Memory.Runtime.remember/3`
+- scoped retrieval explanations stay on `Jido.Memory.Runtime.explain_retrieval/3`
+- extraction and reconciliation stay provider-direct through `Jido.Memory.Provider.Mem0.ingest/3`
+- feedback, history, export, and summary maintenance stay provider-direct through the Mem0 provider module
+
+```elixir
+provider =
+  {:mem0,
+   [
+     store: {Jido.Memory.Store.ETS, [table: :agent_mem0_memory]},
+     namespace: "agent:mem0",
+     scoped_identity: [allow: [:user_id, :agent_id, :app_id, :run_id]]
+   ]}
+
+agent = %{id: "agent-1", app_id: "example-app"}
+
+{:ok, ingest_result} =
+  Jido.Memory.Provider.Mem0.ingest(
+    agent,
+    %{entries: [%{role: :user, content: "I live in Denver."}]},
+    provider: provider,
+    user_id: "user-1"
+  )
+
+{:ok, explanation} =
+  Jido.Memory.Runtime.explain_retrieval(
+    agent,
+    %{
+      text_contains: "Denver",
+      query_extensions: %{mem0: %{scope: %{user_id: "user-1"}, retrieval_mode: :fact_key_first}}
+    },
+    provider: provider
+  )
+
+{:ok, feedback} =
+  Jido.Memory.Provider.Mem0.feedback(
+    agent,
+    hd(ingest_result.created_ids),
+    %{status: :useful, note: "keep this memory"},
+    provider: provider,
+    user_id: "user-1"
   )
 ```
 

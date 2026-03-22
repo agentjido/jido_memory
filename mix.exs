@@ -50,6 +50,10 @@ defmodule JidoMemory.MixProject do
       "test.acceptance": [
         "cmd env MIX_ENV=test mix test test/jido_memory/follow_on_acceptance_fixture_test.exs",
         "cmd env MIX_ENV=test mix test test/jido_memory/phase_03_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mem0_phase_01_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mem0_phase_02_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mem0_phase_03_integration_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/mem0_phase_04_integration_test.exs",
         "cmd env MIX_ENV=test mix test test/jido_memory/mirix_phase_03_integration_test.exs",
         "cmd env MIX_ENV=test mix test test/jido_memory/mirix_phase_04_integration_test.exs",
         "cmd env MIX_ENV=test mix test test/jido_memory/phase_05_integration_test.exs"
