@@ -139,28 +139,15 @@ defmodule Jido.Memory.PluginSupport do
     provider_input = map_get(config_map, :provider)
     provider_opts = map_get(config_map, :provider_opts, [])
 
-    with true <- is_nil(provider_input) or is_list(provider_opts) do
-      provider_ref =
-        cond do
-          is_nil(provider_input) ->
-            {Basic, legacy_provider_opts(config_map)}
-
-          match?({module, opts} when is_atom(module) and is_list(opts), provider_input) ->
-            provider_input
-
-          is_atom(provider_input) ->
-            {provider_input, provider_opts}
-
-          true ->
-            provider_input
-        end
+    if is_nil(provider_input) or is_list(provider_opts) do
+      provider_ref = provider_ref_input(provider_input, provider_opts, config_map)
 
       with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref),
            {:ok, _provider_meta} <- provider_ref.module.init(provider_ref.opts) do
         {:ok, provider_ref}
       end
     else
-      false -> {:error, :invalid_provider_opts}
+      {:error, :invalid_provider_opts}
     end
   end
 
@@ -232,30 +219,12 @@ defmodule Jido.Memory.PluginSupport do
   defp resolve_namespace(agent, config) do
     explicit = map_get(config, :namespace)
 
-    if is_binary(explicit) and String.trim(explicit) != "" do
-      {:ok, String.trim(explicit)}
-    else
-      mode = map_get(config, :namespace_mode, :per_agent)
+    case trim_present(explicit) do
+      {:ok, namespace} ->
+        {:ok, namespace}
 
-      case mode do
-        :shared ->
-          shared = map_get(config, :shared_namespace)
-
-          shared =
-            if is_binary(shared) and String.trim(shared) != "" do
-              String.trim(shared)
-            else
-              "default"
-            end
-
-          {:ok, "shared:" <> shared}
-
-        _ ->
-          case map_get(agent, :id) do
-            id when is_binary(id) and id != "" -> {:ok, "agent:" <> id}
-            _ -> {:error, :namespace_required}
-          end
-      end
+      :error ->
+        resolve_namespace_from_mode(agent, map_get(config, :namespace_mode, :per_agent), config)
     end
   end
 
@@ -358,7 +327,7 @@ defmodule Jido.Memory.PluginSupport do
     case map_get(rule, :tags) do
       tags when is_list(tags) ->
         tags = Enum.map(tags, &to_string/1)
-        Map.put(base, :tags, Enum.uniq((base.tags || []) ++ tags))
+        Map.put(base, :tags, Enum.uniq(base.tags ++ tags))
 
       _ ->
         base
@@ -452,6 +421,46 @@ defmodule Jido.Memory.PluginSupport do
   end
 
   defp normalize_optional_string(_value), do: nil
+
+  defp provider_ref_input(nil, _provider_opts, config_map), do: {Basic, legacy_provider_opts(config_map)}
+
+  defp provider_ref_input(provider_input, _provider_opts, _config_map)
+       when is_tuple(provider_input),
+       do: provider_input
+
+  defp provider_ref_input(provider_input, provider_opts, _config_map) when is_atom(provider_input),
+    do: {provider_input, provider_opts}
+
+  defp provider_ref_input(provider_input, _provider_opts, _config_map), do: provider_input
+
+  defp resolve_namespace_from_mode(_agent, :shared, config) do
+    shared_namespace =
+      case trim_present(map_get(config, :shared_namespace)) do
+        {:ok, namespace} -> namespace
+        :error -> "default"
+      end
+
+    {:ok, "shared:" <> shared_namespace}
+  end
+
+  defp resolve_namespace_from_mode(agent, _mode, _config) do
+    case map_get(agent, :id) do
+      id when is_binary(id) and id != "" -> {:ok, "agent:" <> id}
+      _ -> {:error, :namespace_required}
+    end
+  end
+
+  defp trim_present(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    if trimmed == "" do
+      :error
+    else
+      {:ok, trimmed}
+    end
+  end
+
+  defp trim_present(_value), do: :error
 
   defp maybe_enrich_provider_ref(%ProviderRef{module: Basic} = provider_ref, legacy_state) do
     %{provider_ref | opts: enrich_basic_opts(provider_ref.opts, legacy_state)}

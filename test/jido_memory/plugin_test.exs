@@ -160,8 +160,7 @@ defmodule Jido.Memory.PluginTest do
        [
          short_store: {ETS, [table: :"jido_memory_plugin_tiered_short_#{unique}"]},
          mid_store: {ETS, [table: :"jido_memory_plugin_tiered_mid_#{unique}"]},
-         long_term_store:
-           {LongTermETS, [store: {ETS, [table: :"jido_memory_plugin_tiered_long_#{unique}"]}]}
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_plugin_tiered_long_#{unique}"]}]}
        ]}
 
     assert {:ok, state} = Plugin.mount(%{id: "agent-tiered"}, %{provider: provider})

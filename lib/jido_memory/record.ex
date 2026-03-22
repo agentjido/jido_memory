@@ -21,12 +21,10 @@ defmodule Jido.Memory.Record do
               tags: Zoi.list(Zoi.string(), description: "Normalized tag list") |> Zoi.default([]),
               source: Zoi.string(description: "Event source") |> Zoi.optional(),
               observed_at: Zoi.integer(description: "Observation timestamp in milliseconds"),
-              expires_at:
-                Zoi.integer(description: "Expiration timestamp in milliseconds") |> Zoi.optional(),
+              expires_at: Zoi.integer(description: "Expiration timestamp in milliseconds") |> Zoi.optional(),
               embedding: Zoi.any(description: "Optional embedding payload") |> Zoi.optional(),
               metadata: Zoi.map(description: "Arbitrary metadata") |> Zoi.default(%{}),
-              version:
-                Zoi.integer(description: "Record schema version") |> Zoi.default(@default_version)
+              version: Zoi.integer(description: "Record schema version") |> Zoi.default(@default_version)
             },
             coerce: true
           )
@@ -157,11 +155,18 @@ defmodule Jido.Memory.Record do
   @doc "Normalizes a list of tags to unique strings."
   @spec normalize_tags(term()) :: {:ok, [String.t()]} | {:error, term()}
   def normalize_tags(tags) when is_list(tags) do
-    tags
-    |> Enum.reduce_while([], fn tag, acc ->
-      case normalize_tag(tag) do
+    normalize_unique(tags, &normalize_tag/1, & &1)
+  end
+
+  def normalize_tags(nil), do: {:ok, []}
+  def normalize_tags(other), do: {:error, {:invalid_tags, other}}
+
+  defp normalize_unique(values, normalizer, key_fun) do
+    values
+    |> Enum.reduce_while({[], MapSet.new()}, fn value, {acc, seen} ->
+      case normalizer.(value) do
         {:ok, normalized} ->
-          if normalized in acc, do: {:cont, acc}, else: {:cont, acc ++ [normalized]}
+          {:cont, maybe_track_unique(normalized, acc, seen, key_fun)}
 
         {:error, reason} ->
           {:halt, {:error, reason}}
@@ -169,12 +174,19 @@ defmodule Jido.Memory.Record do
     end)
     |> case do
       {:error, _} = error -> error
-      normalized -> {:ok, normalized}
+      {normalized, _seen} -> {:ok, normalized}
     end
   end
 
-  def normalize_tags(nil), do: {:ok, []}
-  def normalize_tags(other), do: {:error, {:invalid_tags, other}}
+  defp maybe_track_unique(normalized, acc, seen, key_fun) do
+    key = key_fun.(normalized)
+
+    if MapSet.member?(seen, key) do
+      {acc, seen}
+    else
+      {acc ++ [normalized], MapSet.put(seen, key)}
+    end
+  end
 
   @spec normalize_namespace(term()) :: {:ok, String.t()} | {:error, term()}
   defp normalize_namespace(value) when is_binary(value) do

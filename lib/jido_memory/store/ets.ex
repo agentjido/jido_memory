@@ -105,14 +105,9 @@ defmodule Jido.Memory.Store.ETS do
     results =
       initial_ids
       |> Enum.reduce([], fn id, acc ->
-        case :ets.lookup(records_table(opts), {query.namespace, id}) do
-          [{{_, _}, %Record{} = record}] ->
-            if record_matches?(record, query, kind_keys, text_filter),
-              do: [record | acc],
-              else: acc
-
-          [] ->
-            acc
+        case lookup_record(query.namespace, id, opts) do
+          {:ok, record} -> maybe_prepend_record(record, acc, query, kind_keys, text_filter)
+          :not_found -> acc
         end
       end)
       |> sort_records(query.order)
@@ -289,15 +284,26 @@ defmodule Jido.Memory.Store.ETS do
   defp text_matches?(_record, nil), do: true
 
   defp text_matches?(%Record{text: text, content: content}, filter) do
-    haystack =
-      cond do
-        is_binary(text) and text != "" -> text
-        true -> inspect(content)
-      end
+    haystack = if is_binary(text) and text != "", do: text, else: inspect(content)
 
     haystack
     |> String.downcase()
     |> String.contains?(filter)
+  end
+
+  defp lookup_record(namespace, id, opts) do
+    case :ets.lookup(records_table(opts), {namespace, id}) do
+      [{{_, _}, %Record{} = record}] -> {:ok, record}
+      [] -> :not_found
+    end
+  end
+
+  defp maybe_prepend_record(record, acc, query, kind_keys, text_filter) do
+    if record_matches?(record, query, kind_keys, text_filter) do
+      [record | acc]
+    else
+      acc
+    end
   end
 
   @spec sort_records([Record.t()], Query.order()) :: [Record.t()]

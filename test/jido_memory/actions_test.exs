@@ -83,8 +83,7 @@ defmodule Jido.Memory.ActionsTest do
        [
          short_store: {ETS, [table: :"jido_memory_actions_tiered_short_#{unique}"]},
          mid_store: {ETS, [table: :"jido_memory_actions_tiered_mid_#{unique}"]},
-         long_term_store:
-           {LongTermETS, [store: {ETS, [table: :"jido_memory_actions_tiered_long_#{unique}"]}]}
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_actions_tiered_long_#{unique}"]}]}
        ]}
 
     {:ok, provider_ref} = ProviderRef.normalize(provider)

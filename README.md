@@ -1,29 +1,38 @@
 # Jido.Memory
 
-`Jido.Memory` is a basic, data-driven memory system for Jido agents.
+`Jido.Memory` is the unified, provider-backed memory package for Jido agents.
 
 <!-- covers: jido_memory.package.structured_memory_contract jido_memory.package.default_ets_path jido_memory.package.plugin_and_actions jido_memory.package.auto_capture -->
 
-Version 1 uses ETS as the authoritative store and provides:
+Version 1 provides:
 - Structured records (`Jido.Memory.Record`)
 - Structured query filters (`Jido.Memory.Query`)
 - A canonical provider contract (`Jido.Memory.Provider`)
-- A default provider (`Jido.Memory.Provider.Basic`)
+- Built-in providers (`Jido.Memory.Provider.Basic` and `Jido.Memory.Provider.Tiered`)
+- A long-term persistence behavior (`Jido.Memory.LongTermStore`)
 - A provider-aware plugin (`Jido.Memory.Plugin`)
-- A Jido plugin (`Jido.Memory.ETSPlugin`)
+- A compatibility Jido plugin (`Jido.Memory.ETSPlugin`)
 - Explicit actions (`memory.remember`, `memory.retrieve`, `memory.recall`, `memory.forget`)
 - Auto-capture hooks for AI and non-LLM signal flows
 
 ## Canonical Providers
 
-`jido_memory` now separates the stable memory facade from the implementation behind it.
+`jido_memory` separates the stable memory facade from the implementation behind it.
 
 - `Jido.Memory.Runtime` stays the public API.
 - `Jido.Memory.Provider.Basic` is the default provider for store-backed memory.
+- `Jido.Memory.Provider.Tiered` is the built-in short/mid/long provider for standard advanced memory flows.
 - `Jido.Memory.Plugin` is the common provider-aware plugin for core memory flows.
 - `Jido.Memory.ETSPlugin` remains the compatibility wrapper for existing ETS-backed agents.
 
-That lets the same core plugin and runtime calls target `Basic` or a downstream provider such as `Jido.MemoryOS.Provider`.
+That lets the same core plugin and runtime calls target either built-in provider without changing agent code.
+
+## Built-In Provider Choices
+
+| Provider | Choose It When | Notes |
+| --- | --- | --- |
+| `:basic` | You want the smallest possible setup with one backing store | Default provider, keeps existing ETS-style usage simple |
+| `:tiered` | You want short/mid/long memory and built-in promotion | Ships in `jido_memory` and uses `Jido.Memory.LongTermStore` for long-term persistence |
 
 ## Installation
 
@@ -32,6 +41,7 @@ Add dependencies in `mix.exs`:
 ```elixir
 defp deps do
   [
+    {:jido_memory, "~> 0.1"},
     {:jido, "~> 2.1"},
     {:jido_action, "~> 2.1"},
     {:jido_ai, "~> 2.0"}
@@ -41,9 +51,9 @@ end
 
 ## Use As A Jido Plugin
 
-### Common Provider-Aware Plugin
+### Basic Provider Example
 
-Use `Jido.Memory.Plugin` when you want the same agent-facing core memory API to work across providers:
+Use `Jido.Memory.Plugin` when you want the common agent-facing memory API with a single store-backed provider:
 
 ```elixir
 defmodule MyApp.Agent do
@@ -53,9 +63,40 @@ defmodule MyApp.Agent do
     plugins: [
       {Jido.Memory.Plugin,
        %{
-         provider:
-           {Jido.Memory.Provider.Basic,
-            [store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]}}}
+         provider: :basic,
+         provider_opts: [
+           store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
+           namespace: "agent:my_agent"
+         ]
+       }}
+    ]
+end
+```
+
+### Tiered Provider Example
+
+The same plugin surface can switch to built-in tiered memory by changing only the provider config:
+
+```elixir
+defmodule MyApp.Agent do
+  use Jido.Agent,
+    name: "my_agent",
+    default_plugins: %{__memory__: false},
+    plugins: [
+      {Jido.Memory.Plugin,
+       %{
+         provider: :tiered,
+         provider_opts: [
+           short_store: {Jido.Memory.Store.ETS, [table: :my_agent_short_memory]},
+           mid_store: {Jido.Memory.Store.ETS, [table: :my_agent_mid_memory]},
+           long_term_store:
+             {Jido.Memory.LongTermStore.ETS,
+              [store: {Jido.Memory.Store.ETS, [table: :my_agent_long_memory]}}},
+           lifecycle: [
+             short_to_mid_threshold: 0.65,
+             mid_to_long_threshold: 0.85
+           ]
+         ]
        }}
     ]
 end
@@ -136,6 +177,8 @@ You can still write/read memory explicitly through actions or API calls.
 
 ## Explicit API
 
+### Basic Runtime Example
+
 ```elixir
 # Write
 {:ok, record} =
@@ -165,6 +208,36 @@ You can still write/read memory explicitly through actions or API calls.
   Jido.Memory.Runtime.forget(%{id: "agent-1"}, record.id, store: {Jido.Memory.Store.ETS, [table: :my_memory]})
 ```
 
+### Tiered Runtime Example
+
+```elixir
+provider =
+  {:tiered,
+   [
+     short_store: {Jido.Memory.Store.ETS, [table: :short_memory]},
+     mid_store: {Jido.Memory.Store.ETS, [table: :mid_memory]},
+     long_term_store:
+       {Jido.Memory.LongTermStore.ETS,
+        [store: {Jido.Memory.Store.ETS, [table: :long_memory]}}}
+   ]}
+
+agent = %{id: "agent-1"}
+
+{:ok, record} =
+  Jido.Memory.Runtime.remember(agent, %{
+    class: :semantic,
+    kind: :fact,
+    text: "Important memories can be promoted.",
+    importance: 1.0
+  }, provider: provider)
+
+{:ok, %{promoted_to_mid: 1}} =
+  Jido.Memory.Runtime.consolidate(agent, provider: provider, tier: :short)
+
+{:ok, promoted_record} =
+  Jido.Memory.Runtime.get(agent, record.id, provider: provider, tier: :mid)
+```
+
 ## Memory Actions
 
 The plugin exposes these signal routes:
@@ -179,29 +252,45 @@ Action result conventions:
 - `Recall` -> `%{memory_results: [...]}` (or custom `memory_result_key`)
 - `Forget` -> `%{last_memory_deleted?: boolean}`
 
-## MemoryOS Provider Example
+## Long-Term Persistence
 
-When `jido_memory_os` is available, the same common plugin can target MemoryOS for core flows:
+The built-in Tiered provider always routes `:long` tier operations through `Jido.Memory.LongTermStore`.
+The default long-term backend is `Jido.Memory.LongTermStore.ETS`, and applications can swap in a custom backend such as PostgreSQL or Redis by implementing the behavior.
 
 ```elixir
-{Jido.Memory.Plugin,
- %{
-   provider:
-     {Jido.MemoryOS.Provider,
-      [
-        server: MyApp.MemoryManager,
-        app_config: %{
-          tiers: %{
-            short: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_short]}},
-            mid: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_mid]}},
-            long: %{store: {Jido.Memory.Store.ETS, [table: :memory_os_long]}}
-          }
-        }
-      ]}
- }}
+provider_opts = [
+  short_store: {Jido.Memory.Store.ETS, [table: :short_memory]},
+  mid_store: {Jido.Memory.Store.ETS, [table: :mid_memory]},
+  long_term_store: {MyApp.Memory.PostgresLongTermStore, [repo: MyApp.Repo]}
+]
 ```
 
-Use `Jido.MemoryOS.Plugin` instead when you need MemoryOS-specific routes like `pre_turn` and `post_turn`.
+## Compatibility Guarantees
+
+The built-in provider expansion keeps the existing public contract stable:
+
+- `Jido.Memory.Runtime` remains the main facade
+- `recall/2` remains supported as a compatibility alias to `retrieve/3`
+- `Jido.Memory.ETSPlugin` remains available for existing ETS-backed agents
+- public runtime and action results stay tuple-based
+
+## Relationship To `jido_memory_os`
+
+`jido_memory` now ships the standard built-in provider choices for Jido memory context management.
+
+`jido_memory_os` remains a standalone advanced library with its own native facade and plugin. Reach for it when you need features outside the built-in provider scope, such as:
+
+- manager-driven orchestration
+- journaling and replay
+- approvals and governance
+- framework-specific plugin flows
+
+The built-in release story for `jido_memory` is now `:basic` and `:tiered`. Optional external-provider interop is follow-on work, not a release blocker.
+
+## Examples
+
+- `/Users/Pascal/code/agentjido/jido_memory/examples/basic_provider_agent.exs`
+- `/Users/Pascal/code/agentjido/jido_memory/examples/tiered_provider_agent.exs`
 
 ## Record Model
 
@@ -232,4 +321,4 @@ You can introduce advanced backends later without changing the high-level API.
 ## ETS Durability Note
 
 ETS is in-memory only. Memory records are lost on node restart.
-For durable storage, implement another `Jido.Memory.Store` adapter.
+For durable storage, implement another `Jido.Memory.Store` adapter or a custom `Jido.Memory.LongTermStore` backend for the Tiered provider.

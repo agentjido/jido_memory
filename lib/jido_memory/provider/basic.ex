@@ -72,9 +72,8 @@ defmodule Jido.Memory.Provider.Basic do
   def remember(target, attrs, opts) when is_map(attrs) and is_list(opts) do
     with {:ok, context} <- resolve_context(target, attrs, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, record} <- build_record(attrs, context.namespace, context.now),
-         {:ok, stored} <- context.store_mod.put(record, context.store_opts) do
-      {:ok, stored}
+         {:ok, record} <- build_record(attrs, context.namespace, context.now) do
+      context.store_mod.put(record, context.store_opts)
     end
   end
 
@@ -83,9 +82,8 @@ defmodule Jido.Memory.Provider.Basic do
   @impl true
   def get(target, id, opts) when is_binary(id) and is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{}, opts),
-         :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, record} <- Store.fetch(context.store_mod, {context.namespace, id}, context.store_opts) do
-      {:ok, record}
+         :ok <- context.store_mod.ensure_ready(context.store_opts) do
+      Store.fetch(context.store_mod, {context.namespace, id}, context.store_opts)
     end
   end
 
@@ -95,9 +93,8 @@ defmodule Jido.Memory.Provider.Basic do
   def retrieve(target, %Query{} = query, opts) when is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{namespace: query.namespace}, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, effective_query} <- attach_namespace(query, context.namespace),
-         {:ok, records} <- context.store_mod.query(effective_query, context.store_opts) do
-      {:ok, records}
+         {:ok, effective_query} <- attach_namespace(query, context.namespace) do
+      context.store_mod.query(effective_query, context.store_opts)
     end
   end
 
@@ -107,9 +104,8 @@ defmodule Jido.Memory.Provider.Basic do
   def retrieve(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
     with {:ok, context} <- resolve_context(target, query_attrs, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, query} <- build_query(query_attrs, context.namespace),
-         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
-      {:ok, records}
+         {:ok, query} <- build_query(query_attrs, context.namespace) do
+      context.store_mod.query(query, context.store_opts)
     end
   end
 
@@ -138,9 +134,8 @@ defmodule Jido.Memory.Provider.Basic do
   @impl true
   def prune(target, opts) when is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{}, opts),
-         :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, count} <- context.store_mod.prune_expired(context.store_opts) do
-      {:ok, count}
+         :ok <- context.store_mod.ensure_ready(context.store_opts) do
+      context.store_mod.prune_expired(context.store_opts)
     end
   end
 
@@ -277,10 +272,9 @@ defmodule Jido.Memory.Provider.Basic do
   end
 
   defp map_get(map, key, default \\ nil)
+
   defp map_get(map, key, default) when is_map(map),
     do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
-
-  defp map_get(_map, _key, default), do: default
 
   defp normalize_map(%{} = map), do: map
   defp normalize_map(_), do: %{}

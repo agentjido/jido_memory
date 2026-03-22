@@ -179,11 +179,13 @@ defmodule Jido.Memory.Runtime do
   def explain_retrieval(_target, _query, _opts), do: {:error, :invalid_query}
 
   defp call_provider(target, attrs, opts, callback) do
-    with {:ok, provider_ref} <- resolve_provider(target, attrs, opts) do
-      callback.(provider_ref, ProviderRef.runtime_opts(provider_ref, opts))
-      |> normalize_result()
-    else
-      {:error, reason} -> normalize_error(reason)
+    case resolve_provider(target, attrs, opts) do
+      {:ok, provider_ref} ->
+        callback.(provider_ref, ProviderRef.runtime_opts(provider_ref, opts))
+        |> normalize_result()
+
+      {:error, reason} ->
+        normalize_error(reason)
     end
   end
 

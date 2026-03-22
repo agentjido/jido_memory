@@ -17,16 +17,12 @@ defmodule Jido.Memory.Query do
               namespace: Zoi.string(description: "Logical namespace") |> Zoi.optional(),
               classes: Zoi.list(Zoi.atom(), description: "Class filters") |> Zoi.default([]),
               kinds: Zoi.list(Zoi.any(), description: "Open kind filters") |> Zoi.default([]),
-              tags_any:
-                Zoi.list(Zoi.string(), description: "Match at least one tag") |> Zoi.default([]),
+              tags_any: Zoi.list(Zoi.string(), description: "Match at least one tag") |> Zoi.default([]),
               tags_all: Zoi.list(Zoi.string(), description: "Match all tags") |> Zoi.default([]),
-              text_contains:
-                Zoi.string(description: "Case-insensitive text substring") |> Zoi.optional(),
-              since:
-                Zoi.integer(description: "Start timestamp in milliseconds") |> Zoi.optional(),
+              text_contains: Zoi.string(description: "Case-insensitive text substring") |> Zoi.optional(),
+              since: Zoi.integer(description: "Start timestamp in milliseconds") |> Zoi.optional(),
               until: Zoi.integer(description: "End timestamp in milliseconds") |> Zoi.optional(),
-              limit:
-                Zoi.integer(description: "Maximum result count") |> Zoi.default(@default_limit),
+              limit: Zoi.integer(description: "Maximum result count") |> Zoi.default(@default_limit),
               order:
                 Zoi.atom(description: "Sort order by observed_at")
                 |> Zoi.default(@default_order)
@@ -118,20 +114,7 @@ defmodule Jido.Memory.Query do
 
   @spec normalize_classes(term()) :: {:ok, [Record.class()]} | {:error, term()}
   defp normalize_classes(classes) when is_list(classes) do
-    classes
-    |> Enum.reduce_while([], fn class, acc ->
-      case Record.normalize_class(class) do
-        {:ok, normalized} ->
-          if normalized in acc, do: {:cont, acc}, else: {:cont, acc ++ [normalized]}
-
-        {:error, reason} ->
-          {:halt, {:error, reason}}
-      end
-    end)
-    |> case do
-      {:error, _} = error -> error
-      normalized -> {:ok, normalized}
-    end
+    normalize_unique(classes, &Record.normalize_class/1, & &1)
   end
 
   defp normalize_classes(nil), do: {:ok, []}
@@ -139,15 +122,18 @@ defmodule Jido.Memory.Query do
 
   @spec normalize_kinds(term()) :: {:ok, [Record.kind()]} | {:error, term()}
   defp normalize_kinds(kinds) when is_list(kinds) do
-    kinds
-    |> Enum.reduce_while([], fn kind, acc ->
-      case Record.normalize_kind(kind) do
+    normalize_unique(kinds, &Record.normalize_kind/1, &Record.kind_key/1)
+  end
+
+  defp normalize_kinds(nil), do: {:ok, []}
+  defp normalize_kinds(other), do: {:error, {:invalid_kinds, other}}
+
+  defp normalize_unique(values, normalizer, key_fun) do
+    values
+    |> Enum.reduce_while({[], MapSet.new()}, fn value, {acc, seen} ->
+      case normalizer.(value) do
         {:ok, normalized} ->
-          if Record.kind_key(normalized) in Enum.map(acc, &Record.kind_key/1) do
-            {:cont, acc}
-          else
-            {:cont, acc ++ [normalized]}
-          end
+          {:cont, maybe_track_unique(normalized, acc, seen, key_fun)}
 
         {:error, reason} ->
           {:halt, {:error, reason}}
@@ -155,12 +141,19 @@ defmodule Jido.Memory.Query do
     end)
     |> case do
       {:error, _} = error -> error
-      normalized -> {:ok, normalized}
+      {normalized, _seen} -> {:ok, normalized}
     end
   end
 
-  defp normalize_kinds(nil), do: {:ok, []}
-  defp normalize_kinds(other), do: {:error, {:invalid_kinds, other}}
+  defp maybe_track_unique(normalized, acc, seen, key_fun) do
+    key = key_fun.(normalized)
+
+    if MapSet.member?(seen, key) do
+      {acc, seen}
+    else
+      {acc ++ [normalized], MapSet.put(seen, key)}
+    end
+  end
 
   @spec normalize_tags(term()) :: {:ok, [String.t()]} | {:error, term()}
   defp normalize_tags(tags), do: Record.normalize_tags(tags)

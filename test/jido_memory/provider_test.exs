@@ -106,8 +106,7 @@ defmodule Jido.Memory.ProviderTest do
        [
          short_store: {ETS, [table: :"jido_memory_tiered_short_#{unique}"]},
          mid_store: {ETS, [table: :"jido_memory_tiered_mid_#{unique}"]},
-         long_term_store:
-           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_long_#{unique}"]}]}
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_long_#{unique}"]}]}
        ]}
 
     assert {:ok, meta} = ProviderContract.provider_meta(provider)
@@ -127,8 +126,7 @@ defmodule Jido.Memory.ProviderTest do
        [
          short_store: {ETS, [table: :"jido_memory_tiered_core_short_#{unique}"]},
          mid_store: {ETS, [table: :"jido_memory_tiered_core_mid_#{unique}"]},
-         long_term_store:
-           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_core_long_#{unique}"]}]}
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_core_long_#{unique}"]}]}
        ]}
 
     assert {:ok, %{record: %Record{id: id}, fetched: %Record{id: fetched_id}, deleted?: true}} =
@@ -151,8 +149,7 @@ defmodule Jido.Memory.ProviderTest do
        [
          short_store: {ETS, [table: :"jido_memory_tiered_promote_short_#{unique}"]},
          mid_store: {ETS, [table: :"jido_memory_tiered_promote_mid_#{unique}"]},
-         long_term_store:
-           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_promote_long_#{unique}"]}]}
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_promote_long_#{unique}"]}]}
        ]}
 
     assert {:ok, %Record{id: id}} =

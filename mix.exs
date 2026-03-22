@@ -3,7 +3,7 @@ defmodule JidoMemory.MixProject do
 
   @version "0.1.0"
   @source_url "https://github.com/agentjido/jido_memory"
-  @description "Data-driven, ETS-backed memory system for Jido agents"
+  @description "Unified provider-backed memory system for Jido agents"
 
   def project do
     [
@@ -21,7 +21,7 @@ defmodule JidoMemory.MixProject do
       description: @description,
       docs: docs(),
       # Testing
-      test_coverage: [tool: :coveralls]
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -48,12 +48,12 @@ defmodule JidoMemory.MixProject do
     [
       setup: ["deps.get", "cmd npm install"],
       quality: [
-        "format",
-        "credo --strict",
-        "dialyzer",
-        "test",
-        "coveralls.html",
-        "doctor --raise"
+        "cmd env MIX_ENV=test mix format --check-formatted",
+        "cmd env MIX_ENV=test mix credo --strict",
+        "cmd env MIX_ENV=test mix dialyzer",
+        "cmd env MIX_ENV=test mix test",
+        "cmd env MIX_ENV=test mix coveralls.html",
+        "cmd env MIX_ENV=test mix spec.check"
       ]
     ]
   end
@@ -75,8 +75,7 @@ defmodule JidoMemory.MixProject do
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:mimic, "~> 2.0", only: :test},
-      {:spec_led_ex,
-       github: "specleddev/specled_ex", branch: "main", only: [:dev, :test], runtime: false}
+      {:spec_led_ex, github: "specleddev/specled_ex", branch: "main", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -84,8 +83,10 @@ defmodule JidoMemory.MixProject do
     [
       extras: [
         "README.md",
+        "docs/guides/built_in_providers.md",
         "CONTRIBUTING.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "docs/rfcs/0001-canonical-memory-provider-architecture.md"
       ],
       main: "readme",
       source_ref: "main",

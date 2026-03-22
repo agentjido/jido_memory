@@ -19,8 +19,7 @@ defmodule Jido.Memory.Provider.Tiered do
   @default_short_store {Jido.Memory.Store.ETS, [table: :jido_memory_short]}
   @default_mid_store {Jido.Memory.Store.ETS, [table: :jido_memory_mid]}
 
-  @default_long_term_store {Jido.Memory.LongTermStore.ETS,
-                            [store: {Jido.Memory.Store.ETS, [table: :jido_memory_long]}]}
+  @default_long_term_store {Jido.Memory.LongTermStore.ETS, [store: {Jido.Memory.Store.ETS, [table: :jido_memory_long]}]}
 
   @default_lifecycle [
     short_to_mid_threshold: 0.65,
@@ -351,13 +350,25 @@ defmodule Jido.Memory.Provider.Tiered do
 
     case tier do
       :short ->
-        Basic.remember(target, decorated_attrs, namespace: context.namespace, store: context.short_store, now: context.now)
+        Basic.remember(target, decorated_attrs,
+          namespace: context.namespace,
+          store: context.short_store,
+          now: context.now
+        )
 
       :mid ->
-        Basic.remember(target, decorated_attrs, namespace: context.namespace, store: context.mid_store, now: context.now)
+        Basic.remember(target, decorated_attrs,
+          namespace: context.namespace,
+          store: context.mid_store,
+          now: context.now
+        )
 
       :long ->
-        context.long_term_store.module.remember(target, decorated_attrs, long_term_runtime_opts(context, now: context.now))
+        context.long_term_store.module.remember(
+          target,
+          decorated_attrs,
+          long_term_runtime_opts(context, now: context.now)
+        )
     end
   end
 
@@ -485,13 +496,11 @@ defmodule Jido.Memory.Provider.Tiered do
 
   defp normalize_long_term_ref(other), do: {:error, {:invalid_long_term_store, other}}
 
-  defp validate_long_term_ref(%{module: module, opts: opts} = ref) do
+  defp validate_long_term_ref(%{module: module} = ref) do
     with {:ok, loaded} <- ensure_loaded(module),
-         :ok <- ensure_long_term_callbacks(loaded),
-         true <- is_list(opts) do
+         :ok <- ensure_long_term_callbacks(loaded) do
       {:ok, %{ref | module: loaded}}
     else
-      false -> {:error, :invalid_long_term_store_opts}
       {:error, _reason} = error -> error
     end
   end
@@ -565,7 +574,18 @@ defmodule Jido.Memory.Provider.Tiered do
       |> Map.put_new(:promotion_count, tiered[:promotion_count] || 0)
 
     attrs
-    |> Map.drop([:provider, "provider", :tier, "tier", :tier_mode, "tier_mode", :tiers, "tiers", :importance, "importance"])
+    |> Map.drop([
+      :provider,
+      "provider",
+      :tier,
+      "tier",
+      :tier_mode,
+      "tier_mode",
+      :tiers,
+      "tiers",
+      :importance,
+      "importance"
+    ])
     |> Map.put(:metadata, Map.put(metadata, :tiered, updated_tiered))
   end
 
@@ -689,8 +709,6 @@ defmodule Jido.Memory.Provider.Tiered do
 
   defp map_get(map, key, default) when is_map(map),
     do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
-
-  defp map_get(_map, _key, default), do: default
 
   defp normalize_map(%{} = map), do: map
   defp normalize_map(_), do: %{}

@@ -13,8 +13,7 @@ defmodule Jido.Memory.Error.UnsupportedCapability do
     %__MODULE__{
       provider: provider,
       capability: capability,
-      message:
-        "memory provider #{inspect(provider)} does not support capability #{inspect(capability)}"
+      message: "memory provider #{inspect(provider)} does not support capability #{inspect(capability)}"
     }
   end
 end
