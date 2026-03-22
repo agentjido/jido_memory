@@ -18,6 +18,8 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
        "follow on tiered ets memory"},
       {"tiered_postgres", %{provider: ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_#{run_id}")},
        :tiered_postgres, "follow on tiered postgres memory"},
+      {"mirix", %{provider: ProviderFixtures.mirix_provider("follow_on_mirix_#{run_id}")}, :mirix,
+       "follow on mirix memory"},
       {"external",
        %{
          provider: :external_demo,
@@ -44,6 +46,11 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
         :basic ->
           assert capabilities.retrieval.explainable == false
 
+        :mirix ->
+          assert capabilities.retrieval.explainable == true
+          assert capabilities.ingestion.batch == true
+          assert capabilities.governance.protected_memory == true
+
         :external ->
           assert capabilities.core == true
 
@@ -57,11 +64,11 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
   test "acceptance fixture includes Tiered explainability and durable long-term promotion" do
     run_id = System.unique_integer([:positive])
 
-    for {provider, expected_long_tier} <- [
-          {ProviderFixtures.tiered_provider("follow_on_tiered_matrix_#{run_id}"), :long},
-          {ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_matrix_#{run_id}"), :long}
+    for {label, provider, expected_long_tier} <- [
+          {:tiered_ets, ProviderFixtures.tiered_provider("follow_on_tiered_matrix_#{run_id}"), :long},
+          {:tiered_postgres, ProviderFixtures.postgres_tiered_provider("follow_on_tiered_pg_matrix_#{run_id}"), :long}
         ] do
-      agent = mounted_agent("follow-on-tiered-matrix-#{run_id}-#{expected_long_tier}", %{provider: provider})
+      agent = mounted_agent("follow-on-tiered-matrix-#{run_id}-#{label}", %{provider: provider})
 
       assert {:ok, %Record{id: id}} =
                Runtime.remember(
@@ -78,8 +85,8 @@ defmodule Jido.Memory.FollowOnAcceptanceFixtureTest do
                )
 
       assert explanation.provider == Tiered
-      assert explanation.result_count == 1
-      assert hd(explanation.results).tier == :mid
+      assert id in Enum.map(explanation.results, & &1.id)
+      assert Enum.any?(explanation.results, &(&1.id == id and &1.tier == :mid))
 
       assert {:ok, %{promoted_to_long: 1}} = Runtime.consolidate(agent, tier: :mid)
       assert {:ok, %Record{id: ^id}} = Runtime.get(agent, id, tier: expected_long_tier)

@@ -180,7 +180,7 @@
         "id": "jido_memory.provider_architecture.provider_roles",
         "priority": "must",
         "stability": "evolving",
-        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in advanced path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
+        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
         "subject_id": "jido_memory.provider_architecture"
       },
       {
@@ -417,7 +417,7 @@
         ],
         "file": ".spec/specs/matrix/governance_matrix.spec.md",
         "given": [
-          "a provider that stores exact-preservation facts separately from general memory"
+          "a provider such as Mirix that stores exact-preservation facts separately from general memory"
         ],
         "id": "jido_memory.matrix.governance.protected_memory_provider_boundary",
         "subject_id": "jido_memory.matrix.governance",
@@ -452,7 +452,7 @@
         ],
         "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
         "given": [
-          "a provider that accepts batches of multimodal input and routes them internally across memory subsystems"
+          "a provider such as Mirix that accepts batches of multimodal input and routes them internally across memory subsystems"
         ],
         "id": "jido_memory.matrix.ingestion.multimodal_provider_path",
         "subject_id": "jido_memory.matrix.ingestion",
@@ -488,7 +488,7 @@
         ],
         "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
         "given": [
-          "a specialized provider with active retrieval planning, multimodal ingestion, and protected memory"
+          "a specialized provider such as Mirix with active retrieval planning, multimodal ingestion, and protected memory"
         ],
         "id": "jido_memory.matrix.provider_surface.specialized_provider_lane",
         "subject_id": "jido_memory.matrix.provider_surface",
@@ -506,7 +506,7 @@
         ],
         "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
         "given": [
-          "a provider that generates an internal retrieval plan before selecting memory sources"
+          "a provider such as Mirix that generates an internal retrieval plan before selecting memory sources"
         ],
         "id": "jido_memory.matrix.retrieval.active_planning_path",
         "subject_id": "jido_memory.matrix.retrieval",
@@ -596,7 +596,7 @@
         ],
         "file": ".spec/specs/provider_capabilities.spec.md",
         "given": [
-          "a provider that supports batch multimodal ingestion in addition to the canonical core write path"
+          "a built-in provider such as Mirix that supports batch multimodal ingestion in addition to the canonical core write path"
         ],
         "id": "jido_memory.provider_capabilities.multimodal_ingestion_negotiation",
         "subject_id": "jido_memory.provider_capabilities",
@@ -614,7 +614,7 @@
         ],
         "file": ".spec/specs/provider_capabilities.spec.md",
         "given": [
-          "a provider that includes protected exact-preservation memory"
+          "a built-in provider such as Mirix that includes protected exact-preservation memory"
         ],
         "id": "jido_memory.provider_capabilities.protected_memory_negotiation",
         "subject_id": "jido_memory.provider_capabilities",
@@ -632,7 +632,7 @@
         ],
         "file": ".spec/specs/provider_capabilities.spec.md",
         "given": [
-          "a provider that performs active retrieval planning and memory-type routing"
+          "a built-in provider such as Mirix that performs active retrieval planning and memory-type routing"
         ],
         "id": "jido_memory.provider_capabilities.routing_trace_negotiation",
         "subject_id": "jido_memory.provider_capabilities",
@@ -734,6 +734,27 @@
         ],
         "when": [
           "the provider is initialized through the canonical contract"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_facade.provider_configurable_plugin",
+          "jido_memory.provider_facade.canonical_dispatch_boundary",
+          "jido_memory.provider_facade.narrow_runtime_boundary",
+          "jido_memory.provider_facade.provider_native_extension_boundary",
+          "jido_memory.provider_facade.built_in_provider_selection"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "given": [
+          "a plugin configuration that selects the built-in Mirix provider"
+        ],
+        "id": "jido_memory.provider_facade.built_in_mirix_provider_path",
+        "subject_id": "jido_memory.provider_facade",
+        "then": [
+          "the shared agent-facing API remains stable for canonical memory operations while routed retrieval explanations stay on the common facade and ingestion or protected-memory workflows remain provider-direct"
+        ],
+        "when": [
+          "agent memory actions are executed through the common plugin and runtime surface"
         ]
       },
       {
@@ -986,7 +1007,7 @@
           "id": "jido_memory.provider_architecture",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic and Tiered, while leaving jido_memory_os as a standalone advanced library.",
+          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving jido_memory_os as a standalone advanced library.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -1324,7 +1345,7 @@
     "exceptions": 0,
     "findings": 0,
     "requirements": 46,
-    "scenarios": 26,
+    "scenarios": 27,
     "subjects": 11,
     "verifications": 19
   },
