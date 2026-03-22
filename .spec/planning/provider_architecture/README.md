@@ -10,8 +10,8 @@ This planning set tracks the rollout of the canonical memory provider system in 
 - `phase-05-unified-documentation-release-and-built-in-provider-validation.md`
 
 ## Current Status
-- Phases 1 through 3 are implemented on the current branch.
-- Phases 4 and 5 are the revised remaining work after deciding that `jido_memory` should ship the standard advanced provider choice itself.
+- Phases 1 through 4 are implemented on the current branch.
+- Phase 5 is the next remaining work after deciding that `jido_memory` should ship the standard advanced provider choice itself.
 
 ## Delivery Rules
 - `Jido.Memory.Runtime`, `recall/2`, `Jido.Memory.ETSPlugin`, and tuple-style public results stay compatible through the rollout.

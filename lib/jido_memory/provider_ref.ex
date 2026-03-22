@@ -5,6 +5,12 @@ defmodule Jido.Memory.ProviderRef do
 
   alias Jido.Memory.Error.InvalidProvider
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Tiered
+
+  @built_in_aliases %{
+    basic: Basic,
+    tiered: Tiered
+  }
 
   @required_callbacks [
     validate_config: 1,
@@ -37,14 +43,17 @@ defmodule Jido.Memory.ProviderRef do
   def normalize(nil), do: {:ok, default()}
 
   def normalize(%__MODULE__{module: module, opts: opts}) when is_atom(module) and is_list(opts) do
+    module = Map.get(@built_in_aliases, module, module)
     validate(%__MODULE__{module: module, opts: opts})
   end
 
   def normalize({module, opts}) when is_atom(module) and is_list(opts) do
+    module = Map.get(@built_in_aliases, module, module)
     validate(%__MODULE__{module: module, opts: opts})
   end
 
   def normalize(module) when is_atom(module) do
+    module = Map.get(@built_in_aliases, module, module)
     validate(%__MODULE__{module: module, opts: []})
   end
 

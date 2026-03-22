@@ -37,9 +37,15 @@ defmodule Jido.Memory.ProviderContract do
     end
   end
 
+  @type core_flow_result :: %{
+          record: Jido.Memory.Record.t(),
+          fetched: Jido.Memory.Record.t(),
+          records: [Jido.Memory.Record.t()],
+          deleted?: boolean()
+        }
+
   @spec exercise_core_flow(provider_input(), map() | struct(), map(), map() | keyword(), keyword()) ::
-          {:ok, %{record: Jido.Memory.Record.t(), fetched: Jido.Memory.Record.t(), records: [Jido.Memory.Record.t()], deleted?: boolean()}}
-          | {:error, term()}
+          {:ok, core_flow_result()} | {:error, term()}
   def exercise_core_flow(provider, target, attrs, query, runtime_opts \\ [])
       when is_map(attrs) and is_list(runtime_opts) do
     runtime_opts = Keyword.put(runtime_opts, :provider, provider)

@@ -19,6 +19,7 @@ defmodule Jido.Memory.Actions.Remember do
       expires_at: [type: :any, required: false, doc: "Expiration timestamp ms"],
       embedding: [type: :any, required: false, doc: "Optional embedding payload"],
       metadata: [type: :any, required: false, doc: "Metadata map"],
+      tier: [type: :any, required: false, doc: "Tiered provider tier override"],
       store: [type: :any, required: false, doc: "Store declaration"],
       store_opts: [type: :any, required: false, doc: "Store options"],
       memory_result_key: [type: :any, required: false, doc: "Optional key for record id result"]

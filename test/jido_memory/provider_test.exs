@@ -1,7 +1,9 @@
 defmodule Jido.Memory.ProviderTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderRef
   alias Jido.Memory.Record
@@ -21,6 +23,10 @@ defmodule Jido.Memory.ProviderTest do
 
   test "provider ref defaults to the Basic provider" do
     assert {:ok, %ProviderRef{module: Basic, opts: []}} = ProviderRef.normalize(nil)
+  end
+
+  test "provider ref accepts built-in :tiered alias" do
+    assert {:ok, %ProviderRef{module: Tiered, opts: []}} = ProviderRef.normalize(:tiered)
   end
 
   test "provider ref rejects modules missing required callbacks" do
@@ -90,5 +96,89 @@ defmodule Jido.Memory.ProviderTest do
 
     assert {:error, {:invalid_provider, MissingCallbacksProvider}} =
              Runtime.remember(target, %{class: :episodic, text: "x"}, store: store, provider: MissingCallbacksProvider)
+  end
+
+  test "tiered provider exposes lifecycle and tier capabilities" do
+    unique = System.unique_integer([:positive])
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_tiered_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_tiered_mid_#{unique}"]},
+         long_term_store:
+           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, meta} = ProviderContract.provider_meta(provider)
+
+    capabilities = Tiered.capabilities(meta)
+    assert capabilities.core == true
+    assert capabilities.retrieval.tiers == true
+    assert capabilities.lifecycle.consolidate == true
+  end
+
+  test "tiered provider supports the canonical core flow" do
+    unique = System.unique_integer([:positive])
+    target = %{id: "tiered-core-agent-#{unique}"}
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_tiered_core_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_tiered_core_mid_#{unique}"]},
+         long_term_store:
+           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_core_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, %{record: %Record{id: id}, fetched: %Record{id: fetched_id}, deleted?: true}} =
+             ProviderContract.exercise_core_flow(
+               provider,
+               target,
+               %{class: :episodic, kind: :event, text: "tiered provider core flow", importance: 1.0},
+               %{text_contains: "tiered provider core flow"}
+             )
+
+    assert fetched_id == id
+  end
+
+  test "tiered consolidate promotes records across tiers" do
+    unique = System.unique_integer([:positive])
+    target = %{id: "tiered-promote-agent-#{unique}"}
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_tiered_promote_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_tiered_promote_mid_#{unique}"]},
+         long_term_store:
+           {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_promote_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, %Record{id: id}} =
+             Runtime.remember(
+               target,
+               %{
+                 class: :semantic,
+                 kind: :fact,
+                 text: "important durable memory promoted across tiers",
+                 tags: ["important"],
+                 importance: 1.0
+               },
+               provider: provider
+             )
+
+    assert {:ok, %{promoted_to_mid: 1}} = Runtime.consolidate(target, provider: provider, tier: :short)
+    assert {:error, :not_found} = Runtime.get(target, id, provider: provider, tier: :short)
+    assert {:ok, %Record{id: ^id}} = Runtime.get(target, id, provider: provider, tier: :mid)
+
+    assert {:ok, %{promoted_to_long: 1}} = Runtime.consolidate(target, provider: provider, tier: :mid)
+    assert {:error, :not_found} = Runtime.get(target, id, provider: provider, tier: :mid)
+    assert {:ok, %Record{id: ^id}} = Runtime.get(target, id, provider: provider, tier: :long)
+  end
+
+  test "tiered provider rejects invalid lifecycle thresholds" do
+    assert {:error, :invalid_lifecycle_threshold} =
+             ProviderRef.normalize({Tiered, [lifecycle: [short_to_mid_threshold: 2.0]]})
   end
 end

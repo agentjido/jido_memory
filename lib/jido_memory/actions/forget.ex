@@ -9,6 +9,7 @@ defmodule Jido.Memory.Actions.Forget do
     schema: [
       id: [type: :string, required: true, doc: "Record id"],
       namespace: [type: :string, required: false, doc: "Override namespace"],
+      tier: [type: :any, required: false, doc: "Tiered provider tier override"],
       store: [type: :any, required: false, doc: "Store declaration"],
       store_opts: [type: :any, required: false, doc: "Store options"]
     ]

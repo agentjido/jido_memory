@@ -101,9 +101,14 @@ end
 defmodule Jido.Memory.PluginTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Memory.Actions.Retrieve
+  alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Plugin
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderRef
+  alias Jido.Memory.Record
+  alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS
 
   setup do
@@ -145,5 +150,32 @@ defmodule Jido.Memory.PluginTest do
     assert Keyword.get(provider_opts, :namespace) == "provider:restore"
     assert restored.auto_capture == false
     assert restored.capture_rules == %{}
+  end
+
+  test "mount accepts the built-in Tiered provider and common retrieval actions still work" do
+    unique = System.unique_integer([:positive])
+
+    provider =
+      {:tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_plugin_tiered_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_plugin_tiered_mid_#{unique}"]},
+         long_term_store:
+           {LongTermETS, [store: {ETS, [table: :"jido_memory_plugin_tiered_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, state} = Plugin.mount(%{id: "agent-tiered"}, %{provider: provider})
+    assert %ProviderRef{module: Tiered} = state.provider
+
+    agent = %{id: "agent-tiered", state: %{__memory__: state}}
+
+    assert {:ok, %Record{id: id}} =
+             Runtime.remember(agent, %{class: :episodic, text: "plugin tiered memory"}, [])
+
+    assert {:ok, [%Record{id: ^id}]} =
+             Runtime.retrieve(agent, %{text_contains: "plugin tiered memory"}, [])
+
+    assert {:ok, %{memory_results: [%Record{id: ^id}]}} =
+             Retrieve.run(%{text_contains: "plugin tiered memory"}, %{id: "agent-tiered", state: %{__memory__: state}})
   end
 end
