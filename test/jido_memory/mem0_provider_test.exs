@@ -58,6 +58,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert summary.provider == Mem0
     assert summary.extraction_context.recent_window == 2
     assert summary.extraction_context.summary_present == true
+
     assert summary.extracted_candidates == [
              %{
                action: :upsert,
@@ -73,6 +74,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert summary.deleted_ids == []
     assert summary.noop_ids == []
     assert summary.maintenance.add == 1
+
     assert summary.maintenance_results == [
              %{fact_key: "location:home", outcome: :add, record_id: hd(summary.created_ids)}
            ]
@@ -86,6 +88,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
              )
 
     assert id in summary.created_ids
+
     assert get_in(metadata, ["mem0", "scope"]) == %{
              "user_id" => "user-1",
              "agent_id" => "mem0-phase02-message-agent",
@@ -179,6 +182,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
     assert update_summary.updated_ids == [record_id]
     assert update_summary.maintenance.update == 1
+
     assert update_summary.maintenance_results == [
              %{
                fact_key: "favorite:language",
@@ -239,6 +243,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
     assert get_in(metadata, ["mem0", "write_mode"]) == :direct
     assert get_in(metadata, ["mem0", "scope", "user_id"]) == "user-direct"
+
     assert {:ok, [%Record{id: ^id}]} =
              Runtime.retrieve(
                target,

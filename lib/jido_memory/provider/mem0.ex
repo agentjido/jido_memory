@@ -11,7 +11,6 @@ defmodule Jido.Memory.Provider.Mem0 do
   @behaviour Jido.Memory.Provider
   @behaviour Jido.Memory.Capability.Ingestion
 
-  alias Jido.Memory.ProviderRef
   alias Jido.Memory.Provider.Basic
   alias Jido.Memory.{Query, Record, Store}
 
@@ -56,7 +55,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          {:ok, basic_meta} <- Basic.init(opts),
          {:ok, scoped_identity} <- scoped_identity_meta(opts) do
       {:ok,
-         basic_meta
+       basic_meta
        |> Map.put(:provider, __MODULE__)
        |> Map.put(:capabilities, @capabilities)
        |> Map.put(:provider_style, :mem0)
@@ -159,9 +158,8 @@ defmodule Jido.Memory.Provider.Mem0 do
          {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
          {:ok, extraction_config} <- extraction_config(normalized_opts),
          {:ok, normalized_payload} <- normalize_ingest_payload(payload, extraction_config),
-         {:ok, extracted} <- extract_candidates(normalized_payload, extraction_config),
-         {:ok, summary} <- persist_extracted_candidates(extracted, context, scope, normalized_payload) do
-      {:ok, summary}
+         {:ok, extracted} <- extract_candidates(normalized_payload, extraction_config) do
+      persist_extracted_candidates(extracted, context, scope, normalized_payload)
     end
   end
 
@@ -203,9 +201,9 @@ defmodule Jido.Memory.Provider.Mem0 do
     plugin_state = plugin_state(target)
 
     if Keyword.has_key?(opts, :provider) or Keyword.has_key?(opts, :provider_opts) do
-      with {:ok, provider_ref} <- ProviderRef.resolve(%{}, opts, plugin_state),
+      with {:ok, provider_ref} <- Jido.Memory.ProviderRef.resolve(%{}, opts, plugin_state),
            true <- provider_ref.module == __MODULE__ || {:error, :invalid_provider},
-           runtime_opts <- ProviderRef.runtime_opts(provider_ref, opts) do
+           runtime_opts <- Jido.Memory.ProviderRef.runtime_opts(provider_ref, opts) do
         {:ok, runtime_opts}
       else
         false -> {:error, :invalid_provider}
@@ -350,7 +348,11 @@ defmodule Jido.Memory.Provider.Mem0 do
       |> Map.drop([:provider, "provider"])
       |> Map.put(:namespace, namespace)
       |> Map.put_new(:observed_at, now)
-      |> Map.update(:metadata, annotate_mem0_metadata(%{}, scope, mem0_metadata), &annotate_mem0_metadata(&1, scope, mem0_metadata))
+      |> Map.update(
+        :metadata,
+        annotate_mem0_metadata(%{}, scope, mem0_metadata),
+        &annotate_mem0_metadata(&1, scope, mem0_metadata)
+      )
 
     Record.new(attrs, now: now)
   end
@@ -475,8 +477,11 @@ defmodule Jido.Memory.Provider.Mem0 do
     result =
       Enum.reduce(sentences, %{candidates: [], skipped: []}, fn sentence, acc ->
         case candidate_from_sentence(sentence, entry, summary, extraction_config) do
-          {:ok, candidate} -> %{acc | candidates: acc.candidates ++ [candidate]}
-          {:skip, reason} -> %{acc | skipped: acc.skipped ++ [%{reason: reason, content: sentence, origin: entry.origin}]}
+          {:ok, candidate} ->
+            %{acc | candidates: acc.candidates ++ [candidate]}
+
+          {:skip, reason} ->
+            %{acc | skipped: acc.skipped ++ [%{reason: reason, content: sentence, origin: entry.origin}]}
         end
       end)
 
@@ -491,11 +496,12 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   defp candidate_from_sentence(sentence, entry, summary, extraction_config) do
-    with {:ok, pattern, captures} <- parse_candidate_sentence(sentence) do
-      {:ok,
-       build_candidate(pattern, captures, sentence, entry, summary, extraction_config)}
-    else
-      :error -> {:skip, :no_candidate}
+    case parse_candidate_sentence(sentence) do
+      {:ok, pattern, captures} ->
+        {:ok, build_candidate(pattern, captures, sentence, entry, summary, extraction_config)}
+
+      :error ->
+        {:skip, :no_candidate}
     end
   end
 
@@ -533,48 +539,44 @@ defmodule Jido.Memory.Provider.Mem0 do
         pattern: pattern
       }
 
-    case pattern do
-      :favorite_set ->
-        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "favorite:#{slot}", value, "favorite #{slot}", sentence)
+    {action, fact_key, fact_value, tag_label} = candidate_definition(pattern, captures)
+    build_fact_candidate(base, action, fact_key, fact_value, tag_label, sentence)
+  end
 
-      :favorite_delete ->
-        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :delete, "favorite:#{slot}", value, "favorite #{slot}", sentence)
+  defp candidate_definition(pattern, captures) when pattern in [:favorite_set, :favorite_delete] do
+    slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    action = if pattern == :favorite_set, do: :upsert, else: :delete
+    {action, "favorite:#{slot}", value, "favorite #{slot}"}
+  end
 
-      :location_set ->
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "location:home", value, "location home", sentence)
+  defp candidate_definition(pattern, captures) when pattern in [:location_set, :location_delete] do
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    action = if pattern == :location_set, do: :upsert, else: :delete
+    {action, "location:home", value, "location home"}
+  end
 
-      :location_delete ->
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :delete, "location:home", value, "location home", sentence)
+  defp candidate_definition(pattern, captures) when pattern in [:tool_set, :tool_delete] do
+    slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    action = if pattern == :tool_set, do: :upsert, else: :delete
+    {action, "tool:#{slot}", value, "tool #{slot}"}
+  end
 
-      :tool_set ->
-        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "tool:#{slot}", value, "tool #{slot}", sentence)
+  defp candidate_definition(:preference_set, captures) do
+    slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    {:upsert, "preference:#{slot}", value, "preference #{slot}"}
+  end
 
-      :tool_delete ->
-        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :delete, "tool:#{slot}", value, "tool #{slot}", sentence)
+  defp candidate_definition(:name_set, captures) do
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    {:upsert, "identity:name", value, "identity name"}
+  end
 
-      :preference_set ->
-        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "preference:#{slot}", value, "preference #{slot}", sentence)
-
-      :name_set ->
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "identity:name", value, "identity name", sentence)
-
-      :project_set ->
-        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
-        build_fact_candidate(base, :upsert, "work:project", value, "work project", sentence)
-    end
+  defp candidate_definition(:project_set, captures) do
+    value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+    {:upsert, "work:project", value, "work project"}
   end
 
   defp build_fact_candidate(base, action, fact_key, fact_value, tag_label, sentence) do
@@ -645,8 +647,7 @@ defmodule Jido.Memory.Provider.Mem0 do
 
       {[existing | _], nil} ->
         with {:ok, record} <- persist_candidate_record(candidate, context, scope, :update, existing, similar_records) do
-          {:ok,
-           :update,
+          {:ok, :update,
            %{
              record_id: record.id,
              previous_record_id: existing.id,
@@ -698,13 +699,17 @@ defmodule Jido.Memory.Provider.Mem0 do
     with {:ok, query} <- Query.new(%{namespace: context.namespace, classes: [:semantic], limit: 1000, order: :desc}),
          {:ok, records} <- context.store_mod.query(query, context.store_opts) do
       records
-      |> Enum.filter(&scope_matches?(&1, scope))
-      |> Enum.filter(&mem0_managed_record?(&1))
-      |> Enum.filter(&similar_candidate_record?(&1, candidate))
+      |> Enum.filter(&relevant_candidate_record?(&1, candidate, scope))
       |> Enum.sort_by(& &1.observed_at, :desc)
     else
       _ -> []
     end
+  end
+
+  defp relevant_candidate_record?(%Record{} = record, candidate, scope) do
+    scope_matches?(record, scope) and
+      mem0_managed_record?(record) and
+      similar_candidate_record?(record, candidate)
   end
 
   defp mem0_managed_record?(%Record{metadata: metadata}) do
@@ -918,12 +923,8 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp map_get(_value, _key), do: nil
 
-  defp value(map, key, default \\ nil)
-
-  defp value(map, key, default) when is_map(map),
+  defp value(map, key, default \\ nil) when is_map(map),
     do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
-
-  defp value(_map, _key, default), do: default
 
   defp plugin_state(%{state: %{} = state}),
     do: Map.get(state, Jido.Memory.Runtime.plugin_state_key(), %{}) |> normalize_metadata()
