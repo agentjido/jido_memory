@@ -53,15 +53,16 @@ Back to index: [README](./README.md)
       [x] 2.2.2.2 Subtask - Expose maintenance summaries through ingestion results, explainability output, `info/2`, or provider-direct inspection helpers.
       [x] 2.2.2.3 Subtask - Keep unsupported-maintenance behavior deterministic for other providers.
 
-  [ ] 2.3 Section - Canonical Write Compatibility Hardening
+  [x] 2.3 Section - Canonical Write Compatibility Hardening
     Preserve direct structured writes and compatibility callers while the richer Mem0 maintenance path is added.
+    Completed by keeping direct `remember/3` on the shared write path, tagging direct and ingestion-driven writes distinctly in Mem0 metadata, and verifying plugin auto-capture still routes through canonical writes.
 
-    [ ] 2.3.1 Task - Maintain direct canonical write behavior
+    [x] 2.3.1 Task - Maintain direct canonical write behavior
       Prevent extraction and reconciliation from making the shared write surface harder to use.
 
-      [ ] 2.3.1.1 Subtask - Keep `remember/3` valid for direct, explicit record writes without requiring extraction payloads.
-      [ ] 2.3.1.2 Subtask - Distinguish direct canonical writes from extraction-driven writes in provider metadata and test fixtures.
-      [ ] 2.3.1.3 Subtask - Keep plugin auto-capture on the shared `remember/3` path unless explicit Mem0 ingestion is deliberately opted into later.
+      [x] 2.3.1.1 Subtask - Keep `remember/3` valid for direct, explicit record writes without requiring extraction payloads.
+      [x] 2.3.1.2 Subtask - Distinguish direct canonical writes from extraction-driven writes in provider metadata and test fixtures.
+      [x] 2.3.1.3 Subtask - Keep plugin auto-capture on the shared `remember/3` path unless explicit Mem0 ingestion is deliberately opted into later.
 
   [ ] 2.4 Section - Phase 2 Integration Tests
     Validate extraction, reconciliation, and maintenance flows while preserving the canonical write boundary.

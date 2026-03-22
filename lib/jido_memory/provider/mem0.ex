@@ -85,7 +85,7 @@ defmodule Jido.Memory.Provider.Mem0 do
   def remember(target, attrs, opts) when is_map(attrs) and is_list(opts) do
     with {:ok, context, scope} <- resolve_mem0_context(target, attrs, opts),
          :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, record} <- build_record(attrs, context.namespace, context.now, scope) do
+         {:ok, record} <- build_record(attrs, context.namespace, context.now, scope, %{write_mode: :direct}) do
       context.store_mod.put(record, context.store_opts)
     end
   end
@@ -344,7 +344,7 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp normalize_dimension_alias(:app_id), do: :app
   defp normalize_dimension_alias(:run_id), do: :run
 
-  defp build_record(attrs, namespace, now, scope, mem0_metadata \\ %{}) do
+  defp build_record(attrs, namespace, now, scope, mem0_metadata) do
     attrs =
       attrs
       |> Map.drop([:provider, "provider"])

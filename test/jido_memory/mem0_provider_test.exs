@@ -1,10 +1,12 @@
 defmodule Jido.Memory.Mem0ProviderTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Memory.Plugin
   alias Jido.Memory.Provider.Mem0
   alias Jido.Memory.ProviderFixtures
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
+  alias Jido.Signal
 
   test "mem0 exposes ingestion capability metadata and extraction context settings" do
     provider =
@@ -215,5 +217,59 @@ defmodule Jido.Memory.Mem0ProviderTest do
                provider: provider,
                user_id: "user-reconcile"
              )
+  end
+
+  test "mem0 direct remember stays canonical and is distinguished from ingestion writes" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase02_direct"),
+         namespace: "agent:mem0-phase02-direct"
+       ]}
+
+    target = %{id: "mem0-phase02-direct-agent"}
+
+    assert {:ok, %Record{id: id, metadata: metadata}} =
+             Runtime.remember(
+               target,
+               %{class: :semantic, kind: :fact, text: "direct mem0 write"},
+               provider: provider,
+               user_id: "user-direct"
+             )
+
+    assert get_in(metadata, ["mem0", "write_mode"]) == :direct
+    assert get_in(metadata, ["mem0", "scope", "user_id"]) == "user-direct"
+    assert {:ok, [%Record{id: ^id}]} =
+             Runtime.retrieve(
+               target,
+               %{text_contains: "direct mem0 write", classes: [:semantic]},
+               provider: provider,
+               user_id: "user-direct"
+             )
+  end
+
+  test "mem0 plugin auto-capture remains on the canonical remember path" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase02_plugin"),
+         namespace: "agent:mem0-phase02-plugin"
+       ]}
+
+    assert {:ok, plugin_state} =
+             Plugin.mount(%{id: "mem0-phase02-plugin-agent"}, %{provider: provider})
+
+    agent = %{id: "mem0-phase02-plugin-agent", state: %{__memory__: plugin_state}}
+    context = %{agent: agent}
+    signal = Signal.new!("ai.react.query", %{query: "Where do I live?"}, source: "/ai")
+
+    assert {:ok, :continue} = Plugin.handle_signal(signal, context)
+
+    assert {:ok, [%Record{kind: :user_query, metadata: metadata}]} =
+             Runtime.retrieve(agent, %{classes: [:episodic], kinds: [:user_query]}, [])
+
+    assert get_in(metadata, ["mem0", "write_mode"]) == :direct
+    assert get_in(metadata, ["mem0", "fact_key"]) == nil
+    assert Map.has_key?(metadata, :signal_id) or Map.has_key?(metadata, "signal_id")
   end
 end
