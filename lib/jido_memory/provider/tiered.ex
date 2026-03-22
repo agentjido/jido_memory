@@ -30,7 +30,7 @@ defmodule Jido.Memory.Provider.Tiered do
   @capabilities %{
     core: true,
     retrieval: %{explainable: true, tiers: true, explanation_scope: :result_reasons},
-    lifecycle: %{consolidate: true, promote: true},
+    lifecycle: %{consolidate: true, promote: true, inspect: true},
     operations: %{},
     governance: %{},
     hooks: %{}
@@ -92,6 +92,33 @@ defmodule Jido.Memory.Provider.Tiered do
            long_term_store: %{module: long_term_store.module, opts: long_term_store.opts}
          },
          lifecycle: normalize_lifecycle(Keyword.get(opts, :lifecycle, @default_lifecycle)),
+         lifecycle_inspection: %{
+           access: :provider_direct,
+           payload_version: 1,
+           summary_fields: [
+             :provider,
+             :namespace,
+             :requested_tiers,
+             :thresholds,
+             :current_tiers,
+             :recent_outcomes,
+             :totals,
+             :records
+           ],
+           record_fields: [
+             :id,
+             :tier,
+             :decision,
+             :source_tier,
+             :destination_tier,
+             :score,
+             :threshold,
+             :skip_reason,
+             :promotion_count,
+             :evaluation_count,
+             :last_evaluated_at
+           ]
+         },
          explainability: %{
            payload_version: 1,
            canonical_fields: [
@@ -211,6 +238,28 @@ defmodule Jido.Memory.Provider.Tiered do
 
   def info(_provider_meta, _fields), do: {:error, :invalid_info_fields}
 
+  @doc """
+  Returns a provider-direct snapshot of Tiered lifecycle outcomes.
+
+  This is intentionally provider-native rather than part of the common runtime
+  facade so the shared API can stay narrow while Tiered grows richer inspection
+  details.
+  """
+  @spec inspect_lifecycle(map() | struct(), keyword()) :: {:ok, map()} | {:error, term()}
+  def inspect_lifecycle(target, opts \\ [])
+
+  def inspect_lifecycle(target, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(opts),
+         {:ok, context} <- resolve_context(target, %{}, normalized_opts),
+         {:ok, tiers} <- resolve_tiers(%{}, normalized_opts, default: :all),
+         {:ok, query} <- Query.new(%{namespace: context.namespace, limit: 1_000, order: :desc}),
+         {:ok, bundles} <- do_retrieve_bundles(target, query, context, tiers) do
+      {:ok, build_lifecycle_snapshot(context, tiers, bundles)}
+    end
+  end
+
+  def inspect_lifecycle(_target, _opts), do: {:error, :invalid_provider_opts}
+
   @impl true
   def consolidate(target, opts) when is_list(opts) do
     with {:ok, context} <- resolve_context(target, %{}, opts),
@@ -235,55 +284,100 @@ defmodule Jido.Memory.Provider.Tiered do
   def consolidate(_target, _opts), do: {:error, :invalid_provider_opts}
 
   defp maybe_promote_short(target, context, tiers) do
-    if :short in tiers do
-      threshold = Keyword.fetch!(context.lifecycle, :short_to_mid_threshold)
+    threshold = Keyword.fetch!(context.lifecycle, :short_to_mid_threshold)
 
+    if :short in tiers do
       with {:ok, records} <-
              Basic.retrieve(target, %Query{namespace: context.namespace}, store: context.short_store) do
-        promote_records(target, records, context, :mid, threshold)
+        promote_records(target, records, context, :short, :mid, threshold)
       end
     else
-      {:ok, %{examined: 0, promoted: 0, ids: []}}
+      {:ok, empty_promotion_result(:short, :mid, threshold)}
     end
   end
 
   defp maybe_promote_mid(target, context, tiers) do
-    if :mid in tiers do
-      threshold = Keyword.fetch!(context.lifecycle, :mid_to_long_threshold)
+    threshold = Keyword.fetch!(context.lifecycle, :mid_to_long_threshold)
 
+    if :mid in tiers do
       with {:ok, records} <-
              Basic.retrieve(target, %Query{namespace: context.namespace}, store: context.mid_store) do
-        promote_records(target, records, context, :long, threshold)
+        promote_records(target, records, context, :mid, :long, threshold)
       end
     else
-      {:ok, %{examined: 0, promoted: 0, ids: []}}
+      {:ok, empty_promotion_result(:mid, :long, threshold)}
     end
   end
 
-  defp promote_records(target, records, context, destination_tier, threshold) do
-    {promoted_ids, promoted_count} =
-      Enum.reduce(records, {[], 0}, fn record, {ids, count} ->
-        maybe_promote_record(record, ids, count, target, context, destination_tier, threshold)
+  defp promote_records(target, records, context, source_tier, destination_tier, threshold) do
+    result =
+      Enum.reduce(records, empty_promotion_result(source_tier, destination_tier, threshold), fn record, acc ->
+        outcome = maybe_promote_record(record, target, context, source_tier, destination_tier, threshold)
+        accumulate_promotion_outcome(acc, outcome)
       end)
 
-    {:ok, %{examined: length(records), promoted: promoted_count, ids: Enum.reverse(promoted_ids)}}
+    {:ok,
+     %{
+       result
+       | examined: length(records),
+         ids: Enum.reverse(result.ids),
+         skipped_ids: Enum.reverse(result.skipped_ids),
+         decisions: Enum.reverse(result.decisions)
+     }}
   end
 
-  defp maybe_promote_record(record, ids, count, target, context, destination_tier, threshold) do
+  defp maybe_promote_record(record, target, context, source_tier, destination_tier, threshold) do
     score = promotion_score(record)
 
     if score < threshold do
-      {ids, count}
+      skipped =
+        lifecycle_evaluated_record(
+          record,
+          source_tier,
+          destination_tier,
+          score,
+          threshold,
+          :skipped,
+          :below_threshold,
+          context.now
+        )
+
+      persist_record(target, skipped, context, source_tier)
+
+      promotion_outcome(record, :skipped, source_tier, destination_tier, score, threshold, :below_threshold)
     else
-      promoted = promoted_record(record, destination_tier, score, context.now)
+      promoted = promoted_record(record, source_tier, destination_tier, score, threshold, context.now)
 
       case write_record(target, Map.from_struct(promoted), context, destination_tier) do
         {:ok, _stored} ->
           :ok = delete_from_source(target, record, context)
-          {[record.id | ids], count + 1}
+
+          promotion_outcome(record, :promoted, source_tier, destination_tier, score, threshold)
 
         {:error, _reason} ->
-          {ids, count}
+          skipped =
+            lifecycle_evaluated_record(
+              record,
+              source_tier,
+              destination_tier,
+              score,
+              threshold,
+              :skipped,
+              :destination_write_failed,
+              context.now
+            )
+
+          persist_record(target, skipped, context, source_tier)
+
+          promotion_outcome(
+            record,
+            :skipped,
+            source_tier,
+            destination_tier,
+            score,
+            threshold,
+            :destination_write_failed
+          )
       end
     end
   end
@@ -387,6 +481,13 @@ defmodule Jido.Memory.Provider.Tiered do
     end
     |> case do
       {:ok, _deleted?} -> :ok
+      {:error, _reason} -> :ok
+    end
+  end
+
+  defp persist_record(target, %Record{} = record, context, tier) do
+    case write_record(target, Map.from_struct(record), context, tier) do
+      {:ok, _stored} -> :ok
       {:error, _reason} -> :ok
     end
   end
@@ -635,9 +736,10 @@ defmodule Jido.Memory.Provider.Tiered do
     |> Map.put(:metadata, Map.put(metadata, :tiered, updated_tiered))
   end
 
-  defp promoted_record(%Record{} = record, destination_tier, score, now) do
+  defp promoted_record(%Record{} = record, source_tier, destination_tier, score, threshold, now) do
     metadata = normalize_map(record.metadata)
     tiered = tiered_metadata(record)
+    lifecycle = lifecycle_metadata(tiered)
 
     promoted_tiered =
       tiered
@@ -645,10 +747,56 @@ defmodule Jido.Memory.Provider.Tiered do
       |> Map.put(:promotion_score, score)
       |> Map.put(:last_promoted_at, now)
       |> Map.put(:last_accessed_at, now)
-      |> Map.put(:promoted_from, tiered[:tier])
+      |> Map.put(:promoted_from, source_tier || tiered[:tier])
       |> Map.update(:promotion_count, 1, &(&1 + 1))
+      |> Map.put(
+        :lifecycle,
+        lifecycle
+        |> Map.put(:last_evaluated_at, now)
+        |> Map.put(:last_decision, :promoted)
+        |> Map.put(:last_source_tier, source_tier || tiered[:tier])
+        |> Map.put(:last_destination_tier, destination_tier)
+        |> Map.put(:last_score, score)
+        |> Map.put(:last_threshold, threshold)
+        |> Map.put(:last_skip_reason, nil)
+        |> Map.update(:evaluation_count, 1, &(&1 + 1))
+      )
 
     %Record{record | metadata: Map.put(metadata, :tiered, promoted_tiered)}
+  end
+
+  defp lifecycle_evaluated_record(
+         %Record{} = record,
+         source_tier,
+         destination_tier,
+         score,
+         threshold,
+         decision,
+         reason,
+         now
+       ) do
+    metadata = normalize_map(record.metadata)
+    tiered = tiered_metadata(record)
+    lifecycle = lifecycle_metadata(tiered)
+
+    updated_lifecycle =
+      lifecycle
+      |> Map.put(:last_evaluated_at, now)
+      |> Map.put(:last_decision, decision)
+      |> Map.put(:last_source_tier, source_tier || tiered[:tier])
+      |> Map.put(:last_destination_tier, destination_tier)
+      |> Map.put(:last_score, score)
+      |> Map.put(:last_threshold, threshold)
+      |> Map.put(:last_skip_reason, reason)
+      |> Map.update(:evaluation_count, 1, &(&1 + 1))
+      |> maybe_increment_skip_count(decision)
+
+    updated_tiered =
+      tiered
+      |> Map.put(:promotion_score, score)
+      |> Map.put(:lifecycle, updated_lifecycle)
+
+    %Record{record | metadata: Map.put(metadata, :tiered, updated_tiered)}
   end
 
   defp promotion_score(%Record{} = record) do
@@ -701,6 +849,12 @@ defmodule Jido.Memory.Provider.Tiered do
     |> normalize_map()
   end
 
+  defp lifecycle_metadata(%{} = tiered) do
+    tiered
+    |> Map.get(:lifecycle, Map.get(tiered, "lifecycle", %{}))
+    |> normalize_map()
+  end
+
   defp build_explanation(%Query{} = query, context, requested_tiers, bundles) do
     result_entries =
       bundles
@@ -739,6 +893,91 @@ defmodule Jido.Memory.Provider.Tiered do
       }
     }
   end
+
+  defp build_lifecycle_snapshot(context, requested_tiers, bundles) do
+    records =
+      bundles
+      |> Enum.flat_map(fn bundle ->
+        Enum.map(bundle.records, fn record ->
+          summarize_lifecycle_record(bundle.tier, record)
+        end)
+      end)
+      |> Enum.filter(&is_map/1)
+      |> Enum.sort_by(&{&1.last_evaluated_at || 0, &1.id}, :desc)
+
+    %{
+      provider: __MODULE__,
+      namespace: context.namespace,
+      requested_tiers: requested_tiers,
+      thresholds: %{
+        short_to_mid: Keyword.fetch!(context.lifecycle, :short_to_mid_threshold),
+        mid_to_long: Keyword.fetch!(context.lifecycle, :mid_to_long_threshold)
+      },
+      current_tiers: counts_by_tier(bundles),
+      recent_outcomes: summarize_recent_outcomes(records),
+      totals: %{
+        tracked_records: length(records),
+        promoted: Enum.count(records, &(&1.decision == :promoted)),
+        skipped: Enum.count(records, &(&1.decision == :skipped))
+      },
+      records: records
+    }
+  end
+
+  defp summarize_lifecycle_record(tier, %Record{} = record) do
+    tiered = tiered_metadata(record)
+    lifecycle = lifecycle_metadata(tiered)
+
+    if lifecycle == %{} do
+      nil
+    else
+      %{
+        id: record.id,
+        tier: tier,
+        decision: lifecycle[:last_decision],
+        source_tier: lifecycle[:last_source_tier],
+        destination_tier: lifecycle[:last_destination_tier],
+        score: normalize_score(lifecycle[:last_score]),
+        threshold: normalize_score(lifecycle[:last_threshold]),
+        skip_reason: lifecycle[:last_skip_reason],
+        promotion_count: tiered[:promotion_count] || 0,
+        evaluation_count: lifecycle[:evaluation_count] || 0,
+        last_evaluated_at: lifecycle[:last_evaluated_at]
+      }
+    end
+  end
+
+  defp summarize_recent_outcomes(records) do
+    base = %{
+      short: %{destination_tier: :mid, promoted: 0, skipped: 0, skipped_reasons: %{}},
+      mid: %{destination_tier: :long, promoted: 0, skipped: 0, skipped_reasons: %{}},
+      long: %{destination_tier: nil, promoted: 0, skipped: 0, skipped_reasons: %{}}
+    }
+
+    Enum.reduce(records, base, fn record, acc ->
+      source_tier = record.source_tier
+
+      if source_tier in [:short, :mid, :long] do
+        update_in(acc, [source_tier], fn summary ->
+          update_recent_outcome_summary(summary, record)
+        end)
+      else
+        acc
+      end
+    end)
+  end
+
+  defp update_recent_outcome_summary(summary, %{decision: :promoted}) do
+    Map.update!(summary, :promoted, &(&1 + 1))
+  end
+
+  defp update_recent_outcome_summary(summary, %{decision: :skipped, skip_reason: reason}) do
+    summary
+    |> Map.update!(:skipped, &(&1 + 1))
+    |> update_in([:skipped_reasons, reason], fn count -> (count || 0) + 1 end)
+  end
+
+  defp update_recent_outcome_summary(summary, _record), do: summary
 
   defp explain_result_entry(%{tier: tier, record: %Record{} = record}, rank, %Query{} = query) do
     tiered = tiered_metadata(record)
@@ -795,6 +1034,51 @@ defmodule Jido.Memory.Provider.Tiered do
   defp maybe_add_match(matches, true, match), do: matches ++ [match]
   defp maybe_add_match(matches, false, _match), do: matches
 
+  defp empty_promotion_result(source_tier, destination_tier, threshold) do
+    %{
+      source_tier: source_tier,
+      destination_tier: destination_tier,
+      threshold: threshold,
+      examined: 0,
+      promoted: 0,
+      skipped: 0,
+      ids: [],
+      skipped_ids: [],
+      decisions: []
+    }
+  end
+
+  defp accumulate_promotion_outcome(result, %{decision: :promoted} = outcome) do
+    result
+    |> Map.update!(:promoted, &(&1 + 1))
+    |> Map.update!(:ids, &[outcome.id | &1])
+    |> Map.update!(:decisions, &[outcome | &1])
+  end
+
+  defp accumulate_promotion_outcome(result, %{decision: :skipped} = outcome) do
+    result
+    |> Map.update!(:skipped, &(&1 + 1))
+    |> Map.update!(:skipped_ids, &[outcome.id | &1])
+    |> Map.update!(:decisions, &[outcome | &1])
+  end
+
+  defp promotion_outcome(record, decision, source_tier, destination_tier, score, threshold, reason \\ nil) do
+    %{
+      id: record.id,
+      decision: decision,
+      source_tier: source_tier,
+      destination_tier: destination_tier,
+      score: score,
+      threshold: threshold,
+      reason: reason
+    }
+  end
+
+  defp maybe_increment_skip_count(lifecycle, :skipped),
+    do: Map.update(lifecycle, :skip_count, 1, &(&1 + 1))
+
+  defp maybe_increment_skip_count(lifecycle, _decision), do: lifecycle
+
   defp counts_by_tier(bundles) do
     base = %{short: 0, mid: 0, long: 0}
 
@@ -850,6 +1134,27 @@ defmodule Jido.Memory.Provider.Tiered do
   defp normalize_optional_namespace(namespace) when is_binary(namespace), do: String.trim(namespace)
   defp normalize_optional_namespace(namespace) when is_atom(namespace), do: Atom.to_string(namespace)
   defp normalize_optional_namespace(_namespace), do: nil
+
+  defp normalize_direct_opts(opts) when is_list(opts) do
+    case Keyword.get(opts, :provider) do
+      nil ->
+        {:ok, opts}
+
+      __MODULE__ ->
+        {:ok, Keyword.delete(opts, :provider)}
+
+      {__MODULE__, provider_opts} when is_list(provider_opts) ->
+        {:ok,
+         opts
+         |> Keyword.put_new(:provider_opts, provider_opts)
+         |> Keyword.delete(:provider)}
+
+      other ->
+        {:error, {:invalid_provider, other}}
+    end
+  end
+
+  defp normalize_direct_opts(_opts), do: {:error, :invalid_provider_opts}
 
   defp normalize_keyword(opts) when is_list(opts), do: opts
   defp normalize_keyword(_opts), do: []

@@ -186,7 +186,9 @@ defmodule Jido.Memory.ProviderTest do
     assert capabilities.retrieval.tiers == true
     assert capabilities.retrieval.explainable == true
     assert capabilities.lifecycle.consolidate == true
+    assert capabilities.lifecycle.inspect == true
     assert meta.explainability.payload_version == 1
+    assert meta.lifecycle_inspection.access == :provider_direct
   end
 
   test "tiered explain_retrieval returns tier-aware explanation details" do
@@ -300,6 +302,104 @@ defmodule Jido.Memory.ProviderTest do
     assert {:ok, %{promoted_to_long: 1}} = Runtime.consolidate(target, provider: provider, tier: :mid)
     assert {:error, :not_found} = Runtime.get(target, id, provider: provider, tier: :mid)
     assert {:ok, %Record{id: ^id}} = Runtime.get(target, id, provider: provider, tier: :long)
+  end
+
+  test "tiered lifecycle inspection summarizes promoted and skipped outcomes" do
+    unique = System.unique_integer([:positive])
+    now = 1_234_567_890
+    target = %{id: "tiered-lifecycle-agent-#{unique}"}
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_tiered_lifecycle_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_tiered_lifecycle_mid_#{unique}"]},
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_lifecycle_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, %Record{id: promoted_id}} =
+             Runtime.remember(
+               target,
+               %{
+                 class: :semantic,
+                 kind: :fact,
+                 text: "important durable tiered lifecycle record",
+                 tags: ["important"],
+                 importance: 1.0
+               },
+               provider: provider,
+               tier: :short
+             )
+
+    assert {:ok, %Record{id: skipped_id}} =
+             Runtime.remember(
+               target,
+               %{
+                 class: :working,
+                 kind: :event,
+                 text: "short lived scratch note",
+                 importance: 0.1
+               },
+               provider: provider,
+               tier: :short
+             )
+
+    assert {:ok, lifecycle_result} =
+             Runtime.consolidate(target, provider: provider, tier: :short, now: now)
+
+    assert lifecycle_result.promoted_to_mid == 1
+    assert lifecycle_result.tier_results.short.source_tier == :short
+    assert lifecycle_result.tier_results.short.destination_tier == :mid
+    assert lifecycle_result.tier_results.short.threshold == 0.65
+    assert lifecycle_result.tier_results.short.promoted == 1
+    assert lifecycle_result.tier_results.short.skipped == 1
+
+    decisions = Map.new(lifecycle_result.tier_results.short.decisions, &{&1.id, &1})
+
+    assert decisions[promoted_id].decision == :promoted
+    assert decisions[promoted_id].source_tier == :short
+    assert decisions[promoted_id].destination_tier == :mid
+    assert decisions[promoted_id].reason == nil
+
+    assert decisions[skipped_id].decision == :skipped
+    assert decisions[skipped_id].source_tier == :short
+    assert decisions[skipped_id].destination_tier == :mid
+    assert decisions[skipped_id].reason == :below_threshold
+
+    assert {:ok, inspection} = Tiered.inspect_lifecycle(target, provider: provider, tiers: [:short, :mid, :long])
+
+    assert inspection.provider == Tiered
+    assert inspection.current_tiers.short == 1
+    assert inspection.current_tiers.mid == 1
+    assert inspection.current_tiers.long == 0
+    assert inspection.totals.promoted == 1
+    assert inspection.totals.skipped == 1
+    assert inspection.recent_outcomes.short.destination_tier == :mid
+    assert inspection.recent_outcomes.short.promoted == 1
+    assert inspection.recent_outcomes.short.skipped == 1
+    assert inspection.recent_outcomes.short.skipped_reasons.below_threshold == 1
+
+    records = Map.new(inspection.records, &{&1.id, &1})
+
+    assert records[promoted_id].tier == :mid
+    assert records[promoted_id].decision == :promoted
+    assert records[promoted_id].source_tier == :short
+    assert records[promoted_id].destination_tier == :mid
+    assert records[promoted_id].promotion_count == 1
+    assert records[promoted_id].last_evaluated_at == now
+
+    assert records[skipped_id].tier == :short
+    assert records[skipped_id].decision == :skipped
+    assert records[skipped_id].source_tier == :short
+    assert records[skipped_id].destination_tier == :mid
+    assert records[skipped_id].skip_reason == :below_threshold
+    assert records[skipped_id].last_evaluated_at == now
+
+    assert {:ok, %Record{metadata: metadata}} =
+             Runtime.get(target, skipped_id, provider: provider, tier: :short)
+
+    assert get_in(metadata, [:tiered, :lifecycle, :last_decision]) == :skipped
+    assert get_in(metadata, [:tiered, :lifecycle, :last_skip_reason]) == :below_threshold
   end
 
   test "tiered provider rejects invalid lifecycle thresholds" do

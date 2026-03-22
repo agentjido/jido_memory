@@ -22,15 +22,15 @@ Description: expose lifecycle reasoning so promotion across tiers can be underst
 
 ### Task 2.2.1 - Add promotion rationale metadata
 Description: make Tiered record why a memory was eligible or ineligible for promotion.
-- [ ] Record promotion scores, threshold comparisons, and source tier information in provider-managed metadata.
-- [ ] Distinguish transient retrieval metadata from durable lifecycle metadata.
-- [ ] Keep metadata bounded so repeated consolidations do not produce unbounded record growth.
+- [x] Record promotion scores, threshold comparisons, and source tier information in provider-managed metadata.
+- [x] Distinguish transient retrieval metadata from durable lifecycle metadata.
+- [x] Keep metadata bounded so repeated consolidations do not produce unbounded record growth.
 
 ### Task 2.2.2 - Add lifecycle inspection helpers
 Description: make it easy to query promotion and consolidation outcomes through supported APIs.
-- [ ] Add provider or runtime helpers for summarizing recent consolidation outcomes.
-- [ ] Expose promotion counts, skipped reasons, and destination tiers in a stable inspection shape.
-- [ ] Decide whether lifecycle inspection belongs in `info/3`, a new capability helper, or provider-direct operations.
+- [x] Add provider or runtime helpers for summarizing recent consolidation outcomes.
+- [x] Expose promotion counts, skipped reasons, and destination tiers in a stable inspection shape.
+- [x] Decide whether lifecycle inspection belongs in `info/3`, a new capability helper, or provider-direct operations.
 
 ## Section 2.3 - Tiered Explainability Docs and Examples
 Description: document how explainability and lifecycle inspection should be used in practice.
