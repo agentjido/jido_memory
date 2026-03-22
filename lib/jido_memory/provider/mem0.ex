@@ -36,7 +36,12 @@ defmodule Jido.Memory.Provider.Mem0 do
     },
     lifecycle: %{consolidate: false, inspect: false},
     ingestion: %{batch: true, multimodal: false, routed: true, access: :provider_direct},
-    operations: %{feedback: :provider_direct, export: :provider_direct, history: :provider_direct},
+    operations: %{
+      feedback: :provider_direct,
+      export: :provider_direct,
+      history: :provider_direct,
+      maintenance: :provider_direct
+    },
     governance: %{protected_memory: false, exact_preservation: false, access: :none},
     hooks: %{}
   }
@@ -76,11 +81,15 @@ defmodule Jido.Memory.Provider.Mem0 do
          maintenance: %{
            reconciliation: :provider_direct,
            feedback: :provider_direct,
+           export: :provider_direct,
            history: :provider_direct,
+           summary_refresh: :provider_direct,
+           reconciliation_rerun: :provider_direct,
            outcomes: [:add, :update, :delete, :noop],
            similarity_strategy: :fact_key_and_text
          }
        })
+       |> Map.put(:advanced_operations, advanced_operations_meta())
        |> Map.put(:extraction_context, extraction_context_meta(opts))
        |> Map.put(:retrieval_context, retrieval_context_meta(opts))
        |> Map.put(:scoped_identity, scoped_identity)}
@@ -268,6 +277,108 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   def history(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  @doc """
+  Returns a provider-direct scoped export snapshot for Mem0-managed records.
+  """
+  @spec export(map() | struct(), keyword()) :: {:ok, map()} | {:error, term()}
+  def export(target, opts \\ [])
+
+  def export(target, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
+         {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, filters} <- export_filters(normalized_opts),
+         {:ok, records} <- export_records(context, scope, filters) do
+      history =
+        if filters.include_history do
+          history_records(context, scope, %{
+            record_id: nil,
+            fact_key: nil,
+            event_types: [],
+            limit: filters.history_limit
+          })
+        else
+          {:ok, []}
+        end
+
+      case history do
+        {:ok, history_records} ->
+          {:ok,
+           %{
+             provider: __MODULE__,
+             namespace: context.namespace,
+             scope: scope,
+             count: length(records),
+             filters: filters,
+             records: Enum.map(records, &export_record/1),
+             history_count: length(history_records),
+             history: Enum.map(history_records, &history_event/1)
+           }}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  def export(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  @doc """
+  Returns a provider-direct maintenance snapshot for the current scoped Mem0 state.
+  """
+  @spec refresh_summary(map() | struct(), keyword()) :: {:ok, map()} | {:error, term()}
+  def refresh_summary(target, opts \\ [])
+
+  def refresh_summary(target, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
+         {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+         {:ok, records} <-
+           export_records(context, scope, %{
+             classes: [],
+             kinds: [],
+             limit: 500,
+             include_history: false,
+             history_limit: 0
+           }),
+         {:ok, events} <- history_records(context, scope, %{record_id: nil, fact_key: nil, event_types: [], limit: 100}) do
+      {:ok,
+       %{
+         provider: __MODULE__,
+         namespace: context.namespace,
+         scope: scope,
+         totals: %{
+           records: length(records),
+           maintained_records: Enum.count(records, &(maintenance_action(&1) != nil)),
+           feedback_tracked: Enum.count(records, &(feedback_status(&1) != nil))
+         },
+         counts_by_class: counts_by(records, & &1.class),
+         counts_by_kind: counts_by(records, & &1.kind),
+         feedback: counts_by(records, &feedback_status/1),
+         maintenance_actions: counts_by(records, &maintenance_action/1),
+         history_events: counts_by(events, &history_event_type/1),
+         recent_history: Enum.map(Enum.take(events, 10), &history_event/1)
+       }}
+    end
+  end
+
+  def refresh_summary(_target, _opts), do: {:error, :invalid_provider_opts}
+
+  @doc """
+  Re-runs provider-owned Mem0 reconciliation explicitly as a maintenance operation.
+  """
+  @spec rerun_reconciliation(map() | struct(), map(), keyword()) :: {:ok, map()} | {:error, term()}
+  def rerun_reconciliation(target, payload, opts \\ [])
+
+  def rerun_reconciliation(target, %{} = payload, opts) when is_list(opts) do
+    case ingest(target, payload, opts) do
+      {:ok, result} -> {:ok, Map.put(result, :maintenance_mode, :rerun)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def rerun_reconciliation(_target, _payload, _opts), do: {:error, :invalid_ingest_payload}
 
   @impl true
   def info(provider_meta, :all), do: {:ok, provider_meta}
@@ -568,6 +679,84 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp normalize_history_limit(limit) when is_integer(limit) and limit > 0, do: {:ok, limit}
   defp normalize_history_limit(_limit), do: {:error, :invalid_history_filter}
+
+  defp export_filters(opts) when is_list(opts) do
+    with {:ok, limit} <- normalize_history_limit(Keyword.get(opts, :limit, 100)),
+         {:ok, history_limit} <- normalize_history_limit(Keyword.get(opts, :history_limit, 50)) do
+      {:ok,
+       %{
+         classes: normalize_filter_list(Keyword.get(opts, :classes, [])),
+         kinds: normalize_filter_list(Keyword.get(opts, :kinds, [])),
+         limit: limit,
+         include_history: Keyword.get(opts, :include_history, false),
+         history_limit: history_limit
+       }}
+    end
+  end
+
+  defp export_records(context, scope, filters) do
+    with {:ok, query} <-
+           Query.new(%{
+             namespace: context.namespace,
+             classes: filters.classes,
+             kinds: filters.kinds,
+             limit: min(max(filters.limit * 5, 50), 1_000),
+             order: :desc
+           }),
+         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
+      {:ok,
+       records
+       |> Enum.filter(&scope_matches?(&1, scope))
+       |> Enum.filter(&mem0_managed_record?/1)
+       |> Enum.take(filters.limit)}
+    end
+  end
+
+  defp export_record(%Record{} = record) do
+    mem0 = record.metadata |> provider_metadata("mem0") |> normalize_metadata() |> stringify_map_keys()
+
+    %{
+      id: record.id,
+      class: record.class,
+      kind: record.kind,
+      text: record.text,
+      observed_at: record.observed_at,
+      fact_key: Map.get(mem0, "fact_key"),
+      fact_value: Map.get(mem0, "fact_value"),
+      maintenance_action: Map.get(mem0, "maintenance_action"),
+      feedback_status: feedback_status(record)
+    }
+  end
+
+  defp advanced_operations_meta do
+    %{
+      feedback: %{access: :provider_direct, functions: [:feedback]},
+      history: %{access: :provider_direct, functions: [:history]},
+      export: %{access: :provider_direct, functions: [:export]},
+      maintenance: %{access: :provider_direct, functions: [:refresh_summary, :rerun_reconciliation]}
+    }
+  end
+
+  defp feedback_status(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> map_get("feedback")
+    |> normalize_metadata()
+    |> map_get("status")
+  end
+
+  defp counts_by(records, fun) do
+    Enum.reduce(records, %{}, fn record, acc ->
+      case fun.(record) do
+        nil -> acc
+        key -> Map.update(acc, key, 1, &(&1 + 1))
+      end
+    end)
+  end
+
+  defp normalize_filter_list(values) when is_list(values), do: values
+  defp normalize_filter_list(nil), do: []
+  defp normalize_filter_list(value), do: List.wrap(value)
 
   defp scoped_identity_meta(opts) do
     with {:ok, defaults} <- normalize_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do

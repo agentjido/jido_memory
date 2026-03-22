@@ -607,4 +607,87 @@ defmodule Jido.Memory.Mem0ProviderTest do
 
     assert Enum.map(filtered_history.events, & &1.event_type) == [:ingest_update, :ingest_noop]
   end
+
+  test "mem0 export returns scoped snapshots and optional history" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase04_export"),
+         namespace: "agent:mem0-phase04-export"
+       ]}
+
+    target = %{id: "mem0-phase04-export-agent"}
+
+    assert {:ok, _summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "I live in Denver."}]},
+               provider: provider,
+               user_id: "export-user",
+               now: 100
+             )
+
+    assert {:ok, %Record{}} =
+             Runtime.remember(
+               target,
+               %{class: :episodic, kind: :note, text: "direct export note"},
+               provider: provider,
+               user_id: "export-user",
+               now: 150
+             )
+
+    assert {:ok, export} =
+             Mem0.export(
+               target,
+               provider: provider,
+               user_id: "export-user",
+               include_history: true
+             )
+
+    assert export.provider == Mem0
+    assert export.count == 2
+    assert export.history_count >= 2
+    assert Enum.any?(export.records, &(&1.fact_key == "location:home"))
+    assert Enum.any?(export.records, &(&1.kind == :note))
+    assert Enum.any?(export.history, &(&1.event_type == :remember))
+  end
+
+  test "mem0 refresh_summary and rerun_reconciliation stay provider-direct and discoverable" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase04_maintenance"),
+         namespace: "agent:mem0-phase04-maintenance"
+       ]}
+
+    target = %{id: "mem0-phase04-maintenance-agent"}
+
+    assert {:ok, result} =
+             Mem0.rerun_reconciliation(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "maintenance-user",
+               now: 100
+             )
+
+    assert result.maintenance_mode == :rerun
+    assert result.maintenance.add == 1
+
+    assert {:ok, summary} =
+             Mem0.refresh_summary(
+               target,
+               provider: provider,
+               user_id: "maintenance-user"
+             )
+
+    assert summary.provider == Mem0
+    assert summary.totals.records == 1
+    assert summary.counts_by_class.semantic == 1
+    assert summary.history_events.ingest_add == 1
+
+    assert {:ok, info} = Runtime.info(target, [:advanced_operations], provider: provider)
+    assert info.advanced_operations.export.access == :provider_direct
+    assert info.advanced_operations.maintenance.functions == [:refresh_summary, :rerun_reconciliation]
+  end
 end

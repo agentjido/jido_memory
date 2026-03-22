@@ -149,18 +149,27 @@ defmodule Jido.Memory.ProviderTest do
     assert capabilities.operations.feedback == :provider_direct
     assert capabilities.operations.export == :provider_direct
     assert capabilities.operations.history == :provider_direct
+    assert capabilities.operations.maintenance == :provider_direct
 
-    assert {:ok, info} = Mem0.info(meta, [:provider, :provider_style, :topology, :scoped_identity])
+    assert {:ok, info} =
+             Mem0.info(meta, [:provider, :provider_style, :topology, :scoped_identity, :advanced_operations])
+
     assert info.provider == Mem0
     assert info.provider_style == :mem0
     assert info.topology.archetype == :extraction_reconciliation
     assert info.topology.retrieval.scoped == true
     assert info.topology.retrieval.explainable == true
     assert info.topology.retrieval.graph_augmentation == true
+    assert info.topology.maintenance.export == :provider_direct
+    assert info.topology.maintenance.summary_refresh == :provider_direct
+    assert info.topology.maintenance.reconciliation_rerun == :provider_direct
     assert info.scoped_identity.enabled == true
     assert info.scoped_identity.defaults.user_id == "cfg-user"
     assert info.scoped_identity.defaults.app_id == "cfg-app"
     assert info.scoped_identity.supported_dimensions == [:user, :agent, :app, :run]
+    assert info.advanced_operations.feedback.functions == [:feedback]
+    assert info.advanced_operations.export.functions == [:export]
+    assert info.advanced_operations.maintenance.functions == [:refresh_summary, :rerun_reconciliation]
   end
 
   test "mem0 provider resolves scope ids from runtime opts then target data then provider config", %{store: store} do

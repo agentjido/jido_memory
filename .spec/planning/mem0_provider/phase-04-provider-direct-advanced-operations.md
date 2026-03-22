@@ -28,15 +28,16 @@ Back to index: [README](./README.md)
       [x] 4.1.1.2 Subtask - Add provider-direct history APIs for inspecting reconciliation events and memory evolution.
       [x] 4.1.1.3 Subtask - Keep feedback and history semantics out of the shared runtime until another provider demonstrates the same shape.
 
-  [ ] 4.2 Section - Export and Maintenance Controls
+  [x] 4.2 Section - Export and Maintenance Controls
     Add provider-direct export and maintenance controls for Mem0-specific operational workflows.
+    Completed by adding scoped export snapshots, maintenance-summary refresh, an explicit reconciliation rerun helper, and structured advanced-operation metadata in provider info.
 
-    [ ] 4.2.1 Task - Add export and maintenance operations
+    [x] 4.2.1 Task - Add export and maintenance operations
       Support operational workflows around Mem0 memory state without forcing those concerns into the canonical provider contract.
 
-      [ ] 4.2.1.1 Subtask - Add provider-direct export APIs for scoped memory snapshots or maintenance summaries.
-      [ ] 4.2.1.2 Subtask - Add provider-direct maintenance helpers for summary refresh, reconciliation re-runs, or cleanup workflows.
-      [ ] 4.2.1.3 Subtask - Surface available advanced operations through structured capability or info metadata.
+      [x] 4.2.1.1 Subtask - Add provider-direct export APIs for scoped memory snapshots or maintenance summaries.
+      [x] 4.2.1.2 Subtask - Add provider-direct maintenance helpers for summary refresh, reconciliation re-runs, or cleanup workflows.
+      [x] 4.2.1.3 Subtask - Surface available advanced operations through structured capability or info metadata.
 
   [ ] 4.3 Section - Runtime and Plugin Boundary Hardening
     Reconfirm that Mem0 advanced operations stay additive and do not leak onto the common plugin or runtime path accidentally.
