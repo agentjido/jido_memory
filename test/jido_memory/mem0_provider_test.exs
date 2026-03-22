@@ -23,7 +23,7 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert capabilities.ingestion.access == :provider_direct
 
     assert {:ok, %{provider: Mem0, extraction_context: extraction_context}} =
-             Runtime.info(target, [:provider, :extraction_context], provider: provider)
+             Runtime.info(target, [:provider, :extraction_context, :topology], provider: provider)
 
     assert extraction_context.recent_window == 2
     assert extraction_context.summary_context == :required
@@ -71,6 +71,9 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert summary.deleted_ids == []
     assert summary.noop_ids == []
     assert summary.maintenance.add == 1
+    assert summary.maintenance_results == [
+             %{fact_key: "location:home", outcome: :add, record_id: hd(summary.created_ids)}
+           ]
 
     assert {:ok, [%Record{id: id, metadata: metadata}]} =
              Runtime.retrieve(
@@ -128,5 +131,89 @@ defmodule Jido.Memory.Mem0ProviderTest do
                text: "tool:editing=neovim"
              }
            ]
+  end
+
+  test "mem0 reconciliation returns add, noop, update, and delete outcomes deterministically" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase02_reconcile"),
+         namespace: "agent:mem0-phase02-reconcile",
+         extraction: [recent_window: 4, summary_context: :optional]
+       ]}
+
+    target = %{id: "mem0-phase02-reconcile-agent"}
+
+    assert {:ok, add_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
+
+    [record_id] = add_summary.created_ids
+    assert add_summary.maintenance.add == 1
+
+    assert {:ok, noop_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
+
+    assert noop_summary.created_ids == []
+    assert noop_summary.noop_ids == [record_id]
+    assert noop_summary.maintenance.noop == 1
+
+    assert {:ok, update_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Erlang."}]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
+
+    assert update_summary.updated_ids == [record_id]
+    assert update_summary.maintenance.update == 1
+    assert update_summary.maintenance_results == [
+             %{
+               fact_key: "favorite:language",
+               outcome: :update,
+               previous_record_id: record_id,
+               record_id: record_id
+             }
+           ]
+
+    assert {:ok, [%Record{id: ^record_id, text: "favorite:language=erlang", metadata: metadata}]} =
+             Runtime.retrieve(
+               target,
+               %{text_contains: "favorite:language=", classes: [:semantic]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
+
+    assert get_in(metadata, ["mem0", "maintenance_action"]) == :update
+    assert get_in(metadata, ["mem0", "previous_fact_value"]) == "elixir"
+
+    assert {:ok, delete_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "Forget that my favorite language is Erlang."}]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
+
+    assert delete_summary.deleted_ids == [record_id]
+    assert delete_summary.maintenance.delete == 1
+
+    assert {:ok, []} =
+             Runtime.retrieve(
+               target,
+               %{text_contains: "favorite:language=", classes: [:semantic]},
+               provider: provider,
+               user_id: "user-reconcile"
+             )
   end
 end

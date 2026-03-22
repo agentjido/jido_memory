@@ -63,7 +63,13 @@ defmodule Jido.Memory.Provider.Mem0 do
        |> Map.put(:topology, %{
          archetype: :extraction_reconciliation,
          retrieval: %{scoped: true, explainable: false, graph_augmentation: false},
-         maintenance: %{reconciliation: :provider_direct, feedback: :provider_direct, history: :provider_direct}
+         maintenance: %{
+           reconciliation: :provider_direct,
+           feedback: :provider_direct,
+           history: :provider_direct,
+           outcomes: [:add, :update, :delete, :noop],
+           similarity_strategy: :fact_key_and_text
+         }
        })
        |> Map.put(:extraction_context, extraction_context_meta(opts))
        |> Map.put(:scoped_identity, scoped_identity)}
@@ -599,12 +605,11 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp persist_extracted_candidates(extracted, context, scope, normalized_payload) do
     result =
       Enum.reduce(extracted.candidates, initial_ingest_summary(context, normalized_payload), fn candidate, acc ->
-        case persist_candidate(candidate, context, scope) do
-          {:ok, record} ->
+        case reconcile_candidate(candidate, context, scope) do
+          {:ok, outcome, details} ->
             acc
-            |> Map.update!(:created_ids, &(&1 ++ [record.id]))
+            |> track_maintenance_outcome(outcome, details)
             |> Map.update!(:extracted_candidates, &(&1 ++ [candidate_summary(candidate)]))
-            |> increment_maintenance(:add)
 
           {:error, reason} ->
             Map.update!(acc, :skipped_candidates, &(&1 ++ [%{reason: reason, fact_key: candidate.fact_key}]))
@@ -614,26 +619,115 @@ defmodule Jido.Memory.Provider.Mem0 do
     {:ok, %{result | skipped_candidates: result.skipped_candidates ++ extracted.skipped}}
   end
 
-  defp persist_candidate(candidate, context, scope) do
+  defp reconcile_candidate(candidate, context, scope) do
+    similar_records = similar_records_for_candidate(candidate, context, scope)
+
+    case candidate.action do
+      :upsert -> reconcile_upsert_candidate(candidate, context, scope, similar_records)
+      :delete -> reconcile_delete_candidate(candidate, context, similar_records)
+    end
+  end
+
+  defp reconcile_upsert_candidate(candidate, context, scope, similar_records) do
+    exact_match =
+      Enum.find(similar_records, fn record ->
+        fact_value(record) == candidate.fact_value
+      end)
+
+    case {similar_records, exact_match} do
+      {[], nil} ->
+        with {:ok, record} <- persist_candidate_record(candidate, context, scope, :add, nil, similar_records) do
+          {:ok, :add, %{record_id: record.id, fact_key: candidate.fact_key}}
+        end
+
+      {_records, %Record{} = record} ->
+        {:ok, :noop, %{record_id: record.id, fact_key: candidate.fact_key}}
+
+      {[existing | _], nil} ->
+        with {:ok, record} <- persist_candidate_record(candidate, context, scope, :update, existing, similar_records) do
+          {:ok,
+           :update,
+           %{
+             record_id: record.id,
+             previous_record_id: existing.id,
+             fact_key: candidate.fact_key
+           }}
+        end
+    end
+  end
+
+  defp reconcile_delete_candidate(candidate, context, similar_records) do
+    case matching_record_for_delete(similar_records, candidate.fact_value) do
+      nil ->
+        {:ok, :noop, %{record_id: nil, fact_key: candidate.fact_key}}
+
+      %Record{} = record ->
+        :ok = context.store_mod.delete({record.namespace, record.id}, context.store_opts)
+        {:ok, :delete, %{record_id: record.id, fact_key: candidate.fact_key}}
+    end
+  end
+
+  defp persist_candidate_record(candidate, context, scope, action, existing_record, similar_records) do
     mem0_metadata =
       candidate.metadata
       |> Map.put(:write_mode, :ingest)
-      |> Map.put(:maintenance_action, :add)
+      |> Map.put(:maintenance_action, action)
+      |> Map.put(:similar_record_ids, Enum.map(similar_records, & &1.id))
+      |> maybe_put(:previous_record_id, existing_record && existing_record.id)
+      |> maybe_put(:previous_fact_value, existing_record && fact_value(existing_record))
 
-    attrs = %{
-      class: candidate.class,
-      kind: candidate.kind,
-      text: candidate.text,
-      tags: candidate.tags,
-      content: candidate.content,
-      source: candidate.source,
-      observed_at: candidate.observed_at,
-      metadata: candidate.metadata
-    }
+    attrs =
+      %{
+        class: candidate.class,
+        kind: candidate.kind,
+        text: candidate.text,
+        tags: candidate.tags,
+        content: candidate.content,
+        source: candidate.source,
+        observed_at: candidate.observed_at,
+        metadata: candidate.metadata
+      }
+      |> maybe_put(:id, existing_record && existing_record.id)
 
     with {:ok, record} <- build_record(attrs, context.namespace, context.now, scope, mem0_metadata) do
       context.store_mod.put(record, context.store_opts)
     end
+  end
+
+  defp similar_records_for_candidate(candidate, context, scope) do
+    with {:ok, query} <- Query.new(%{namespace: context.namespace, classes: [:semantic], limit: 1000, order: :desc}),
+         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
+      records
+      |> Enum.filter(&scope_matches?(&1, scope))
+      |> Enum.filter(&mem0_managed_record?(&1))
+      |> Enum.filter(&similar_candidate_record?(&1, candidate))
+      |> Enum.sort_by(& &1.observed_at, :desc)
+    else
+      _ -> []
+    end
+  end
+
+  defp mem0_managed_record?(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> normalize_metadata()
+    |> map_size() > 0
+  end
+
+  defp similar_candidate_record?(%Record{} = record, candidate) do
+    record_fact_key = fact_key(record)
+    record_text = normalize_fact_fragment(record.text || "")
+    candidate_text = normalize_fact_fragment(candidate.text)
+
+    record_fact_key == candidate.fact_key or
+      record_text == candidate_text or
+      String.starts_with?(record_text, "#{candidate.fact_key}=")
+  end
+
+  defp matching_record_for_delete(similar_records, candidate_value) do
+    Enum.find(similar_records, fn record ->
+      fact_value(record) == candidate_value
+    end) || List.first(similar_records)
   end
 
   defp initial_ingest_summary(context, normalized_payload) do
@@ -650,6 +744,7 @@ defmodule Jido.Memory.Provider.Mem0 do
       updated_ids: [],
       deleted_ids: [],
       noop_ids: [],
+      maintenance_results: [],
       maintenance: %{add: 0, update: 0, delete: 0, noop: 0}
     }
   end
@@ -665,6 +760,37 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp increment_maintenance(summary, key) do
     update_in(summary, [:maintenance, key], &(&1 + 1))
+  end
+
+  defp track_maintenance_outcome(summary, outcome, details) do
+    summary
+    |> maybe_track_outcome_id(outcome, details)
+    |> Map.update!(:maintenance_results, &(&1 ++ [Map.put(details, :outcome, outcome)]))
+    |> increment_maintenance(outcome)
+  end
+
+  defp maybe_track_outcome_id(summary, :add, %{record_id: record_id}),
+    do: Map.update!(summary, :created_ids, &(&1 ++ [record_id]))
+
+  defp maybe_track_outcome_id(summary, :update, %{record_id: record_id}),
+    do: Map.update!(summary, :updated_ids, &(&1 ++ [record_id]))
+
+  defp maybe_track_outcome_id(summary, :delete, %{record_id: record_id}),
+    do: Map.update!(summary, :deleted_ids, &(&1 ++ [record_id]))
+
+  defp maybe_track_outcome_id(summary, :noop, %{record_id: record_id}),
+    do: Map.update!(summary, :noop_ids, &(&1 ++ if(is_nil(record_id), do: [], else: [record_id])))
+
+  defp fact_key(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> map_get("fact_key")
+  end
+
+  defp fact_value(%Record{metadata: metadata}) do
+    metadata
+    |> provider_metadata("mem0")
+    |> map_get("fact_value")
   end
 
   defp candidate_sentences(nil), do: []
@@ -806,4 +932,7 @@ defmodule Jido.Memory.Provider.Mem0 do
     do: Map.get(map, Jido.Memory.Runtime.plugin_state_key(), %{}) |> normalize_metadata()
 
   defp plugin_state(_target), do: %{}
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

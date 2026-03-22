@@ -35,22 +35,23 @@ Back to index: [README](./README.md)
       [x] 2.1.2.2 Subtask - Keep summary generation provider-owned rather than a new shared runtime responsibility.
       [x] 2.1.2.3 Subtask - Surface extraction-context settings through `info/2` and provider metadata.
 
-  [ ] 2.2 Section - Reconciliation and Update Semantics
+  [x] 2.2 Section - Reconciliation and Update Semantics
     Implement the ADD, UPDATE, DELETE, and NOOP-style maintenance flow that reconciles candidate memories against existing stored memory.
+    Completed by adding provider-owned similarity lookup, deterministic add/update/delete/noop reconciliation outcomes, maintenance summaries in ingestion results, and additive provenance in Mem0 record metadata.
 
-    [ ] 2.2.1 Task - Add reconciliation decision flow
+    [x] 2.2.1 Task - Add reconciliation decision flow
       Make the Mem0 provider maintain long-term memory coherence rather than appending every extracted fact blindly.
 
-      [ ] 2.2.1.1 Subtask - Retrieve semantically similar existing memories before committing each candidate memory.
-      [ ] 2.2.1.2 Subtask - Implement provider-owned reconciliation outcomes equivalent to add, update, delete, and no-op semantics.
-      [ ] 2.2.1.3 Subtask - Preserve reconciliation provenance in provider metadata or provider-direct history rather than changing the canonical record schema.
+      [x] 2.2.1.1 Subtask - Retrieve semantically similar existing memories before committing each candidate memory.
+      [x] 2.2.1.2 Subtask - Implement provider-owned reconciliation outcomes equivalent to add, update, delete, and no-op semantics.
+      [x] 2.2.1.3 Subtask - Preserve reconciliation provenance in provider metadata or provider-direct history rather than changing the canonical record schema.
 
-    [ ] 2.2.2 Task - Keep maintenance semantics provider-direct
+    [x] 2.2.2 Task - Keep maintenance semantics provider-direct
       Preserve the additive extension boundary while exposing enough insight for tooling and tests.
 
-      [ ] 2.2.2.1 Subtask - Keep reconciliation controls provider-direct in v1 rather than adding new shared runtime APIs.
-      [ ] 2.2.2.2 Subtask - Expose maintenance summaries through ingestion results, explainability output, `info/2`, or provider-direct inspection helpers.
-      [ ] 2.2.2.3 Subtask - Keep unsupported-maintenance behavior deterministic for other providers.
+      [x] 2.2.2.1 Subtask - Keep reconciliation controls provider-direct in v1 rather than adding new shared runtime APIs.
+      [x] 2.2.2.2 Subtask - Expose maintenance summaries through ingestion results, explainability output, `info/2`, or provider-direct inspection helpers.
+      [x] 2.2.2.3 Subtask - Keep unsupported-maintenance behavior deterministic for other providers.
 
   [ ] 2.3 Section - Canonical Write Compatibility Hardening
     Preserve direct structured writes and compatibility callers while the richer Mem0 maintenance path is added.
