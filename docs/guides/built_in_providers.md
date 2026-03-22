@@ -53,6 +53,55 @@ The built-in Tiered provider always routes `:long` tier operations through
 `Jido.Memory.LongTermStore`, so applications can swap the long-term backend
 without rewriting the provider or agent plugin configuration.
 
+## Tiered Explainability and Lifecycle Inspection
+
+Tiered exposes two inspection surfaces:
+
+- `Jido.Memory.Runtime.explain_retrieval/3` for provider-aware retrieval explanations.
+- `Jido.Memory.Provider.Tiered.inspect_lifecycle/2` for provider-direct lifecycle summaries.
+
+```elixir
+provider =
+  {:tiered,
+   [
+     short_store: {Jido.Memory.Store.ETS, [table: :agent_short_memory]},
+     mid_store: {Jido.Memory.Store.ETS, [table: :agent_mid_memory]},
+     long_term_store:
+       {Jido.Memory.LongTermStore.ETS,
+        [store: {Jido.Memory.Store.ETS, [table: :agent_long_memory]}}}
+   ]}
+
+agent = %{id: "agent-1"}
+
+{:ok, explanation} =
+  Jido.Memory.Runtime.explain_retrieval(
+    agent,
+    %{text_contains: "important", tiers: [:short, :mid, :long]},
+    provider: provider
+  )
+
+{:ok, lifecycle_result} =
+  Jido.Memory.Runtime.consolidate(agent, provider: provider, tier: :short)
+
+{:ok, lifecycle_snapshot} =
+  Jido.Memory.Provider.Tiered.inspect_lifecycle(
+    agent,
+    provider: provider,
+    tiers: [:short, :mid, :long]
+  )
+```
+
+The tradeoff is intentional:
+
+- retrieval explanations describe why current results matched and which tiers participated
+- lifecycle inspection stores only bounded last-decision metadata per record
+- neither surface is meant to be a full audit trail
+
+Open questions for later phases:
+
+- whether Tiered should expose deeper ranking weights than the current match reasons and ordering context
+- whether lifecycle inspection should ever retain more than the last known decision per record
+
 ## Custom Long-Term Persistence
 
 Applications can provide a custom long-term backend by implementing
@@ -105,6 +154,10 @@ Choose `jido_memory_os` when you need its native advanced workflows, such as:
 - journaling and replay
 - approvals and governance
 - framework-specific plugin routes
+
+Tiered explainability and lifecycle inspection are not a replacement for
+request-level journaling, replay, or manager-driven audit history. Those remain
+explicitly outside the built-in provider scope.
 
 `jido_memory_os` remains a standalone advanced library with its own facade and
 plugin. It is no longer part of the release-critical built-in provider story for

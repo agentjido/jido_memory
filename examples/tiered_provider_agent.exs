@@ -29,6 +29,18 @@ defmodule Example.TieredProviderAgent do
         provider: provider
       )
 
+    {:ok, skipped_record} =
+      Runtime.remember(
+        agent,
+        %{
+          class: :working,
+          kind: :event,
+          text: "Scratch reminder that should stay in short-term memory.",
+          importance: 0.1
+        },
+        provider: provider
+      )
+
     {:ok, initial_results} =
       Runtime.retrieve(
         agent,
@@ -36,15 +48,26 @@ defmodule Example.TieredProviderAgent do
         provider: provider
       )
 
+    {:ok, explanation} =
+      Runtime.explain_retrieval(
+        agent,
+        %{text_contains: "Tiered providers", tiers: [:short, :mid, :long]},
+        provider: provider
+      )
+
     {:ok, lifecycle_result} = Runtime.consolidate(agent, provider: provider, tier: :short)
+    {:ok, lifecycle_snapshot} = Tiered.inspect_lifecycle(agent, provider: provider, tiers: [:short, :mid, :long])
     {:ok, promoted_record} = Runtime.get(agent, record.id, provider: provider, tier: :mid)
 
     {:ok,
      %{
        provider: provider,
        record: record,
+       skipped_record: skipped_record,
        initial_results: initial_results,
+       explanation: explanation,
        lifecycle_result: lifecycle_result,
+       lifecycle_snapshot: lifecycle_snapshot,
        promoted_record: promoted_record
      }}
   end

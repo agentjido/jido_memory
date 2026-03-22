@@ -37,15 +37,15 @@ Description: document how explainability and lifecycle inspection should be used
 
 ### Task 2.3.1 - Add docs-backed explainability examples
 Description: show retrieval explanation and promotion inspection in the same built-in Tiered story users already understand.
-- [ ] Add README or guide examples for `Runtime.explain_retrieval/3` with Tiered.
-- [ ] Show how lifecycle inspection explains promotion from short to mid and mid to long.
-- [ ] Explain the tradeoff between lightweight metadata and richer audit detail.
+- [x] Add README or guide examples for `Runtime.explain_retrieval/3` with Tiered.
+- [x] Show how lifecycle inspection explains promotion from short to mid and mid to long.
+- [x] Explain the tradeoff between lightweight metadata and richer audit detail.
 
 ### Task 2.3.2 - Clarify non-goals for Tiered explainability
 Description: prevent this phase from expanding into full observability or journaling.
-- [ ] Document that Tiered explainability is not a replacement for MemoryOS journaling and replay.
-- [ ] Keep request-level auditing and replay explicitly outside this phase.
-- [ ] Capture any open questions around ranking semantics and explanation depth before expanding further.
+- [x] Document that Tiered explainability is not a replacement for MemoryOS journaling and replay.
+- [x] Keep request-level auditing and replay explicitly outside this phase.
+- [x] Capture any open questions around ranking semantics and explanation depth before expanding further.
 
 ## Section 2.4 - Phase 2 Integration Tests
 Description: validate explainability and lifecycle inspection end to end through the built-in Tiered provider.

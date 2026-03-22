@@ -236,7 +236,26 @@ agent = %{id: "agent-1"}
 
 {:ok, promoted_record} =
   Jido.Memory.Runtime.get(agent, record.id, provider: provider, tier: :mid)
+
+{:ok, explanation} =
+  Jido.Memory.Runtime.explain_retrieval(
+    agent,
+    %{text_contains: "Important memories", tiers: [:short, :mid, :long]},
+    provider: provider
+  )
+
+{:ok, lifecycle_snapshot} =
+  Jido.Memory.Provider.Tiered.inspect_lifecycle(
+    agent,
+    provider: provider,
+    tiers: [:short, :mid, :long]
+  )
 ```
+
+`Runtime.explain_retrieval/3` is the common provider-aware entrypoint for why a
+result matched. `Jido.Memory.Provider.Tiered.inspect_lifecycle/2` is
+provider-direct and reports bounded promotion and skip metadata for the last
+known lifecycle decision on each tracked record.
 
 ## Memory Actions
 
@@ -307,6 +326,10 @@ The built-in provider expansion keeps the existing public contract stable:
 - journaling and replay
 - approvals and governance
 - framework-specific plugin flows
+
+The built-in Tiered provider does not try to replace request-level journaling,
+replay, or manager-driven audit history. Its explainability and lifecycle
+inspection surfaces are intentionally lighter-weight.
 
 The built-in release story for `jido_memory` is still `:basic` and `:tiered`.
 External-provider interop is now available as an opt-in seam, but it does not
