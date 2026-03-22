@@ -84,15 +84,21 @@ defmodule Jido.Memory.Provider.Mirix do
 
     def plan_retrieval(%Query{} = query, context) do
       requested = requested_memory_types(query, context)
-      selected = requested |> Enum.filter(&(&1 in context.public_memory_types)) |> Enum.uniq()
       planner_mode = planner_mode(query, context)
+      resource_scope = extension_value(query, :resource_scope)
+
+      selected =
+        requested
+        |> apply_resource_scope(resource_scope)
+        |> Enum.filter(&(&1 in context.public_memory_types))
+        |> Enum.uniq()
 
       {:ok,
        %{
          requested_memory_types: requested,
          selected_memory_types: selected,
          planner_mode: planner_mode,
-         resource_scope: extension_value(query, :resource_scope),
+         resource_scope: resource_scope,
          passes: [%{name: :primary, memory_types: selected, strategy: :store_query}]
        }}
     end
@@ -196,12 +202,32 @@ defmodule Jido.Memory.Provider.Mirix do
       end
     end
 
+    defp apply_resource_scope(memory_types, scope) do
+      case normalize_resource_scope(scope) do
+        :only -> [:resource]
+        :exclude -> Enum.reject(memory_types, &(&1 == :resource))
+        _ -> memory_types
+      end
+    end
+
     defp contains_any?(text, needles), do: Enum.any?(needles, &String.contains?(text, &1))
 
     defp modality_memory_type(modality) when modality in [:image, :file, :document, :audio], do: :resource
     defp modality_memory_type(modality) when modality in [:workflow, :procedure], do: :procedural
     defp modality_memory_type(:fact), do: :semantic
     defp modality_memory_type(_modality), do: :episodic
+
+    defp normalize_resource_scope(scope) when scope in [:only, :exclude], do: scope
+
+    defp normalize_resource_scope(scope) when is_binary(scope) do
+      case String.downcase(String.trim(scope)) do
+        "only" -> :only
+        "exclude" -> :exclude
+        _ -> :all
+      end
+    end
+
+    defp normalize_resource_scope(_scope), do: :all
 
     defp normalize_memory_type(type) when type in [:core, :episodic, :semantic, :procedural, :resource, :vault],
       do: type
