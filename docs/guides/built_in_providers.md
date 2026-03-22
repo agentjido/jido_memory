@@ -9,6 +9,7 @@ runtime, plugin, and actions plus a small set of built-in provider choices.
 | --- | --- | --- | --- |
 | `:basic` | Lightweight agent memory with one backing store | ETS-backed store via `Jido.Memory.Store` | Core CRUD and query only |
 | `:tiered` | Standard short/mid/long memory workflows inside `jido_memory` | ETS-backed short, mid, and long-term layers | Tier-aware retrieval and lifecycle consolidation |
+| `:mirix` | Routed typed memory with explicit ingestion and protected-memory APIs | ETS-backed stores for core, episodic, semantic, procedural, resource, and vault memory | Active retrieval traces through `Runtime.explain_retrieval/3`, provider-direct ingest, provider-direct vault workflows |
 
 ## Basic Provider
 
@@ -52,6 +53,71 @@ bringing in `jido_memory_os`.
 The built-in Tiered provider always routes `:long` tier operations through
 `Jido.Memory.LongTermStore`, so applications can swap the long-term backend
 without rewriting the provider or agent plugin configuration.
+
+## MIRIX Provider
+
+Use `:mirix` when you want a built-in routed memory model with dedicated memory
+types for core, episodic, semantic, procedural, resource, and protected vault
+storage.
+
+```elixir
+{Jido.Memory.Plugin,
+ %{
+   provider: :mirix,
+   provider_opts: [
+     core_store: {Jido.Memory.Store.ETS, [table: :agent_core_memory]},
+     episodic_store: {Jido.Memory.Store.ETS, [table: :agent_episodic_memory]},
+     semantic_store: {Jido.Memory.Store.ETS, [table: :agent_semantic_memory]},
+     procedural_store: {Jido.Memory.Store.ETS, [table: :agent_procedural_memory]},
+     resource_store: {Jido.Memory.Store.ETS, [table: :agent_resource_memory]},
+     vault_store: {Jido.Memory.Store.ETS, [table: :agent_vault_memory]},
+     retrieval: [planner_mode: :broad]
+   ]
+ }}
+```
+
+The common surface remains intentionally selective:
+
+- canonical writes still use `Jido.Memory.Runtime.remember/3`
+- active retrieval explanations stay on `Jido.Memory.Runtime.explain_retrieval/3`
+- multimodal and batch ingest stay provider-direct through `Jido.Memory.Provider.Mirix.ingest/3`
+- protected memory stays provider-direct through `put_vault_entry/3`, `get_vault_entry/3`, and `forget_vault_entry/3`
+
+```elixir
+provider =
+  {:mirix,
+   [
+     core_store: {Jido.Memory.Store.ETS, [table: :agent_core_memory]},
+     episodic_store: {Jido.Memory.Store.ETS, [table: :agent_episodic_memory]},
+     semantic_store: {Jido.Memory.Store.ETS, [table: :agent_semantic_memory]},
+     procedural_store: {Jido.Memory.Store.ETS, [table: :agent_procedural_memory]},
+     resource_store: {Jido.Memory.Store.ETS, [table: :agent_resource_memory]},
+     vault_store: {Jido.Memory.Store.ETS, [table: :agent_vault_memory]}
+   ]}
+
+agent = %{id: "agent-1"}
+
+{:ok, ingest_result} =
+  Jido.Memory.Provider.Mirix.ingest(
+    agent,
+    %{entries: [%{modality: :document, content: "Deployment runbook"}]},
+    provider: provider
+  )
+
+{:ok, explanation} =
+  Jido.Memory.Runtime.explain_retrieval(
+    agent,
+    %{text_contains: "Deployment", query_extensions: %{mirix: %{memory_types: [:resource]}}},
+    provider: provider
+  )
+
+{:ok, vault_record} =
+  Jido.Memory.Provider.Mirix.put_vault_entry(
+    agent,
+    %{kind: :credential, text: "secret-token"},
+    provider: provider
+  )
+```
 
 ## Tiered Explainability and Lifecycle Inspection
 
@@ -182,8 +248,12 @@ The built-in provider expansion keeps these existing surfaces stable:
 
 ## When To Use `jido_memory_os`
 
-Choose built-in `:tiered` when you want the standard tiered memory model inside
-the core package.
+Choose built-in `:tiered` when you want the standard short/mid/long memory
+model inside the core package.
+
+Choose built-in `:mirix` when you want routed typed memory plus explicit
+provider-direct ingestion and protected-memory APIs without moving to a second
+library.
 
 Choose `jido_memory_os` when you need its native advanced workflows, such as:
 
