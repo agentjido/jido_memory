@@ -9,10 +9,13 @@ defmodule Jido.Memory.Provider.Mem0 do
   """
 
   @behaviour Jido.Memory.Provider
+  @behaviour Jido.Memory.Capability.Ingestion
 
+  alias Jido.Memory.ProviderRef
   alias Jido.Memory.Provider.Basic
   alias Jido.Memory.{Query, Record, Store}
 
+  @default_extraction [recent_window: 6, summary_context: :optional]
   @scope_dimensions [:user_id, :agent_id, :app_id, :run_id]
   @scope_source_precedence [:runtime_opts, :target, :provider_config]
 
@@ -27,7 +30,7 @@ defmodule Jido.Memory.Provider.Mem0 do
       graph_augmentation: false
     },
     lifecycle: %{consolidate: false, inspect: false},
-    ingestion: %{batch: false, multimodal: false, routed: false, access: :provider_direct},
+    ingestion: %{batch: true, multimodal: false, routed: true, access: :provider_direct},
     operations: %{feedback: :provider_direct, export: :provider_direct, history: :provider_direct},
     governance: %{protected_memory: false, exact_preservation: false, access: :none},
     hooks: %{}
@@ -36,7 +39,9 @@ defmodule Jido.Memory.Provider.Mem0 do
   @impl true
   def validate_config(opts) when is_list(opts) do
     with :ok <- Basic.validate_config(opts) do
-      validate_scoped_identity(Keyword.get(opts, :scoped_identity, []))
+      with :ok <- validate_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
+        validate_extraction_config(Keyword.get(opts, :extraction, @default_extraction))
+      end
     end
   end
 
@@ -51,7 +56,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          {:ok, basic_meta} <- Basic.init(opts),
          {:ok, scoped_identity} <- scoped_identity_meta(opts) do
       {:ok,
-       basic_meta
+         basic_meta
        |> Map.put(:provider, __MODULE__)
        |> Map.put(:capabilities, @capabilities)
        |> Map.put(:provider_style, :mem0)
@@ -60,6 +65,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          retrieval: %{scoped: true, explainable: false, graph_augmentation: false},
          maintenance: %{reconciliation: :provider_direct, feedback: :provider_direct, history: :provider_direct}
        })
+       |> Map.put(:extraction_context, extraction_context_meta(opts))
        |> Map.put(:scoped_identity, scoped_identity)}
     end
   end
@@ -142,6 +148,20 @@ defmodule Jido.Memory.Provider.Mem0 do
   def prune(target, opts), do: Basic.prune(target, opts)
 
   @impl true
+  def ingest(target, %{} = payload, opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_direct_opts(target, opts),
+         {:ok, context, scope} <- resolve_mem0_context(target, %{}, normalized_opts),
+         {:ok, extraction_config} <- extraction_config(normalized_opts),
+         {:ok, normalized_payload} <- normalize_ingest_payload(payload, extraction_config),
+         {:ok, extracted} <- extract_candidates(normalized_payload, extraction_config),
+         {:ok, summary} <- persist_extracted_candidates(extracted, context, scope, normalized_payload) do
+      {:ok, summary}
+    end
+  end
+
+  def ingest(_target, _payload, _opts), do: {:error, :invalid_ingest_payload}
+
+  @impl true
   def info(provider_meta, :all), do: {:ok, provider_meta}
 
   def info(provider_meta, fields) when is_list(fields) do
@@ -167,10 +187,30 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp resolve_mem0_context(target, attrs, opts) do
     with {:ok, context} <- Basic.resolve_context(target, attrs, opts),
-         {:ok, scope} <- resolve_scope(target, opts) do
-      {:ok, context, scope}
+         {:ok, scope} <- resolve_scope(target, opts),
+         {:ok, extraction} <- extraction_config(opts) do
+      {:ok, Map.put(context, :extraction, extraction), scope}
     end
   end
+
+  defp normalize_direct_opts(target, opts) when is_list(opts) do
+    plugin_state = plugin_state(target)
+
+    if Keyword.has_key?(opts, :provider) or Keyword.has_key?(opts, :provider_opts) do
+      with {:ok, provider_ref} <- ProviderRef.resolve(%{}, opts, plugin_state),
+           true <- provider_ref.module == __MODULE__ || {:error, :invalid_provider},
+           runtime_opts <- ProviderRef.runtime_opts(provider_ref, opts) do
+        {:ok, runtime_opts}
+      else
+        false -> {:error, :invalid_provider}
+        {:error, _reason} = error -> error
+      end
+    else
+      {:ok, opts}
+    end
+  end
+
+  defp normalize_direct_opts(_target, _opts), do: {:error, :invalid_provider_opts}
 
   defp scoped_identity_meta(opts) do
     with {:ok, defaults} <- normalize_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
@@ -185,10 +225,62 @@ defmodule Jido.Memory.Provider.Mem0 do
     end
   end
 
+  defp extraction_context_meta(opts) do
+    extraction =
+      opts
+      |> Keyword.get(:extraction, @default_extraction)
+      |> normalize_extraction_config!()
+
+    %{
+      supported_payloads: [:messages, :entries],
+      recent_window: extraction.recent_window,
+      summary_context: extraction.summary_context,
+      summary_generation: :provider_owned
+    }
+  end
+
   defp validate_scoped_identity(scoped_identity) do
     case normalize_scoped_identity(scoped_identity) do
       {:ok, _normalized} -> :ok
       {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_extraction_config(extraction) do
+    case normalize_extraction_config(extraction) do
+      {:ok, _normalized} -> :ok
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp extraction_config(opts) when is_list(opts) do
+    provider_opts = normalize_provider_opts(Keyword.get(opts, :provider_opts, []))
+    extraction = Keyword.get(provider_opts, :extraction, @default_extraction)
+    normalize_extraction_config(extraction)
+  end
+
+  defp normalize_extraction_config(extraction) when is_list(extraction) do
+    recent_window = Keyword.get(extraction, :recent_window, Keyword.get(@default_extraction, :recent_window))
+    summary_context = Keyword.get(extraction, :summary_context, Keyword.get(@default_extraction, :summary_context))
+
+    cond do
+      not (is_integer(recent_window) and recent_window > 0) ->
+        {:error, :invalid_extraction_config}
+
+      summary_context not in [:optional, :disabled, :required] ->
+        {:error, :invalid_extraction_config}
+
+      true ->
+        {:ok, %{recent_window: recent_window, summary_context: summary_context}}
+    end
+  end
+
+  defp normalize_extraction_config(_extraction), do: {:error, :invalid_extraction_config}
+
+  defp normalize_extraction_config!(extraction) do
+    case normalize_extraction_config(extraction) do
+      {:ok, normalized} -> normalized
+      {:error, _reason} -> %{recent_window: 6, summary_context: :optional}
     end
   end
 
@@ -246,13 +338,13 @@ defmodule Jido.Memory.Provider.Mem0 do
   defp normalize_dimension_alias(:app_id), do: :app
   defp normalize_dimension_alias(:run_id), do: :run
 
-  defp build_record(attrs, namespace, now, scope) do
+  defp build_record(attrs, namespace, now, scope, mem0_metadata \\ %{}) do
     attrs =
       attrs
       |> Map.drop([:provider, "provider"])
       |> Map.put(:namespace, namespace)
       |> Map.put_new(:observed_at, now)
-      |> Map.update(:metadata, annotate_mem0_metadata(%{}, scope), &annotate_mem0_metadata(&1, scope))
+      |> Map.update(:metadata, annotate_mem0_metadata(%{}, scope, mem0_metadata), &annotate_mem0_metadata(&1, scope, mem0_metadata))
 
     Record.new(attrs, now: now)
   end
@@ -275,17 +367,344 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp attach_namespace(%Query{}, _namespace), do: {:error, :namespace_required}
 
-  defp annotate_mem0_metadata(metadata, scope) do
+  defp annotate_mem0_metadata(metadata, scope, extra_mem0) do
     mem0 =
       metadata
       |> Map.get("mem0", %{})
       |> normalize_metadata()
       |> stringify_map_keys()
+      |> Map.merge(stringify_map_keys(normalize_metadata(extra_mem0)))
       |> Map.put("scope", scope_to_metadata(scope))
       |> Map.put_new("source_provider", "mem0")
 
     Map.put(metadata, "mem0", mem0)
   end
+
+  defp normalize_ingest_payload(%{} = payload, extraction_config) do
+    with {:ok, summary} <- normalize_summary_context(payload, extraction_config),
+         {:ok, entries} <- normalize_ingest_entries(payload, extraction_config) do
+      {:ok, %{entries: entries, summary: summary}}
+    end
+  end
+
+  defp normalize_summary_context(payload, extraction_config) do
+    summary = normalize_optional_string_value(value(payload, :summary))
+
+    case {summary, extraction_config.summary_context} do
+      {nil, :required} -> {:error, :missing_summary_context}
+      {summary, _mode} -> {:ok, summary}
+    end
+  end
+
+  defp normalize_ingest_entries(payload, extraction_config) do
+    entries = value(payload, :entries)
+    messages = value(payload, :messages)
+
+    cond do
+      is_list(entries) and entries != [] ->
+        payload
+        |> value(:entries)
+        |> Enum.map(&normalize_ingest_entry(&1, :entries))
+        |> then(&normalize_ingest_entry_results(&1))
+
+      is_list(messages) and messages != [] ->
+        payload
+        |> value(:messages)
+        |> Enum.take(-extraction_config.recent_window)
+        |> Enum.map(&normalize_ingest_entry(&1, :messages))
+        |> then(&normalize_ingest_entry_results(&1))
+
+      true ->
+        {:error, :invalid_ingest_payload}
+    end
+  end
+
+  defp normalize_ingest_entry_results(results) do
+    Enum.reduce_while(results, {:ok, []}, fn
+      {:ok, entry}, {:ok, acc} -> {:cont, {:ok, acc ++ [entry]}}
+      {:error, reason}, _acc -> {:halt, {:error, reason}}
+    end)
+  end
+
+  defp normalize_ingest_entry(%{} = entry, origin) do
+    {:ok,
+     %{
+       role: normalize_role(value(entry, :role, :user)),
+       content: normalize_entry_content(value(entry, :content, value(entry, :text))),
+       metadata: normalize_metadata(value(entry, :metadata, %{})),
+       source: value(entry, :source),
+       observed_at: value(entry, :observed_at),
+       origin: origin
+     }}
+  end
+
+  defp normalize_ingest_entry(_entry, _origin), do: {:error, :invalid_ingest_payload}
+
+  defp extract_candidates(%{entries: entries, summary: summary}, extraction_config) do
+    result =
+      Enum.reduce(entries, %{candidates: [], skipped: []}, fn entry, acc ->
+        {candidates, skipped} = extract_entry_candidates(entry, summary, extraction_config)
+        %{candidates: acc.candidates ++ candidates, skipped: acc.skipped ++ skipped}
+      end)
+
+    {:ok, result}
+  end
+
+  defp extract_entry_candidates(%{role: role} = entry, _summary, _extraction_config)
+       when role in [:assistant, "assistant"] do
+    {[],
+     [
+       %{
+         reason: :unsupported_role,
+         role: role,
+         content: entry.content,
+         origin: entry.origin
+       }
+     ]}
+  end
+
+  defp extract_entry_candidates(entry, summary, extraction_config) do
+    sentences = candidate_sentences(entry.content)
+
+    result =
+      Enum.reduce(sentences, %{candidates: [], skipped: []}, fn sentence, acc ->
+        case candidate_from_sentence(sentence, entry, summary, extraction_config) do
+          {:ok, candidate} -> %{acc | candidates: acc.candidates ++ [candidate]}
+          {:skip, reason} -> %{acc | skipped: acc.skipped ++ [%{reason: reason, content: sentence, origin: entry.origin}]}
+        end
+      end)
+
+    result =
+      if result.candidates == [] and result.skipped == [] do
+        %{result | skipped: [%{reason: :no_candidate, content: entry.content, origin: entry.origin}]}
+      else
+        result
+      end
+
+    {result.candidates, result.skipped}
+  end
+
+  defp candidate_from_sentence(sentence, entry, summary, extraction_config) do
+    with {:ok, pattern, captures} <- parse_candidate_sentence(sentence) do
+      {:ok,
+       build_candidate(pattern, captures, sentence, entry, summary, extraction_config)}
+    else
+      :error -> {:skip, :no_candidate}
+    end
+  end
+
+  defp parse_candidate_sentence(sentence) do
+    patterns = [
+      {:favorite_delete, ~r/^forget that my favorite (?<slot>[\w\s-]+) is (?<value>[^.?!]+)$/i},
+      {:favorite_set, ~r/^my favorite (?<slot>[\w\s-]+) is (?<value>[^.?!]+)$/i},
+      {:location_delete, ~r/^i no longer live in (?<value>[^.?!]+)$/i},
+      {:location_set, ~r/^i live in (?<value>[^.?!]+)$/i},
+      {:tool_delete, ~r/^i no longer use (?<value>[^.?!]+) for (?<slot>[^.?!]+)$/i},
+      {:tool_set, ~r/^i use (?<value>[^.?!]+) for (?<slot>[^.?!]+)$/i},
+      {:preference_set, ~r/^i prefer (?<value>[^.?!]+) for (?<slot>[^.?!]+)$/i},
+      {:name_set, ~r/^call me (?<value>[^.?!]+)$/i},
+      {:name_set, ~r/^my name is (?<value>[^.?!]+)$/i},
+      {:project_set, ~r/^i work on (?<value>[^.?!]+)$/i}
+    ]
+
+    Enum.find_value(patterns, :error, fn {pattern_name, regex} ->
+      case Regex.named_captures(regex, sentence) do
+        %{} = captures -> {:ok, pattern_name, captures}
+        _ -> false
+      end
+    end)
+  end
+
+  defp build_candidate(pattern, captures, sentence, entry, summary, extraction_config) do
+    base =
+      %{
+        role: entry.role,
+        origin: entry.origin,
+        source: entry.source,
+        observed_at: entry.observed_at,
+        summary_used: is_binary(summary) and extraction_config.summary_context != :disabled,
+        source_excerpt: sentence,
+        pattern: pattern
+      }
+
+    case pattern do
+      :favorite_set ->
+        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "favorite:#{slot}", value, "favorite #{slot}", sentence)
+
+      :favorite_delete ->
+        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :delete, "favorite:#{slot}", value, "favorite #{slot}", sentence)
+
+      :location_set ->
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "location:home", value, "location home", sentence)
+
+      :location_delete ->
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :delete, "location:home", value, "location home", sentence)
+
+      :tool_set ->
+        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "tool:#{slot}", value, "tool #{slot}", sentence)
+
+      :tool_delete ->
+        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :delete, "tool:#{slot}", value, "tool #{slot}", sentence)
+
+      :preference_set ->
+        slot = normalize_fact_fragment(Map.fetch!(captures, "slot"))
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "preference:#{slot}", value, "preference #{slot}", sentence)
+
+      :name_set ->
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "identity:name", value, "identity name", sentence)
+
+      :project_set ->
+        value = normalize_fact_fragment(Map.fetch!(captures, "value"))
+        build_fact_candidate(base, :upsert, "work:project", value, "work project", sentence)
+    end
+  end
+
+  defp build_fact_candidate(base, action, fact_key, fact_value, tag_label, sentence) do
+    %{
+      action: action,
+      class: :semantic,
+      kind: :fact,
+      fact_key: fact_key,
+      fact_value: fact_value,
+      text: canonical_fact_text(fact_key, fact_value),
+      tags: ["mem0", "fact", normalize_fact_fragment(tag_label)],
+      content: %{fact_key: fact_key, fact_value: fact_value, source_excerpt: sentence},
+      metadata: %{
+        fact_key: fact_key,
+        fact_value: fact_value,
+        extraction: %{
+          pattern: base.pattern,
+          role: to_string(base.role),
+          origin: Atom.to_string(base.origin),
+          summary_used: base.summary_used
+        }
+      },
+      source: base.source,
+      observed_at: base.observed_at
+    }
+  end
+
+  defp persist_extracted_candidates(extracted, context, scope, normalized_payload) do
+    result =
+      Enum.reduce(extracted.candidates, initial_ingest_summary(context, normalized_payload), fn candidate, acc ->
+        case persist_candidate(candidate, context, scope) do
+          {:ok, record} ->
+            acc
+            |> Map.update!(:created_ids, &(&1 ++ [record.id]))
+            |> Map.update!(:extracted_candidates, &(&1 ++ [candidate_summary(candidate)]))
+            |> increment_maintenance(:add)
+
+          {:error, reason} ->
+            Map.update!(acc, :skipped_candidates, &(&1 ++ [%{reason: reason, fact_key: candidate.fact_key}]))
+        end
+      end)
+
+    {:ok, %{result | skipped_candidates: result.skipped_candidates ++ extracted.skipped}}
+  end
+
+  defp persist_candidate(candidate, context, scope) do
+    mem0_metadata =
+      candidate.metadata
+      |> Map.put(:write_mode, :ingest)
+      |> Map.put(:maintenance_action, :add)
+
+    attrs = %{
+      class: candidate.class,
+      kind: candidate.kind,
+      text: candidate.text,
+      tags: candidate.tags,
+      content: candidate.content,
+      source: candidate.source,
+      observed_at: candidate.observed_at,
+      metadata: candidate.metadata
+    }
+
+    with {:ok, record} <- build_record(attrs, context.namespace, context.now, scope, mem0_metadata) do
+      context.store_mod.put(record, context.store_opts)
+    end
+  end
+
+  defp initial_ingest_summary(context, normalized_payload) do
+    %{
+      provider: __MODULE__,
+      extraction_context: %{
+        recent_window: context.extraction.recent_window,
+        summary_context: context.extraction.summary_context,
+        summary_present: is_binary(normalized_payload.summary)
+      },
+      extracted_candidates: [],
+      skipped_candidates: [],
+      created_ids: [],
+      updated_ids: [],
+      deleted_ids: [],
+      noop_ids: [],
+      maintenance: %{add: 0, update: 0, delete: 0, noop: 0}
+    }
+  end
+
+  defp candidate_summary(candidate) do
+    %{
+      action: candidate.action,
+      fact_key: candidate.fact_key,
+      fact_value: candidate.fact_value,
+      text: candidate.text
+    }
+  end
+
+  defp increment_maintenance(summary, key) do
+    update_in(summary, [:maintenance, key], &(&1 + 1))
+  end
+
+  defp candidate_sentences(nil), do: []
+
+  defp candidate_sentences(content) when is_binary(content) do
+    content
+    |> String.split(~r/[.!?\n]+/u, trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp candidate_sentences(other), do: candidate_sentences(inspect(other))
+
+  defp normalize_role(role) when is_atom(role), do: role
+  defp normalize_role(role) when is_binary(role), do: String.downcase(String.trim(role))
+  defp normalize_role(_role), do: :user
+
+  defp normalize_entry_content(nil), do: nil
+  defp normalize_entry_content(content) when is_binary(content), do: content
+  defp normalize_entry_content(content), do: inspect(content)
+
+  defp normalize_fact_fragment(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> String.downcase()
+    |> String.replace(~r/\s+/, " ")
+  end
+
+  defp canonical_fact_text(fact_key, fact_value) do
+    "#{fact_key}=#{fact_value}"
+  end
+
+  defp normalize_optional_string_value(nil), do: nil
+
+  defp normalize_optional_string_value(value) when is_binary(value) do
+    trimmed = String.trim(value)
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp normalize_optional_string_value(value), do: inspect(value)
 
   defp maybe_forget_scoped_record(record, context, scope, id) do
     if scope_matches?(record, scope) do
@@ -372,4 +791,19 @@ defmodule Jido.Memory.Provider.Mem0 do
     do: Map.get(map, key)
 
   defp map_get(_value, _key), do: nil
+
+  defp value(map, key, default \\ nil)
+
+  defp value(map, key, default) when is_map(map),
+    do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
+
+  defp value(_map, _key, default), do: default
+
+  defp plugin_state(%{state: %{} = state}),
+    do: Map.get(state, Jido.Memory.Runtime.plugin_state_key(), %{}) |> normalize_metadata()
+
+  defp plugin_state(%{} = map),
+    do: Map.get(map, Jido.Memory.Runtime.plugin_state_key(), %{}) |> normalize_metadata()
+
+  defp plugin_state(_target), do: %{}
 end
