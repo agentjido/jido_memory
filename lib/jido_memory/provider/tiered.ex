@@ -747,14 +747,14 @@ defmodule Jido.Memory.Provider.Tiered do
       |> Map.put(:promotion_score, score)
       |> Map.put(:last_promoted_at, now)
       |> Map.put(:last_accessed_at, now)
-      |> Map.put(:promoted_from, source_tier || tiered[:tier])
+      |> Map.put(:promoted_from, source_tier)
       |> Map.update(:promotion_count, 1, &(&1 + 1))
       |> Map.put(
         :lifecycle,
         lifecycle
         |> Map.put(:last_evaluated_at, now)
         |> Map.put(:last_decision, :promoted)
-        |> Map.put(:last_source_tier, source_tier || tiered[:tier])
+        |> Map.put(:last_source_tier, source_tier)
         |> Map.put(:last_destination_tier, destination_tier)
         |> Map.put(:last_score, score)
         |> Map.put(:last_threshold, threshold)
@@ -783,13 +783,13 @@ defmodule Jido.Memory.Provider.Tiered do
       lifecycle
       |> Map.put(:last_evaluated_at, now)
       |> Map.put(:last_decision, decision)
-      |> Map.put(:last_source_tier, source_tier || tiered[:tier])
+      |> Map.put(:last_source_tier, source_tier)
       |> Map.put(:last_destination_tier, destination_tier)
       |> Map.put(:last_score, score)
       |> Map.put(:last_threshold, threshold)
       |> Map.put(:last_skip_reason, reason)
       |> Map.update(:evaluation_count, 1, &(&1 + 1))
-      |> maybe_increment_skip_count(decision)
+      |> Map.update(:skip_count, 1, &(&1 + 1))
 
     updated_tiered =
       tiered
@@ -954,17 +954,17 @@ defmodule Jido.Memory.Provider.Tiered do
       long: %{destination_tier: nil, promoted: 0, skipped: 0, skipped_reasons: %{}}
     }
 
-    Enum.reduce(records, base, fn record, acc ->
-      source_tier = record.source_tier
+    Enum.reduce(records, base, &update_recent_outcomes_for_record/2)
+  end
 
-      if source_tier in [:short, :mid, :long] do
-        update_in(acc, [source_tier], fn summary ->
-          update_recent_outcome_summary(summary, record)
-        end)
-      else
+  defp update_recent_outcomes_for_record(record, acc) do
+    case record.source_tier do
+      source_tier when source_tier in [:short, :mid, :long] ->
+        update_in(acc, [source_tier], &update_recent_outcome_summary(&1, record))
+
+      _other ->
         acc
-      end
-    end)
+    end
   end
 
   defp update_recent_outcome_summary(summary, %{decision: :promoted}) do
@@ -1073,11 +1073,6 @@ defmodule Jido.Memory.Provider.Tiered do
       reason: reason
     }
   end
-
-  defp maybe_increment_skip_count(lifecycle, :skipped),
-    do: Map.update(lifecycle, :skip_count, 1, &(&1 + 1))
-
-  defp maybe_increment_skip_count(lifecycle, _decision), do: lifecycle
 
   defp counts_by_tier(bundles) do
     base = %{short: 0, mid: 0, long: 0}
