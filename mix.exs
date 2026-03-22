@@ -67,6 +67,7 @@ defmodule JidoMemory.MixProject do
       # Validation & errors
       {:zoi, "~> 0.16"},
       {:splode, "~> 0.3"},
+      {:postgrex, "~> 0.22", optional: true},
       # Dev & test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

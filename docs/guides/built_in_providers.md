@@ -102,6 +102,40 @@ Open questions for later phases:
 - whether Tiered should expose deeper ranking weights than the current match reasons and ordering context
 - whether lifecycle inspection should ever retain more than the last known decision per record
 
+## First Durable Backend: Postgres
+
+Postgres is the first supported durable long-term backend for Tiered.
+
+It was chosen ahead of Redis because the current long-term contract benefits more
+from stronger persistence guarantees, clearer operational durability, and room
+for indexing than from Redis-style access speed with persistence configured
+separately.
+
+```elixir
+provider_opts: [
+  short_store: {Jido.Memory.Store.ETS, [table: :agent_short_memory]},
+  mid_store: {Jido.Memory.Store.ETS, [table: :agent_mid_memory]},
+  long_term_store:
+    {Jido.Memory.LongTermStore.Postgres,
+     [
+       database: "postgres",
+       username: "my_app",
+       socket_dir: "/tmp",
+       table: "agent_long_memory"
+     ]}
+]
+```
+
+Current support boundaries for the built-in Postgres backend:
+
+- it preserves canonical `Jido.Memory.Record` payloads exactly
+- it pushes namespace and id lookup into Postgres directly
+- it evaluates the overlapping `Jido.Memory.Query` subset in Elixir after a namespace-scoped fetch
+- it keeps the default ETS long-term path intact for local and test use
+
+If you want to use the built-in Postgres backend, include `:postgrex` in the
+host application dependency set.
+
 ## Custom Long-Term Persistence
 
 Applications can provide a custom long-term backend by implementing

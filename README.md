@@ -274,7 +274,9 @@ Action result conventions:
 ## Long-Term Persistence
 
 The built-in Tiered provider always routes `:long` tier operations through `Jido.Memory.LongTermStore`.
-The default long-term backend is `Jido.Memory.LongTermStore.ETS`, and applications can swap in a custom backend such as PostgreSQL or Redis by implementing the behavior.
+The default long-term backend is `Jido.Memory.LongTermStore.ETS`, and the first
+supported durable backend is `Jido.Memory.LongTermStore.Postgres`. Applications
+can still swap in custom backends by implementing the behavior.
 
 ```elixir
 provider_opts = [

@@ -22,15 +22,15 @@ Description: establish one real durable backend path that proves the seam is pra
 
 ### Task 3.2.1 - Choose the first supported durable backend
 Description: pick the first serious long-term backend based on fit, maintainability, and user value.
-- [ ] Evaluate Postgres and Redis against the current long-term store contract.
-- [ ] Select the first backend to implement or officially document as the reference durable path.
-- [ ] Capture the tradeoffs that justify the choice, including query capabilities and operational complexity.
+- [x] Evaluate Postgres and Redis against the current long-term store contract.
+- [x] Select the first backend to implement or officially document as the reference durable path.
+- [x] Capture the tradeoffs that justify the choice, including query capabilities and operational complexity.
 
 ### Task 3.2.2 - Implement the first durable backend
 Description: add or split out a concrete long-term store implementation that can back Tiered in durable environments.
-- [ ] Implement the chosen durable backend behind `Jido.Memory.LongTermStore`.
-- [ ] Add configuration docs and validation for the backend.
-- [ ] Keep the default ETS long-term path intact for local and test use.
+- [x] Implement the chosen durable backend behind `Jido.Memory.LongTermStore`.
+- [x] Add configuration docs and validation for the backend.
+- [x] Keep the default ETS long-term path intact for local and test use.
 
 ## Section 3.3 - Operational Docs and Deployment Guidance
 Description: document how to run Tiered with durable long-term persistence in real applications.
