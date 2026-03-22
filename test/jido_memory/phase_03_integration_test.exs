@@ -94,6 +94,7 @@ defmodule Jido.Memory.Phase03IntegrationTest do
     assert id in Enum.map(records, & &1.id)
 
     prefix = "docs_postgres_tiered_#{System.unique_integer([:positive])}"
+    example_agent = Module.concat([Example, PostgresTieredAgent])
 
     assert {:ok,
             %{
@@ -101,7 +102,7 @@ defmodule Jido.Memory.Phase03IntegrationTest do
               lifecycle_result: %{promoted_to_long: 1},
               long_record: %Record{},
               records: [%Record{} | _]
-            }} = Example.PostgresTieredAgent.run_demo("docs-postgres-tiered-agent", prefix)
+            }} = example_agent.run_demo("docs-postgres-tiered-agent", prefix)
   end
 
   defp backend_runtime_opts({_module, opts}, namespace), do: Keyword.put(opts, :namespace, namespace)
