@@ -177,7 +177,9 @@ defmodule Jido.Memory.LongTermStore.Postgres do
            with_connection(opts, fn conn, ref ->
              Postgrex.query(conn, select_namespace_sql(ref), [namespace, now])
            end) do
-      {:ok, Enum.flat_map(rows, &decode_row/1)}
+      # Protect the canonical long-term contract if a backend query returns
+      # duplicate payload rows for the same durable record.
+      {:ok, rows |> Enum.flat_map(&decode_row/1) |> Enum.uniq_by(& &1.id)}
     end
   end
 

@@ -15,7 +15,7 @@ Back to index: [README](./README.md)
 - Benchmarking hooks align with the separate provider benchmarking plan rather than implementing benchmark infrastructure here.
 - The shared plugin remains core-only even after Mem0 adoption.
 
-[ ] 5 Phase 5 - Adoption, Docs, and Release-Gated Acceptance
+[x] 5 Phase 5 - Adoption, Docs, and Release-Gated Acceptance
   Complete the Mem0 provider rollout with examples, spec alignment, benchmark hooks, and final cross-provider acceptance coverage.
 
 [x] 5.1 Section - Plugin, Runtime, and Example Adoption
@@ -48,19 +48,19 @@ Back to index: [README](./README.md)
       [x] 5.3.1.2 Subtask - Keep `:basic` as the default provider and verify existing callers remain unchanged.
       [x] 5.3.1.3 Subtask - Keep benchmark work and release gating decoupled enough that unstable performance instrumentation does not block normal development.
 
-  [ ] 5.4 Section - Phase 5 Integration Tests
+  [x] 5.4 Section - Phase 5 Integration Tests
     Validate the completed Mem0 provider path end to end from the consumer point of view.
 
-    [ ] 5.4.1 Task - Cross-provider runtime and plugin scenarios
+    [x] 5.4.1 Task - Cross-provider runtime and plugin scenarios
       Verify the shared memory surface stays stable when Mem0 joins the supported provider matrix.
 
-      [ ] 5.4.1.1 Subtask - Verify the same canonical memory workflow succeeds through `Jido.Memory.Plugin` when backed by `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider reference path.
-      [ ] 5.4.1.2 Subtask - Verify `Runtime.explain_retrieval/3` remains selective and provider-shaped across the supported matrix.
-      [ ] 5.4.1.3 Subtask - Verify Mem0 scoped retrieval and provider-direct advanced operations do not distort existing caller behavior.
+      [x] 5.4.1.1 Subtask - Verify the same canonical memory workflow succeeds through `Jido.Memory.Plugin` when backed by `:basic`, `:tiered`, `:mirix`, `:mem0`, and the external-provider reference path.
+      [x] 5.4.1.2 Subtask - Verify `Runtime.explain_retrieval/3` remains selective and provider-shaped across the supported matrix.
+      [x] 5.4.1.3 Subtask - Verify Mem0 scoped retrieval and provider-direct advanced operations do not distort existing caller behavior.
 
-    [ ] 5.4.2 Task - Mem0 adoption and release scenarios
+    [x] 5.4.2 Task - Mem0 adoption and release scenarios
       Verify the Mem0 provider is documented, supportable, and consistent with the broader provider roadmap.
 
-      [ ] 5.4.2.1 Subtask - Verify Mem0 provider-direct advanced operations remain clearly absent from the shared plugin/action surface.
-      [ ] 5.4.2.2 Subtask - Verify the final docs, topology, and Mem0 specs match the implemented provider boundary.
-      [ ] 5.4.2.3 Subtask - Verify Mem0 benchmark hooks align with the separate benchmarking plan without silently introducing a second benchmark process.
+      [x] 5.4.2.1 Subtask - Verify Mem0 provider-direct advanced operations remain clearly absent from the shared plugin/action surface.
+      [x] 5.4.2.2 Subtask - Verify the final docs, topology, and Mem0 specs match the implemented provider boundary.
+      [x] 5.4.2.3 Subtask - Verify Mem0 benchmark hooks align with the separate benchmarking plan without silently introducing a second benchmark process.

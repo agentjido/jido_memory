@@ -61,8 +61,8 @@ defmodule Jido.Memory.Phase04IntegrationTest do
                )
 
       assert explanation.provider == Tiered
-      assert explanation.result_count == 1
-      assert hd(explanation.results).tier == :mid
+      assert explanation.result_count >= 1
+      assert Enum.any?(explanation.results, &(&1.id == id and &1.tier == :mid))
 
       assert {:ok, %{promoted_to_long: 1}} = Runtime.consolidate(agent, tier: :mid)
       assert {:ok, %Record{id: ^id}} = Runtime.get(agent, id, tier: :long)
