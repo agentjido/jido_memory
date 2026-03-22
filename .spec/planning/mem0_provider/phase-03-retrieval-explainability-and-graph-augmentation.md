@@ -17,15 +17,15 @@ Back to index: [README](./README.md)
 [ ] 3 Phase 3 - Retrieval, Explainability, and Graph Augmentation
   Implement Mem0-style scoped retrieval, canonical explainability, and optional graph augmentation while preserving the shared record-oriented retrieve/3 result model.
 
-  [ ] 3.1 Section - Scoped Retrieval and Query Extension Baseline
+  [x] 3.1 Section - Scoped Retrieval and Query Extension Baseline
     Add Mem0 retrieval behavior that respects scopes and provider-specific query hints without changing the base query contract.
 
-    [ ] 3.1.1 Task - Implement scoped retrieval behavior
+    [x] 3.1.1 Task - Implement scoped retrieval behavior
       Make Mem0 retrieval useful for long-term memory access without requiring new shared query fields.
 
-      [ ] 3.1.1.1 Subtask - Support retrieval over scoped long-term memory using canonical query filters plus provider-native query extensions.
-      [ ] 3.1.1.2 Subtask - Add Mem0 query extension keys for scope control, retrieval mode, and graph augmentation hints.
-      [ ] 3.1.1.3 Subtask - Keep `recall/2` and `retrieve/3` aligned for the overlapping Mem0 query subset.
+      [x] 3.1.1.1 Subtask - Support retrieval over scoped long-term memory using canonical query filters plus provider-native query extensions.
+      [x] 3.1.1.2 Subtask - Add Mem0 query extension keys for scope control, retrieval mode, and graph augmentation hints.
+      [x] 3.1.1.3 Subtask - Keep `recall/2` and `retrieve/3` aligned for the overlapping Mem0 query subset.
 
   [ ] 3.2 Section - Explainability and Retrieval Traces
     Expose Mem0 retrieval context through the canonical explanation envelope rather than through a new shared result type.

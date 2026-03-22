@@ -15,8 +15,10 @@ defmodule Jido.Memory.Provider.Mem0 do
   alias Jido.Memory.{Query, Record, Store}
 
   @default_extraction [recent_window: 6, summary_context: :optional]
+  @default_retrieval [mode: :balanced]
   @scope_dimensions [:user_id, :agent_id, :app_id, :run_id]
   @scope_source_precedence [:runtime_opts, :target, :provider_config]
+  @supported_mem0_query_extensions [:scope, :retrieval_mode, :fact_key, :graph]
 
   @capabilities %{
     core: true,
@@ -39,7 +41,9 @@ defmodule Jido.Memory.Provider.Mem0 do
   def validate_config(opts) when is_list(opts) do
     with :ok <- Basic.validate_config(opts) do
       with :ok <- validate_scoped_identity(Keyword.get(opts, :scoped_identity, [])) do
-        validate_extraction_config(Keyword.get(opts, :extraction, @default_extraction))
+        with :ok <- validate_extraction_config(Keyword.get(opts, :extraction, @default_extraction)) do
+          validate_retrieval_config(Keyword.get(opts, :retrieval, @default_retrieval))
+        end
       end
     end
   end
@@ -61,7 +65,12 @@ defmodule Jido.Memory.Provider.Mem0 do
        |> Map.put(:provider_style, :mem0)
        |> Map.put(:topology, %{
          archetype: :extraction_reconciliation,
-         retrieval: %{scoped: true, explainable: false, graph_augmentation: false},
+         retrieval: %{
+           scoped: true,
+           explainable: false,
+           graph_augmentation: false,
+           query_extensions: @supported_mem0_query_extensions
+         },
          maintenance: %{
            reconciliation: :provider_direct,
            feedback: :provider_direct,
@@ -71,6 +80,7 @@ defmodule Jido.Memory.Provider.Mem0 do
          }
        })
        |> Map.put(:extraction_context, extraction_context_meta(opts))
+       |> Map.put(:retrieval_context, retrieval_context_meta(opts))
        |> Map.put(:scoped_identity, scoped_identity)}
     end
   end
@@ -108,11 +118,9 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   @impl true
   def retrieve(target, %Query{} = query, opts) when is_list(opts) do
-    with {:ok, context, scope} <- resolve_mem0_context(target, %{namespace: query.namespace}, opts),
-         :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, effective_query} <- attach_namespace(query, context.namespace),
-         {:ok, records} <- context.store_mod.query(effective_query, context.store_opts) do
-      {:ok, Enum.filter(records, &scope_matches?(&1, scope))}
+    with {:ok, context} <- resolve_retrieval_context(target, query, opts),
+         {:ok, records} <- do_retrieve_records(query, context) do
+      {:ok, records}
     end
   end
 
@@ -120,11 +128,10 @@ defmodule Jido.Memory.Provider.Mem0 do
     do: retrieve(target, Map.new(query_attrs), opts)
 
   def retrieve(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
-    with {:ok, context, scope} <- resolve_mem0_context(target, query_attrs, opts),
-         :ok <- context.store_mod.ensure_ready(context.store_opts),
-         {:ok, query} <- build_query(query_attrs, context.namespace),
-         {:ok, records} <- context.store_mod.query(query, context.store_opts) do
-      {:ok, Enum.filter(records, &scope_matches?(&1, scope))}
+    with {:ok, query} <- build_query(query_attrs, nil),
+         {:ok, context} <- resolve_retrieval_context(target, query, opts),
+         {:ok, records} <- do_retrieve_records(query, context) do
+      {:ok, records}
     end
   end
 
@@ -197,6 +204,20 @@ defmodule Jido.Memory.Provider.Mem0 do
     end
   end
 
+  defp resolve_retrieval_context(target, %Query{} = query, opts) do
+    with {:ok, context} <- Basic.resolve_context(target, %{namespace: query.namespace}, opts),
+         {:ok, scope} <- resolve_retrieval_scope(target, query, opts),
+         {:ok, retrieval} <- retrieval_config(opts, query),
+         :ok <- context.store_mod.ensure_ready(context.store_opts),
+      {:ok, effective_query} <- attach_namespace(query, context.namespace) do
+      {:ok,
+       context
+       |> Map.put(:scope, scope)
+       |> Map.put(:retrieval, retrieval)
+       |> Map.put(:effective_query, effective_query)}
+    end
+  end
+
   defp normalize_direct_opts(target, opts) when is_list(opts) do
     plugin_state = plugin_state(target)
 
@@ -243,6 +264,18 @@ defmodule Jido.Memory.Provider.Mem0 do
     }
   end
 
+  defp retrieval_context_meta(opts) do
+    retrieval =
+      opts
+      |> Keyword.get(:retrieval, @default_retrieval)
+      |> normalize_retrieval_config!()
+
+    %{
+      default_mode: retrieval.mode,
+      supported_query_extensions: @supported_mem0_query_extensions
+    }
+  end
+
   defp validate_scoped_identity(scoped_identity) do
     case normalize_scoped_identity(scoped_identity) do
       {:ok, _normalized} -> :ok
@@ -257,11 +290,71 @@ defmodule Jido.Memory.Provider.Mem0 do
     end
   end
 
+  defp validate_retrieval_config(retrieval) do
+    case normalize_retrieval_config(retrieval) do
+      {:ok, _normalized} -> :ok
+      {:error, _reason} = error -> error
+    end
+  end
+
   defp extraction_config(opts) when is_list(opts) do
     provider_opts = normalize_provider_opts(Keyword.get(opts, :provider_opts, []))
     extraction = Keyword.get(provider_opts, :extraction, @default_extraction)
     normalize_extraction_config(extraction)
   end
+
+  defp retrieval_config(opts, %Query{} = query) when is_list(opts) do
+    provider_opts = normalize_provider_opts(Keyword.get(opts, :provider_opts, []))
+
+    with {:ok, defaults} <- normalize_retrieval_config(Keyword.get(provider_opts, :retrieval, @default_retrieval)),
+         extensions <- mem0_query_extensions(query),
+         {:ok, mode} <- normalize_retrieval_mode(value(extensions, :retrieval_mode, defaults.mode)),
+         graph <- normalize_graph_hint(value(extensions, :graph, %{})),
+         fact_key <- normalize_optional_string_value(value(extensions, :fact_key)),
+         {:ok, query_scope} <- normalize_query_scope(value(extensions, :scope, %{})) do
+      {:ok,
+       %{
+         mode: mode,
+         fact_key: fact_key,
+         graph: graph,
+         query_scope: query_scope,
+         query_extensions: extensions,
+         supported_query_extensions: @supported_mem0_query_extensions
+       }}
+    end
+  end
+
+  defp normalize_retrieval_config(retrieval) when is_list(retrieval) do
+    with {:ok, mode} <- normalize_retrieval_mode(Keyword.get(retrieval, :mode, :balanced)) do
+      {:ok, %{mode: mode}}
+    end
+  end
+
+  defp normalize_retrieval_config(_retrieval), do: {:error, :invalid_retrieval_config}
+
+  defp normalize_retrieval_config!(retrieval) do
+    case normalize_retrieval_config(retrieval) do
+      {:ok, normalized} -> normalized
+      {:error, _reason} -> %{mode: :balanced}
+    end
+  end
+
+  defp normalize_retrieval_mode(mode) when mode in [:balanced, :recent_first, :fact_key_first],
+    do: {:ok, mode}
+
+  defp normalize_retrieval_mode(mode) when is_binary(mode) do
+    mode
+    |> String.trim()
+    |> String.downcase()
+    |> case do
+      "balanced" -> {:ok, :balanced}
+      "recent_first" -> {:ok, :recent_first}
+      "fact_key_first" -> {:ok, :fact_key_first}
+      _ -> {:error, :invalid_retrieval_mode}
+    end
+  end
+
+  defp normalize_retrieval_mode(_mode), do: {:error, :invalid_retrieval_mode}
 
   defp normalize_extraction_config(extraction) when is_list(extraction) do
     recent_window = Keyword.get(extraction, :recent_window, Keyword.get(@default_extraction, :recent_window))
@@ -309,9 +402,33 @@ defmodule Jido.Memory.Provider.Mem0 do
 
   defp normalize_scoped_identity(_scoped_identity), do: {:error, :invalid_scoped_identity}
 
+  defp normalize_query_scope(scope) when scope in [%{}, []], do: {:ok, empty_scope()}
+  defp normalize_query_scope(scope), do: normalize_scoped_identity(scope)
+
   defp resolve_scope_value(dimension, target, opts, defaults) do
     normalize_scope_value!(
       pick_runtime_scope(opts, dimension) ||
+        pick_target_scope(target, dimension) ||
+        Map.get(defaults, dimension)
+    )
+  end
+
+  defp resolve_retrieval_scope(target, %Query{} = query, opts) do
+    provider_opts = normalize_provider_opts(Keyword.get(opts, :provider_opts, []))
+
+    with {:ok, defaults} <- normalize_scoped_identity(Keyword.get(provider_opts, :scoped_identity, [])),
+         {:ok, retrieval} <- retrieval_config(opts, query) do
+      {:ok,
+       Enum.reduce(@scope_dimensions, %{}, fn dimension, acc ->
+         Map.put(acc, dimension, resolve_retrieval_scope_value(dimension, target, opts, retrieval.query_scope, defaults))
+       end)}
+    end
+  end
+
+  defp resolve_retrieval_scope_value(dimension, target, opts, query_scope, defaults) do
+    normalize_scope_value!(
+      pick_runtime_scope(opts, dimension) ||
+        Map.get(query_scope, dimension) ||
         pick_target_scope(target, dimension) ||
         Map.get(defaults, dimension)
     )
@@ -361,7 +478,9 @@ defmodule Jido.Memory.Provider.Mem0 do
     attrs =
       attrs
       |> Map.drop([:provider, "provider"])
-      |> Map.put_new(:namespace, namespace)
+      |> then(fn normalized ->
+        if is_binary(namespace), do: Map.put_new(normalized, :namespace, namespace), else: normalized
+      end)
 
     Query.new(attrs)
   end
@@ -447,6 +566,86 @@ defmodule Jido.Memory.Provider.Mem0 do
   end
 
   defp normalize_ingest_entry(_entry, _origin), do: {:error, :invalid_ingest_payload}
+
+  defp do_retrieve_records(%Query{} = query, context) do
+    fetch_query = %{context.effective_query | limit: retrieval_fetch_limit(query.limit)}
+
+    with {:ok, records} <- context.store_mod.query(fetch_query, context.store_opts) do
+      {:ok,
+       records
+       |> Enum.filter(&scope_matches?(&1, context.scope))
+       |> rank_retrieval_results(query, context.retrieval)
+       |> Enum.take(query.limit)}
+    end
+  end
+
+  defp retrieval_fetch_limit(limit) when is_integer(limit) and limit > 0,
+    do: min(max(limit * 5, 50), 1000)
+
+  defp rank_retrieval_results(records, %Query{} = query, retrieval) do
+    records
+    |> Enum.sort_by(&retrieval_sort_key(&1, query, retrieval), :desc)
+  end
+
+  defp retrieval_sort_key(%Record{} = record, %Query{} = query, retrieval) do
+    {
+      retrieval_mode_score(record, query, retrieval),
+      maintenance_priority(record),
+      recency_priority(record, query.order),
+      record.id
+    }
+  end
+
+  defp retrieval_mode_score(_record, _query, %{mode: :recent_first}), do: 0
+
+  defp retrieval_mode_score(record, _query, %{mode: :fact_key_first, fact_key: fact_key}) do
+    if fact_key(record) == fact_key or fact_key_text_match?(record, fact_key), do: 2, else: 0
+  end
+
+  defp retrieval_mode_score(record, %Query{} = query, %{mode: :balanced, fact_key: fact_key}) do
+    score =
+      if fact_key(record) == fact_key or fact_key_text_match?(record, fact_key), do: 2, else: 0
+
+    if query_text_match?(record, query.text_contains), do: score + 1, else: score
+  end
+
+  defp recency_priority(%Record{observed_at: observed_at}, :asc), do: -observed_at
+  defp recency_priority(%Record{observed_at: observed_at}, _order), do: observed_at
+
+  defp maintenance_priority(%Record{metadata: metadata}) do
+    case get_in(metadata, ["mem0", "maintenance_action"]) do
+      :update -> 3
+      :add -> 2
+      :noop -> 1
+      _ -> 0
+    end
+  end
+
+  defp fact_key_text_match?(_record, nil), do: false
+  defp fact_key_text_match?(%Record{text: text}, fact_key) when is_binary(text), do: String.starts_with?(text, fact_key)
+  defp fact_key_text_match?(_record, _fact_key), do: false
+
+  defp query_text_match?(_record, nil), do: false
+
+  defp query_text_match?(%Record{text: text, content: content}, filter) do
+    candidate_text =
+      [text, inspect(content)]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join(" ")
+      |> String.downcase()
+
+    String.contains?(candidate_text, String.downcase(filter))
+  end
+
+  defp mem0_query_extensions(%Query{} = query) do
+    query
+    |> Query.extensions()
+    |> value(:mem0, %{})
+    |> normalize_metadata()
+  end
+
+  defp normalize_graph_hint(%{} = graph_hint), do: stringify_map_keys(graph_hint)
+  defp normalize_graph_hint(_graph_hint), do: %{}
 
   defp extract_candidates(%{entries: entries, summary: summary}, extraction_config) do
     result =

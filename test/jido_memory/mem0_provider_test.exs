@@ -277,4 +277,98 @@ defmodule Jido.Memory.Mem0ProviderTest do
     assert get_in(metadata, ["mem0", "fact_key"]) == nil
     assert Map.has_key?(metadata, :signal_id) or Map.has_key?(metadata, "signal_id")
   end
+
+  test "mem0 retrieval honors scope query extensions and retrieval mode hints" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase03_scope"),
+         namespace: "agent:mem0-phase03-scope",
+         retrieval: [mode: :balanced]
+       ]}
+
+    target = %{id: "mem0-phase03-scope-agent"}
+
+    assert {:ok, _summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Elixir."}]},
+               provider: provider,
+               user_id: "user-a"
+             )
+
+    assert {:ok, first_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "I live in Denver."}]},
+               provider: provider,
+               user_id: "user-b"
+             )
+
+    assert {:ok, second_summary} =
+             Mem0.ingest(
+               target,
+               %{entries: [%{role: :user, content: "My favorite language is Erlang."}]},
+               provider: provider,
+               user_id: "user-b"
+             )
+
+    [location_id] = first_summary.created_ids
+    [favorite_id] = second_summary.created_ids
+
+    assert {:ok, [%Record{id: ^favorite_id}, %Record{id: ^location_id}]} =
+             Runtime.retrieve(
+               target,
+               %{
+                 classes: [:semantic],
+                 query_extensions: %{
+                   mem0: %{
+                     scope: %{user_id: "user-b"},
+                     retrieval_mode: :fact_key_first,
+                     fact_key: "favorite:language"
+                   }
+                 }
+               },
+               provider: provider
+             )
+  end
+
+  test "mem0 recall and retrieve stay aligned for the overlapping shared query subset" do
+    provider =
+      {:mem0,
+       [
+         store: ProviderFixtures.unique_store("mem0_phase03_recall"),
+         namespace: "agent:mem0-phase03-recall"
+       ]}
+
+    assert {:ok, plugin_state} =
+             Plugin.mount(%{id: "mem0-phase03-recall-agent", user_id: "recall-user"}, %{provider: provider})
+
+    agent = %{id: "mem0-phase03-recall-agent", user_id: "recall-user", state: %{__memory__: plugin_state}}
+
+    assert {:ok, %Record{id: recent_id}} =
+             Runtime.remember(
+               agent,
+               %{class: :semantic, kind: :fact, text: "phase03 direct recent"},
+               now: 2_000
+             )
+
+    assert {:ok, %Record{id: older_id}} =
+             Runtime.remember(
+               agent,
+               %{class: :semantic, kind: :fact, text: "phase03 direct older"},
+               now: 1_000
+             )
+
+    query = %{
+      classes: [:semantic],
+      query_extensions: %{mem0: %{retrieval_mode: :recent_first}}
+    }
+
+    assert {:ok, [%Record{id: ^recent_id}, %Record{id: ^older_id}]} =
+             Runtime.retrieve(agent, query, [])
+
+    assert {:ok, [%Record{id: ^recent_id}, %Record{id: ^older_id}]} =
+             Runtime.recall(agent, query)
+  end
 end
