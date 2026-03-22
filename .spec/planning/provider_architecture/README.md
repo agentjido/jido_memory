@@ -12,6 +12,7 @@ This planning set tracks the rollout of the canonical memory provider system in 
 ## Current Status
 - Phases 1 through 5 are implemented on the current branch.
 - Follow-on work is now limited to optional future external-provider interop and deeper advanced capabilities.
+- The next planning set lives under `.spec/planning/provider_follow_ons/`.
 
 ## Delivery Rules
 - `Jido.Memory.Runtime`, `recall/2`, `Jido.Memory.ETSPlugin`, and tuple-style public results stay compatible through the rollout.
