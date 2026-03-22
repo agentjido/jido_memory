@@ -10,6 +10,7 @@ defmodule Jido.Memory.ProviderTest do
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS
+  alias Jido.Memory.Support.ExternalProvider
 
   setup do
     table = String.to_atom("jido_memory_provider_test_#{System.unique_integer([:positive])}")
@@ -22,29 +23,6 @@ defmodule Jido.Memory.ProviderTest do
     def validate_config(_opts), do: :ok
   end
 
-  defmodule ExternalSelectionProvider do
-    @behaviour Jido.Memory.Provider
-
-    alias Jido.Memory.Provider.Basic
-
-    def validate_config(opts), do: Basic.validate_config(opts)
-    def child_specs(_opts), do: []
-    def init(opts), do: Basic.init(opts)
-
-    def capabilities(meta) do
-      meta
-      |> Basic.capabilities()
-      |> Map.put(:interop, %{external: true})
-    end
-
-    def remember(target, attrs, opts), do: Basic.remember(target, attrs, opts)
-    def get(target, id, opts), do: Basic.get(target, id, opts)
-    def retrieve(target, query, opts), do: Basic.retrieve(target, query, opts)
-    def forget(target, id, opts), do: Basic.forget(target, id, opts)
-    def prune(target, opts), do: Basic.prune(target, opts)
-    def info(meta, fields), do: Basic.info(meta, fields)
-  end
-
   test "provider ref defaults to the Basic provider" do
     assert {:ok, %ProviderRef{module: Basic, opts: []}} = ProviderRef.normalize(nil)
   end
@@ -55,24 +33,24 @@ defmodule Jido.Memory.ProviderTest do
 
   test "provider registry merges built-in and external aliases" do
     assert {:ok, aliases} =
-             ProviderRegistry.registered(external_demo: ExternalSelectionProvider)
+             ProviderRegistry.registered(external_demo: ExternalProvider)
 
     assert aliases.basic == Basic
     assert aliases.tiered == Tiered
-    assert aliases.external_demo == ExternalSelectionProvider
+    assert aliases.external_demo == ExternalProvider
   end
 
   test "provider ref accepts external aliases through registry helpers" do
-    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: []}} =
-             ProviderRef.normalize(:external_demo, external_demo: ExternalSelectionProvider)
+    assert {:ok, %ProviderRef{module: ExternalProvider, opts: []}} =
+             ProviderRef.normalize(:external_demo, external_demo: ExternalProvider)
   end
 
   test "provider ref accepts direct external modules and tuples without registration", %{store: store} do
-    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: []}} =
-             ProviderRef.normalize(ExternalSelectionProvider)
+    assert {:ok, %ProviderRef{module: ExternalProvider, opts: []}} =
+             ProviderRef.normalize(ExternalProvider)
 
-    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: provider_opts}} =
-             ProviderRef.normalize({ExternalSelectionProvider, [store: store]})
+    assert {:ok, %ProviderRef{module: ExternalProvider, opts: provider_opts}} =
+             ProviderRef.normalize({ExternalProvider, [store: store]})
 
     assert Keyword.get(provider_opts, :store) == store
   end
@@ -83,7 +61,7 @@ defmodule Jido.Memory.ProviderTest do
   end
 
   test "provider resolution precedence is runtime opts then attrs then plugin state then default", %{store: store} do
-    plugin_state = %{provider: {ExternalSelectionProvider, [store: store]}}
+    plugin_state = %{provider: {ExternalProvider, [store: store]}}
     attrs = %{provider: Basic}
 
     assert {:ok, %ProviderRef{module: Tiered}} =
@@ -92,7 +70,7 @@ defmodule Jido.Memory.ProviderTest do
     assert {:ok, %ProviderRef{module: Basic}} =
              ProviderRef.resolve(attrs, [], plugin_state)
 
-    assert {:ok, %ProviderRef{module: ExternalSelectionProvider}} =
+    assert {:ok, %ProviderRef{module: ExternalProvider}} =
              ProviderRef.resolve(%{}, [], plugin_state)
 
     assert {:ok, %ProviderRef{module: Basic}} =
@@ -121,7 +99,7 @@ defmodule Jido.Memory.ProviderTest do
                %{id: "provider-opts-invalid"},
                %{class: :episodic, text: "x"},
                store: store,
-               provider: ExternalSelectionProvider,
+               provider: ExternalProvider,
                provider_opts: :invalid
              )
   end

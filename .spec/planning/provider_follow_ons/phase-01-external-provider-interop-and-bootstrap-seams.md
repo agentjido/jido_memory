@@ -22,15 +22,15 @@ Description: clarify how external providers participate in initialization and op
 
 ### Task 1.2.1 - Define provider bootstrap ownership
 Description: resolve how `child_specs/1` and `init/1` should be used when providers require runtime processes.
-- [ ] Document the intended use of `child_specs/1` for external providers that need supervision.
-- [ ] Decide whether `Jido.Memory.Plugin` should remain process-neutral or gain optional provider bootstrap hooks.
-- [ ] Keep built-in Basic and Tiered startup behavior unchanged unless explicit provider bootstrap is configured.
+- [x] Document the intended use of `child_specs/1` for external providers that need supervision.
+- [x] Decide whether `Jido.Memory.Plugin` should remain process-neutral or gain optional provider bootstrap hooks.
+- [x] Keep built-in Basic and Tiered startup behavior unchanged unless explicit provider bootstrap is configured.
 
 ### Task 1.2.2 - Add external-provider fixture coverage
 Description: create a small, fake external provider implementation inside tests so interop rules are exercised without adding a real external dependency.
-- [ ] Add a minimal external provider fixture that satisfies the core provider contract.
-- [ ] Use the fixture to test provider resolution, capability discovery, and info lookups.
-- [ ] Keep the fixture suitable for future package-level contract reuse.
+- [x] Add a minimal external provider fixture that satisfies the core provider contract.
+- [x] Use the fixture to test provider resolution, capability discovery, and info lookups.
+- [x] Keep the fixture suitable for future package-level contract reuse.
 
 ## Section 1.3 - Interop Documentation and Migration Boundaries
 Description: document what `jido_memory` guarantees to external provider authors and what remains explicitly out of scope.

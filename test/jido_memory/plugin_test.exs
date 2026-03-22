@@ -110,29 +110,7 @@ defmodule Jido.Memory.PluginTest do
   alias Jido.Memory.Record
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS
-
-  defmodule ExternalPluginProvider do
-    @behaviour Jido.Memory.Provider
-
-    alias Jido.Memory.Provider.Basic
-
-    def validate_config(opts), do: Basic.validate_config(opts)
-    def child_specs(_opts), do: []
-    def init(opts), do: Basic.init(opts)
-
-    def capabilities(meta) do
-      meta
-      |> Basic.capabilities()
-      |> Map.put(:interop, %{external: true})
-    end
-
-    def remember(target, attrs, opts), do: Basic.remember(target, attrs, opts)
-    def get(target, id, opts), do: Basic.get(target, id, opts)
-    def retrieve(target, query, opts), do: Basic.retrieve(target, query, opts)
-    def forget(target, id, opts), do: Basic.forget(target, id, opts)
-    def prune(target, opts), do: Basic.prune(target, opts)
-    def info(meta, fields), do: Basic.info(meta, fields)
-  end
+  alias Jido.Memory.Support.ExternalProvider
 
   setup do
     table = String.to_atom("jido_memory_provider_plugin_test_#{System.unique_integer([:positive])}")
@@ -205,12 +183,12 @@ defmodule Jido.Memory.PluginTest do
     assert {:ok, state} =
              Plugin.mount(%{id: "agent-external"}, %{
                provider: :external_demo,
-               provider_aliases: %{external_demo: ExternalPluginProvider},
+               provider_aliases: %{external_demo: ExternalProvider},
                provider_opts: [store: store, namespace: "provider:external"]
              })
 
-    assert %ProviderRef{module: ExternalPluginProvider, opts: provider_opts} = state.provider
-    assert state.provider_aliases == %{external_demo: ExternalPluginProvider}
+    assert %ProviderRef{module: ExternalProvider, opts: provider_opts} = state.provider
+    assert state.provider_aliases == %{external_demo: ExternalProvider}
     assert Keyword.get(provider_opts, :namespace) == "provider:external"
   end
 end

@@ -4,6 +4,11 @@ defmodule Jido.Memory.Provider do
 
   `retrieve/3` is the canonical read operation. `Jido.Memory.Runtime.recall/2`
   remains available as a compatibility facade over provider retrieval.
+
+  Providers that require supervised runtime processes should expose them through
+  `child_specs/1`. `jido_memory` keeps bootstrap ownership with the caller via
+  `Jido.Memory.ProviderBootstrap` instead of starting provider processes inside
+  the common runtime or plugin paths.
   """
 
   alias Jido.Memory.Query
