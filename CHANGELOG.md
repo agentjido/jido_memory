@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tiered explainability remains intentionally bounded and does not replace journaling or replay
 - The built-in Postgres backend currently uses namespace-scoped fetches with overlapping query filtering in Elixir
 - Redis and other durable backends remain follow-on work rather than first-party release paths
+- `mix quality` and `mix test.acceptance` gate only the supported release matrix, not every possible third-party provider combination
 
 ## [0.1.0] - 2025-02-19
 

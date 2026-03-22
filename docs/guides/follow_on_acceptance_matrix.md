@@ -45,6 +45,11 @@ The release-gated acceptance fixture should prove:
 3. Tiered promotion into the long tier works when the durable backend is Postgres
 4. unsupported capabilities still fail cleanly outside the supported matrix
 
+Local and CI release gate:
+
+- `mix test.acceptance`
+- `mix quality`
+
 ## Non-Goals For This Matrix
 
 - claiming parity for every possible third-party provider

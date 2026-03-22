@@ -47,11 +47,16 @@ defmodule JidoMemory.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "cmd npm install"],
+      "test.acceptance": [
+        "cmd env MIX_ENV=test mix test test/jido_memory/follow_on_acceptance_fixture_test.exs",
+        "cmd env MIX_ENV=test mix test test/jido_memory/phase_03_integration_test.exs"
+      ],
       quality: [
         "cmd env MIX_ENV=test mix format --check-formatted",
         "cmd env MIX_ENV=test mix credo --strict",
         "cmd env MIX_ENV=test mix dialyzer",
         "cmd env MIX_ENV=test mix test",
+        "cmd env MIX_ENV=test mix test.acceptance",
         "cmd env MIX_ENV=test mix coveralls.html",
         "cmd env MIX_ENV=test mix spec.check"
       ]

@@ -37,15 +37,15 @@ Description: keep the release gate trustworthy as the provider system grows more
 
 ### Task 4.3.1 - Align CI and local quality gates
 Description: make the final release gate reflect the actual supported architecture.
-- [ ] Ensure `mix quality` covers the intended acceptance suite for the expanded provider matrix.
-- [ ] Keep spec verification, docs examples, and backend contract tests in the release path.
-- [ ] Prevent optional or experimental provider paths from blocking the supported release matrix.
+- [x] Ensure `mix quality` covers the intended acceptance suite for the expanded provider matrix.
+- [x] Keep spec verification, docs examples, and backend contract tests in the release path.
+- [x] Prevent optional or experimental provider paths from blocking the supported release matrix.
 
 ### Task 4.3.2 - Freeze the follow-on release criteria
 Description: turn the expanded architecture into a shippable, supportable package boundary.
-- [ ] Require all built-in provider tests to pass unchanged.
-- [ ] Require the external-provider reference path and first durable backend path to pass their contract suites.
-- [ ] Require the published documentation to match the tested provider and backend configuration story.
+- [x] Require all built-in provider tests to pass unchanged.
+- [x] Require the external-provider reference path and first durable backend path to pass their contract suites.
+- [x] Require the published documentation to match the tested provider and backend configuration story.
 
 ## Section 4.4 - Phase 4 Integration Tests
 Description: validate the full follow-on architecture from the point of view of a real consumer.
