@@ -184,7 +184,65 @@ defmodule Jido.Memory.ProviderTest do
     capabilities = Tiered.capabilities(meta)
     assert capabilities.core == true
     assert capabilities.retrieval.tiers == true
+    assert capabilities.retrieval.explainable == true
     assert capabilities.lifecycle.consolidate == true
+    assert meta.explainability.payload_version == 1
+  end
+
+  test "tiered explain_retrieval returns tier-aware explanation details" do
+    unique = System.unique_integer([:positive])
+    target = %{id: "tiered-explain-agent-#{unique}"}
+
+    provider =
+      {Tiered,
+       [
+         short_store: {ETS, [table: :"jido_memory_tiered_explain_short_#{unique}"]},
+         mid_store: {ETS, [table: :"jido_memory_tiered_explain_mid_#{unique}"]},
+         long_term_store: {LongTermETS, [store: {ETS, [table: :"jido_memory_tiered_explain_long_#{unique}"]}]}
+       ]}
+
+    assert {:ok, %Record{id: short_id}} =
+             Runtime.remember(
+               target,
+               %{class: :episodic, kind: :event, text: "tiered explain short result"},
+               provider: provider,
+               tier: :short
+             )
+
+    assert {:ok, %Record{id: mid_id}} =
+             Runtime.remember(
+               target,
+               %{class: :semantic, kind: :fact, text: "tiered explain mid result", importance: 1.0},
+               provider: provider,
+               tier: :mid
+             )
+
+    assert {:ok, explanation} =
+             Runtime.explain_retrieval(
+               target,
+               %{text_contains: "tiered explain", tiers: [:short, :mid, :long], order: :asc},
+               provider: provider
+             )
+
+    assert explanation.provider == Tiered
+    assert explanation.requested_tiers == [:short, :mid, :long]
+    assert MapSet.new(explanation.participating_tiers) == MapSet.new([:short, :mid])
+    assert explanation.result_count == 2
+
+    ids = Enum.map(explanation.results, & &1.id)
+    assert short_id in ids
+    assert mid_id in ids
+
+    assert Enum.all?(explanation.results, fn result ->
+             result.tier in [:short, :mid] and
+               is_integer(result.rank) and
+               :text_contains in result.matched_on
+           end)
+
+    assert explanation.extensions.tiered.counts_by_tier.short == 1
+    assert explanation.extensions.tiered.counts_by_tier.mid == 1
+    assert explanation.extensions.tiered.counts_by_tier.long == 0
+    assert explanation.extensions.tiered.ranking.primary == :observed_at
   end
 
   test "tiered provider supports the canonical core flow" do

@@ -7,15 +7,15 @@ Description: add a first-class explanation surface for cross-tier retrieval beha
 
 ### Task 2.1.1 - Implement `explain_retrieval/3` for Tiered
 Description: make Tiered satisfy the retrieval explainability capability with provider-native details.
-- [ ] Return tier participation, match reasons, and ranking or filtering context for retrieval results.
-- [ ] Distinguish records found in short, mid, and long-term layers in the explanation payload.
-- [ ] Keep the explanation shape compatible with the common runtime capability gate.
+- [x] Return tier participation, match reasons, and ranking or filtering context for retrieval results.
+- [x] Distinguish records found in short, mid, and long-term layers in the explanation payload.
+- [x] Keep the explanation shape compatible with the common runtime capability gate.
 
 ### Task 2.1.2 - Define stable explanation payloads
 Description: make explainability useful to applications without overcommitting to provider internals.
-- [ ] Decide which explanation fields are canonical and which are Tiered-specific extensions.
-- [ ] Add provider metadata describing explanation availability and payload scope.
-- [ ] Keep unsupported explainability behavior explicit for providers that do not implement it.
+- [x] Decide which explanation fields are canonical and which are Tiered-specific extensions.
+- [x] Add provider metadata describing explanation availability and payload scope.
+- [x] Keep unsupported explainability behavior explicit for providers that do not implement it.
 
 ## Section 2.2 - Promotion and Consolidation Introspection
 Description: expose lifecycle reasoning so promotion across tiers can be understood and debugged.

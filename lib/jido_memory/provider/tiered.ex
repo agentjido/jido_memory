@@ -9,6 +9,7 @@ defmodule Jido.Memory.Provider.Tiered do
   """
 
   @behaviour Jido.Memory.Provider
+  @behaviour Jido.Memory.Capability.ExplainableRetrieval
   @behaviour Jido.Memory.Capability.Lifecycle
 
   alias Jido.Memory.Provider.Basic
@@ -28,7 +29,7 @@ defmodule Jido.Memory.Provider.Tiered do
 
   @capabilities %{
     core: true,
-    retrieval: %{explainable: false, tiers: true},
+    retrieval: %{explainable: true, tiers: true, explanation_scope: :result_reasons},
     lifecycle: %{consolidate: true, promote: true},
     operations: %{},
     governance: %{},
@@ -91,6 +92,21 @@ defmodule Jido.Memory.Provider.Tiered do
            long_term_store: %{module: long_term_store.module, opts: long_term_store.opts}
          },
          lifecycle: normalize_lifecycle(Keyword.get(opts, :lifecycle, @default_lifecycle)),
+         explainability: %{
+           payload_version: 1,
+           canonical_fields: [
+             :provider,
+             :namespace,
+             :query,
+             :requested_tiers,
+             :participating_tiers,
+             :result_count,
+             :results,
+             :extensions
+           ],
+           result_fields: [:id, :tier, :rank, :matched_on, :ranking_context],
+           extensions: [:tiered]
+         },
          capabilities: @capabilities,
          long_term_meta: long_term_meta
        }}
@@ -142,6 +158,29 @@ defmodule Jido.Memory.Provider.Tiered do
   end
 
   def retrieve(_target, _query, _opts), do: {:error, :invalid_query}
+
+  @impl true
+  def explain_retrieval(target, %Query{} = query, opts) when is_list(opts) do
+    with {:ok, context} <- resolve_context(target, %{namespace: query.namespace}, opts),
+         {:ok, tiers} <- resolve_tiers(%{}, opts, default: :all),
+         {:ok, bundles} <- do_retrieve_bundles(target, query, context, tiers) do
+      {:ok, build_explanation(query, context, tiers, bundles)}
+    end
+  end
+
+  def explain_retrieval(target, query_attrs, opts) when is_list(query_attrs),
+    do: explain_retrieval(target, Map.new(query_attrs), opts)
+
+  def explain_retrieval(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with {:ok, query} <- build_query(query_attrs),
+         {:ok, context} <- resolve_context(target, query_attrs, opts),
+         {:ok, tiers} <- resolve_tiers(query_attrs, opts, default: :all),
+         {:ok, bundles} <- do_retrieve_bundles(target, query, context, tiers) do
+      {:ok, build_explanation(query, context, tiers, bundles)}
+    end
+  end
+
+  def explain_retrieval(_target, _query, _opts), do: {:error, :invalid_query}
 
   @impl true
   def forget(target, id, opts) when is_binary(id) and is_list(opts) do
@@ -250,10 +289,10 @@ defmodule Jido.Memory.Provider.Tiered do
   end
 
   defp retrieve_records(target, %Query{} = query, context, tiers) do
-    with {:ok, records_by_tier} <- do_retrieve(target, query, context, tiers) do
+    with {:ok, bundles} <- do_retrieve_bundles(target, query, context, tiers) do
       records =
-        records_by_tier
-        |> List.flatten()
+        bundles
+        |> Enum.flat_map(& &1.records)
         |> sort_records(query.order)
         |> Enum.uniq_by(& &1.id)
         |> Enum.take(query.limit)
@@ -262,17 +301,24 @@ defmodule Jido.Memory.Provider.Tiered do
     end
   end
 
-  defp do_retrieve(target, query, context, tiers) do
+  defp do_retrieve_bundles(target, query, context, tiers) do
     tiers
     |> Enum.reduce_while({:ok, []}, fn tier, {:ok, acc} ->
-      case retrieve_from_tier(target, query, context, tier) do
-        {:ok, records} -> {:cont, {:ok, [records | acc]}}
+      case retrieve_bundle_from_tier(target, query, context, tier) do
+        {:ok, bundle} -> {:cont, {:ok, [bundle | acc]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
     |> case do
-      {:ok, records} -> {:ok, Enum.reverse(records)}
+      {:ok, bundles} -> {:ok, Enum.reverse(bundles)}
       {:error, _reason} = error -> error
+    end
+  end
+
+  defp retrieve_bundle_from_tier(target, %Query{} = query, context, tier) do
+    case retrieve_from_tier(target, query, context, tier) do
+      {:ok, records} -> {:ok, %{tier: tier, records: records}}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -653,6 +699,120 @@ defmodule Jido.Memory.Provider.Tiered do
     metadata
     |> Map.get(:tiered, Map.get(metadata, "tiered", %{}))
     |> normalize_map()
+  end
+
+  defp build_explanation(%Query{} = query, context, requested_tiers, bundles) do
+    result_entries =
+      bundles
+      |> Enum.flat_map(fn bundle ->
+        Enum.map(bundle.records, fn record -> %{tier: bundle.tier, record: record} end)
+      end)
+      |> sort_result_entries(query.order)
+      |> Enum.uniq_by(& &1.record.id)
+      |> Enum.take(query.limit)
+      |> Enum.with_index(1)
+      |> Enum.map(fn {entry, rank} ->
+        explain_result_entry(entry, rank, query)
+      end)
+
+    counts_by_tier = counts_by_tier(bundles)
+
+    %{
+      provider: __MODULE__,
+      namespace: context.namespace,
+      query: summarize_query(query),
+      requested_tiers: requested_tiers,
+      participating_tiers: participating_tiers(counts_by_tier, requested_tiers),
+      result_count: length(result_entries),
+      results: result_entries,
+      extensions: %{
+        tiered: %{
+          payload_version: 1,
+          counts_by_tier: counts_by_tier,
+          ranking: %{
+            primary: :observed_at,
+            tie_breaker: :id,
+            order: query.order,
+            tier_signal: :promotion_score
+          }
+        }
+      }
+    }
+  end
+
+  defp explain_result_entry(%{tier: tier, record: %Record{} = record}, rank, %Query{} = query) do
+    tiered = tiered_metadata(record)
+
+    %{
+      id: record.id,
+      tier: tier,
+      rank: rank,
+      matched_on: matched_on(record, query),
+      ranking_context: %{
+        observed_at: record.observed_at,
+        order: query.order
+      },
+      extensions: %{
+        tiered: %{
+          importance: normalize_score(tiered[:importance]),
+          promotion_score: promotion_score(record),
+          promotion_count: tiered[:promotion_count] || 0,
+          promoted_from: tiered[:promoted_from]
+        }
+      }
+    }
+  end
+
+  defp summarize_query(%Query{} = query) do
+    %{
+      classes: query.classes,
+      kinds: query.kinds,
+      tags_any: query.tags_any,
+      tags_all: query.tags_all,
+      text_contains: query.text_contains,
+      since: query.since,
+      until: query.until,
+      limit: query.limit,
+      order: query.order
+    }
+  end
+
+  defp matched_on(%Record{}, %Query{} = query) do
+    []
+    |> maybe_add_match(query.classes != [], :class)
+    |> maybe_add_match(query.kinds != [], :kind)
+    |> maybe_add_match(query.tags_any != [], :tags_any)
+    |> maybe_add_match(query.tags_all != [], :tags_all)
+    |> maybe_add_match(is_binary(query.text_contains), :text_contains)
+    |> maybe_add_match(is_integer(query.since), :since)
+    |> maybe_add_match(is_integer(query.until), :until)
+    |> case do
+      [] -> [:namespace]
+      matches -> matches
+    end
+  end
+
+  defp maybe_add_match(matches, true, match), do: matches ++ [match]
+  defp maybe_add_match(matches, false, _match), do: matches
+
+  defp counts_by_tier(bundles) do
+    base = %{short: 0, mid: 0, long: 0}
+
+    Enum.reduce(bundles, base, fn %{tier: tier, records: records}, acc ->
+      Map.put(acc, tier, length(records))
+    end)
+  end
+
+  defp participating_tiers(counts_by_tier, requested_tiers) do
+    Enum.filter(requested_tiers, fn tier -> Map.get(counts_by_tier, tier, 0) > 0 end)
+  end
+
+  defp sort_result_entries(entries, :asc) do
+    Enum.sort_by(entries, fn %{record: record} -> {record.observed_at, record.id} end, :asc)
+  end
+
+  defp sort_result_entries(entries, :desc) do
+    Enum.sort_by(entries, fn %{record: record} -> {record.observed_at, record.id} end, :desc)
   end
 
   defp sort_records(records, :asc), do: Enum.sort_by(records, &{&1.observed_at, &1.id}, :asc)
