@@ -52,12 +52,12 @@ Description: validate that durable long-term storage works end to end through Ti
 
 ### Task 3.4.1 - Long-term store contract scenarios
 Description: prove durable backends satisfy the long-term store seam consistently.
-- [ ] Verify the shared long-term store contract passes for ETS and the first durable backend.
-- [ ] Verify durable backend queries return the same overlapping result subset as the ETS implementation.
-- [ ] Verify prune and forget semantics remain stable across long-term backends.
+- [x] Verify the shared long-term store contract passes for ETS and the first durable backend.
+- [x] Verify durable backend queries return the same overlapping result subset as the ETS implementation.
+- [x] Verify prune and forget semantics remain stable across long-term backends.
 
 ### Task 3.4.2 - Tiered over durable storage scenarios
 Description: prove Tiered can use durable long-term persistence without changing the common plugin or runtime API.
-- [ ] Verify Tiered promotion from mid to long works against the durable long-term backend.
-- [ ] Verify retrieval across short, mid, and durable long-term layers works through the provider-aware runtime.
-- [ ] Verify operational guide examples execute against the tested durable backend configuration.
+- [x] Verify Tiered promotion from mid to long works against the durable long-term backend.
+- [x] Verify retrieval across short, mid, and durable long-term layers works through the provider-aware runtime.
+- [x] Verify operational guide examples execute against the tested durable backend configuration.

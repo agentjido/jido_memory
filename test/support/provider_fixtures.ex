@@ -2,6 +2,7 @@ defmodule Jido.Memory.ProviderFixtures do
   @moduledoc false
 
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
+  alias Jido.Memory.LongTermStoreFixtures
   alias Jido.Memory.ProviderRef
   alias Jido.Memory.Store.ETS
   alias Jido.Memory.Support.ExternalProvider
@@ -23,6 +24,16 @@ defmodule Jido.Memory.ProviderFixtures do
        short_store: unique_store("#{prefix}_short"),
        mid_store: unique_store("#{prefix}_mid"),
        long_term_store: {LongTermETS, [store: unique_store("#{prefix}_long")]},
+       lifecycle: [short_to_mid_threshold: 0.65, mid_to_long_threshold: 0.85]
+     ]}
+  end
+
+  def postgres_tiered_provider(prefix \\ "jido_memory_tiered_pg") do
+    {:tiered,
+     [
+       short_store: unique_store("#{prefix}_short"),
+       mid_store: unique_store("#{prefix}_mid"),
+       long_term_store: LongTermStoreFixtures.postgres_backend("#{prefix}_long"),
        lifecycle: [short_to_mid_threshold: 0.65, mid_to_long_threshold: 0.85]
      ]}
   end
