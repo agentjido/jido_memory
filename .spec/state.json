@@ -1,11 +1,124 @@
 {
   "decisions": {
-    "items": []
+    "items": [
+      {
+        "affects": [
+          "jido_memory.provider_core",
+          "jido_memory.provider_capabilities",
+          "jido_memory.provider_facade",
+          "jido_memory.matrix.provider_surface",
+          "jido_memory.matrix.ingestion",
+          "jido_memory.matrix.retrieval",
+          "jido_memory.matrix.governance"
+        ],
+        "date": "2026-03-21",
+        "file": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "id": "jido_memory.provider_extension_boundary",
+        "status": "accepted",
+        "title": "ADR 0001: Additive Provider Extension Boundary"
+      }
+    ]
   },
   "findings": [],
   "index": {
     "exceptions": [],
     "requirements": [
+      {
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "id": "jido_memory.matrix.governance.no_mandatory_vault_core",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Providers that do not implement vault-style semantics shall not be required to emulate protected memory in order to satisfy the canonical provider contract.",
+        "subject_id": "jido_memory.matrix.governance"
+      },
+      {
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "id": "jido_memory.matrix.governance.protected_memory_lane",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Protected or exact-preservation memory semantics shall live in governance capability metadata or provider-direct APIs rather than in the required provider core.",
+        "subject_id": "jido_memory.matrix.governance"
+      },
+      {
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "id": "jido_memory.matrix.governance.selective_runtime_exposure",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common runtime shall expose governance behavior only when the operation is broadly reusable, leaving more specialized protected-memory controls to provider-direct surfaces until they justify canonical treatment.",
+        "subject_id": "jido_memory.matrix.governance"
+      },
+      {
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "id": "jido_memory.matrix.ingestion.core_write_stability",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The canonical remember/3 path shall remain the shared minimal write operation for structured memory attrs even as richer providers add more advanced ingestion flows.",
+        "subject_id": "jido_memory.matrix.ingestion"
+      },
+      {
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "id": "jido_memory.matrix.ingestion.optional_ingestion_lane",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Batch, multimodal, or routed ingestion flows shall enter through an optional ingestion capability family or provider-direct APIs rather than by changing the required core write contract.",
+        "subject_id": "jido_memory.matrix.ingestion"
+      },
+      {
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "id": "jido_memory.matrix.ingestion.plugin_core_only_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common memory plugin shall remain core-memory oriented and shall not require every provider to expose advanced ingestion routes through the shared agent-facing plugin surface.",
+        "subject_id": "jido_memory.matrix.ingestion"
+      },
+      {
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "id": "jido_memory.matrix.provider_surface.classified_extension_lanes",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The provider architecture shall classify advanced features into required core, optional capability, or provider-direct lanes so new providers can add behavior without redefining the canonical contract.",
+        "subject_id": "jido_memory.matrix.provider_surface"
+      },
+      {
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "id": "jido_memory.matrix.provider_surface.core_lane_stability",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The required core lane shall stay limited to cross-provider operations that minimal and advanced providers can all satisfy without emulating specialized subsystems.",
+        "subject_id": "jido_memory.matrix.provider_surface"
+      },
+      {
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "id": "jido_memory.matrix.provider_surface.provider_direct_escape_hatch",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Provider-direct APIs shall remain a valid lane for specialized controls that are useful for a specific provider but not yet justified as canonical runtime operations.",
+        "subject_id": "jido_memory.matrix.provider_surface"
+      },
+      {
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "id": "jido_memory.matrix.retrieval.canonical_result_shape",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The canonical retrieve/3 contract shall continue returning the shared record-oriented result shape even when a provider internally performs active planning or routed retrieval.",
+        "subject_id": "jido_memory.matrix.retrieval"
+      },
+      {
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "id": "jido_memory.matrix.retrieval.explanation_trace_lane",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Retrieval plans, routing traces, and other provider-native diagnostic details shall be exposed through explainability metadata or provider-direct APIs rather than a new canonical retrieve/3 result format.",
+        "subject_id": "jido_memory.matrix.retrieval"
+      },
+      {
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "id": "jido_memory.matrix.retrieval.query_extension_hints",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Provider-specific retrieval controls shall be carried through optional hints or extensions rather than mandatory additions to the base Jido.Memory.Query contract.",
+        "subject_id": "jido_memory.matrix.retrieval"
+      },
       {
         "file": ".spec/specs/package.spec.md",
         "id": "jido_memory.package.auto_capture",
@@ -72,6 +185,38 @@
       },
       {
         "file": ".spec/specs/provider_capabilities.spec.md",
+        "id": "jido_memory.provider_capabilities.additive_extension_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "New advanced provider features shall enter the canonical layer additively through optional capability families or provider-native extensions rather than by enlarging the required provider core with specialized concerns.",
+        "subject_id": "jido_memory.provider_capabilities"
+      },
+      {
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "id": "jido_memory.provider_capabilities.explainability_routing_trace_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Providers may expose retrieval plans, routing traces, and other provider-native explanation details through explainability metadata without changing the canonical retrieve/3 result shape.",
+        "subject_id": "jido_memory.provider_capabilities"
+      },
+      {
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "id": "jido_memory.provider_capabilities.governance_protected_memory",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Protected or exact-preservation memory semantics, such as vault-style storage, shall be modeled through governance capabilities or provider-direct APIs rather than required behavior for all providers.",
+        "subject_id": "jido_memory.provider_capabilities"
+      },
+      {
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "id": "jido_memory.provider_capabilities.ingestion_capability_family",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The capability model shall support a distinct ingestion-oriented capability family so batch, multimodal, and routed write flows can be negotiated separately from the core remember/3 contract.",
+        "subject_id": "jido_memory.provider_capabilities"
+      },
+      {
+        "file": ".spec/specs/provider_capabilities.spec.md",
         "id": "jido_memory.provider_capabilities.optional_behaviours",
         "priority": "must",
         "stability": "evolving",
@@ -127,6 +272,14 @@
         "subject_id": "jido_memory.provider_core"
       },
       {
+        "file": ".spec/specs/provider_core.spec.md",
+        "id": "jido_memory.provider_core.required_contract_stability",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The required core provider behaviour shall remain small and cross-provider so specialized concerns such as multimodal ingestion, memory-type routing, retrieval planning, and protected vault semantics do not become mandatory callbacks for all providers.",
+        "subject_id": "jido_memory.provider_core"
+      },
+      {
         "file": ".spec/specs/provider_facade.spec.md",
         "id": "jido_memory.provider_facade.built_in_provider_selection",
         "priority": "must",
@@ -144,10 +297,26 @@
       },
       {
         "file": ".spec/specs/provider_facade.spec.md",
+        "id": "jido_memory.provider_facade.narrow_runtime_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common runtime facade shall stay selective, standardizing only broadly reusable operations while leaving provider-specific manager controls, retrieval plans, and specialized workflows to capability-specific helpers, info payloads, or provider-direct APIs.",
+        "subject_id": "jido_memory.provider_facade"
+      },
+      {
+        "file": ".spec/specs/provider_facade.spec.md",
         "id": "jido_memory.provider_facade.provider_configurable_plugin",
         "priority": "must",
         "stability": "evolving",
         "statement": "Jido.Memory.Plugin shall be the unified memory-context entrypoint for Jido agents and shall be provider-configurable so the same agent-facing plugin and action API can target different memory implementations.",
+        "subject_id": "jido_memory.provider_facade"
+      },
+      {
+        "file": ".spec/specs/provider_facade.spec.md",
+        "id": "jido_memory.provider_facade.provider_native_extension_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Provider-specific retrieval or ingestion features shall travel through optional hints, explainability payloads, or provider-direct APIs so the shared plugin and runtime surface stays stable across basic, tiered, and more specialized providers.",
         "subject_id": "jido_memory.provider_facade"
       },
       {
@@ -226,6 +395,148 @@
     "scenarios": [
       {
         "covers": [
+          "jido_memory.matrix.governance.no_mandatory_vault_core"
+        ],
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "given": [
+          "a provider that does not support protected memory semantics"
+        ],
+        "id": "jido_memory.matrix.governance.basic_provider_boundary",
+        "subject_id": "jido_memory.matrix.governance",
+        "then": [
+          "it remains valid without implementing vault-style behavior"
+        ],
+        "when": [
+          "the provider is evaluated against the canonical contract"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.governance.protected_memory_lane",
+          "jido_memory.matrix.governance.selective_runtime_exposure"
+        ],
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "given": [
+          "a provider that stores exact-preservation facts separately from general memory"
+        ],
+        "id": "jido_memory.matrix.governance.protected_memory_provider_boundary",
+        "subject_id": "jido_memory.matrix.governance",
+        "then": [
+          "the protected-memory semantics are expressed through governance metadata or provider-direct APIs without enlarging the required provider core"
+        ],
+        "when": [
+          "the provider is integrated through the canonical layer"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.ingestion.core_write_stability"
+        ],
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "given": [
+          "a provider that supports only the canonical memory write path"
+        ],
+        "id": "jido_memory.matrix.ingestion.basic_write_path",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "then": [
+          "the provider succeeds through remember/3 without needing any ingestion-specific API surface"
+        ],
+        "when": [
+          "an application writes structured memory attrs"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.ingestion.optional_ingestion_lane",
+          "jido_memory.matrix.ingestion.plugin_core_only_boundary"
+        ],
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "given": [
+          "a provider that accepts batches of multimodal input and routes them internally across memory subsystems"
+        ],
+        "id": "jido_memory.matrix.ingestion.multimodal_provider_path",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "then": [
+          "the canonical write path remains available while the richer ingestion path is advertised and invoked through an optional ingestion lane"
+        ],
+        "when": [
+          "the provider is integrated through the canonical layer"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.provider_surface.classified_extension_lanes",
+          "jido_memory.matrix.provider_surface.core_lane_stability"
+        ],
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "given": [
+          "a minimal provider that only supports the canonical memory operations"
+        ],
+        "id": "jido_memory.matrix.provider_surface.minimal_provider_lane",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "then": [
+          "it satisfies the required core lane without needing optional capability or provider-direct behavior"
+        ],
+        "when": [
+          "the provider is classified against the matrix"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.provider_surface.classified_extension_lanes",
+          "jido_memory.matrix.provider_surface.provider_direct_escape_hatch"
+        ],
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "given": [
+          "a specialized provider with active retrieval planning, multimodal ingestion, and protected memory"
+        ],
+        "id": "jido_memory.matrix.provider_surface.specialized_provider_lane",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "then": [
+          "its common operations remain in the required core lane while its specialized controls enter through optional capabilities or provider-direct APIs"
+        ],
+        "when": [
+          "the provider is classified against the matrix"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.retrieval.explanation_trace_lane",
+          "jido_memory.matrix.retrieval.query_extension_hints"
+        ],
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "given": [
+          "a provider that generates an internal retrieval plan before selecting memory sources"
+        ],
+        "id": "jido_memory.matrix.retrieval.active_planning_path",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "then": [
+          "any plan-specific controls remain optional hints or provider-direct features rather than becoming mandatory base query fields"
+        ],
+        "when": [
+          "the provider is used through the canonical runtime surface"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.retrieval.canonical_result_shape",
+          "jido_memory.matrix.retrieval.explanation_trace_lane"
+        ],
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "given": [
+          "a provider that adds tier-aware explanation details to canonical retrieval"
+        ],
+        "id": "jido_memory.matrix.retrieval.tiered_explainability_path",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "then": [
+          "the explanation contains provider-native context while retrieve/3 continues returning the shared record-oriented result shape"
+        ],
+        "when": [
+          "a caller asks for retrieval explanation"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.package.structured_memory_contract"
         ],
         "file": ".spec/specs/package.spec.md",
@@ -279,6 +590,61 @@
       },
       {
         "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.ingestion_capability_family",
+          "jido_memory.provider_capabilities.structured_discovery"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "given": [
+          "a provider that supports batch multimodal ingestion in addition to the canonical core write path"
+        ],
+        "id": "jido_memory.provider_capabilities.multimodal_ingestion_negotiation",
+        "subject_id": "jido_memory.provider_capabilities",
+        "then": [
+          "ingestion support is discoverable through a dedicated optional capability family instead of changing the core remember/3 contract"
+        ],
+        "when": [
+          "tooling inspects the provider capability map"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.governance_protected_memory"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "given": [
+          "a provider that includes protected exact-preservation memory"
+        ],
+        "id": "jido_memory.provider_capabilities.protected_memory_negotiation",
+        "subject_id": "jido_memory.provider_capabilities",
+        "then": [
+          "the protected memory semantics are represented through governance capability metadata or provider-direct APIs instead of becoming a mandatory part of the shared core provider contract"
+        ],
+        "when": [
+          "the provider advertises its advanced feature set"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.explainability_routing_trace_boundary"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "given": [
+          "a provider that performs active retrieval planning and memory-type routing"
+        ],
+        "id": "jido_memory.provider_capabilities.routing_trace_negotiation",
+        "subject_id": "jido_memory.provider_capabilities",
+        "then": [
+          "the provider can return routing traces and planning metadata as explainability output without changing the canonical retrieve/3 return shape"
+        ],
+        "when": [
+          "the caller asks for retrieval explanation through the canonical layer"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.provider_capabilities.optional_behaviours",
           "jido_memory.provider_capabilities.structured_discovery"
         ],
@@ -316,6 +682,7 @@
       },
       {
         "covers": [
+          "jido_memory.provider_core.required_contract_stability",
           "jido_memory.provider_core.bootstrap_boundary",
           "jido_memory.provider_core.provider_bundle_selection"
         ],
@@ -330,6 +697,24 @@
         ],
         "when": [
           "the canonical facade resolves and initializes that provider"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_core.required_contract_stability",
+          "jido_memory.provider_core.provider_bundle_selection"
+        ],
+        "file": ".spec/specs/provider_core.spec.md",
+        "given": [
+          "a specialized provider with multimodal ingestion, routed retrieval, and protected memory concepts"
+        ],
+        "id": "jido_memory.provider_core.specialized_provider_boundary",
+        "subject_id": "jido_memory.provider_core",
+        "then": [
+          "it satisfies the shared core callbacks while exposing its specialized behavior through optional capabilities or provider-direct APIs rather than expanding the required provider contract"
+        ],
+        "when": [
+          "the provider is integrated through the canonical layer"
         ]
       },
       {
@@ -410,6 +795,25 @@
       },
       {
         "covers": [
+          "jido_memory.provider_facade.narrow_runtime_boundary",
+          "jido_memory.provider_facade.provider_native_extension_boundary",
+          "jido_memory.provider_facade.shared_record_query_contract"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "given": [
+          "a specialized provider that offers multimodal ingestion, active retrieval planning, or protected memory"
+        ],
+        "id": "jido_memory.provider_facade.specialized_provider_extension_path",
+        "subject_id": "jido_memory.provider_facade",
+        "then": [
+          "shared calls remain stable while specialized behavior is exposed through capability-specific helpers, explainability output, info payloads, or provider-direct APIs"
+        ],
+        "when": [
+          "the provider is used through the common plugin and runtime surface for shared memory operations"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.provider_migration.tiered_provider_in_core",
           "jido_memory.provider_migration.incremental_compatibility"
         ],
@@ -464,6 +868,90 @@
     ],
     "subjects": [
       {
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "id": "jido_memory.matrix.governance",
+        "meta": {
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
+          "id": "jido_memory.matrix.governance",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft matrix for governance and protected-memory features in pluggable memory providers.",
+          "surface": [
+            ".spec/decisions/0001-additive-provider-extension-boundary.md",
+            "lib/jido_memory/capability/governance.ex",
+            "lib/jido_memory.ex",
+            "lib/jido_memory/provider.ex"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Governance Matrix"
+      },
+      {
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "id": "jido_memory.matrix.ingestion",
+        "meta": {
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
+          "id": "jido_memory.matrix.ingestion",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft matrix for core writes versus optional ingestion capabilities in pluggable memory providers.",
+          "surface": [
+            ".spec/decisions/0001-additive-provider-extension-boundary.md",
+            "lib/jido_memory/provider.ex",
+            "lib/jido_memory/plugin.ex",
+            "lib/jido_memory/actions/*.ex"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Ingestion Matrix"
+      },
+      {
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "id": "jido_memory.matrix.provider_surface",
+        "meta": {
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
+          "id": "jido_memory.matrix.provider_surface",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft matrix for classifying memory provider features into required core, optional capability, and provider-direct lanes.",
+          "surface": [
+            ".spec/decisions/0001-additive-provider-extension-boundary.md",
+            "lib/jido_memory/provider.ex",
+            "lib/jido_memory/capabilities.ex",
+            "lib/jido_memory.ex"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Provider Surface Matrix"
+      },
+      {
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "id": "jido_memory.matrix.retrieval",
+        "meta": {
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
+          "id": "jido_memory.matrix.retrieval",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft matrix for canonical retrieval, explainability traces, and provider-native query extensions.",
+          "surface": [
+            ".spec/decisions/0001-additive-provider-extension-boundary.md",
+            "lib/jido_memory.ex",
+            "lib/jido_memory/query.ex",
+            "lib/jido_memory/capability/explainable_retrieval.ex"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Retrieval Matrix"
+      },
+      {
         "file": ".spec/specs/package.spec.md",
         "id": "jido_memory.package",
         "meta": {
@@ -513,7 +1001,9 @@
         "file": ".spec/specs/provider_capabilities.spec.md",
         "id": "jido_memory.provider_capabilities",
         "meta": {
-          "decisions": null,
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
           "id": "jido_memory.provider_capabilities",
           "kind": "architecture",
           "status": "draft",
@@ -532,7 +1022,9 @@
         "file": ".spec/specs/provider_core.spec.md",
         "id": "jido_memory.provider_core",
         "meta": {
-          "decisions": null,
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
           "id": "jido_memory.provider_core",
           "kind": "architecture",
           "status": "draft",
@@ -551,7 +1043,9 @@
         "file": ".spec/specs/provider_facade.spec.md",
         "id": "jido_memory.provider_facade",
         "meta": {
-          "decisions": null,
+          "decisions": [
+            "jido_memory.provider_extension_boundary"
+          ],
           "id": "jido_memory.provider_facade",
           "kind": "architecture",
           "status": "draft",
@@ -602,7 +1096,7 @@
             ".spec/README.md",
             ".spec/AGENTS.md",
             ".spec/decisions/README.md",
-            ".spec/specs/*.spec.md",
+            ".spec/specs/**/*.spec.md",
             "docs/rfcs/*.md"
           ],
           "verification_minimum_strength": null
@@ -611,6 +1105,50 @@
       }
     ],
     "verifications": [
+      {
+        "covers": [
+          "jido_memory.matrix.governance.protected_memory_lane",
+          "jido_memory.matrix.governance.no_mandatory_vault_core",
+          "jido_memory.matrix.governance.selective_runtime_exposure"
+        ],
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.governance",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.ingestion.core_write_stability",
+          "jido_memory.matrix.ingestion.optional_ingestion_lane",
+          "jido_memory.matrix.ingestion.plugin_core_only_boundary"
+        ],
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.provider_surface.classified_extension_lanes",
+          "jido_memory.matrix.provider_surface.core_lane_stability",
+          "jido_memory.matrix.provider_surface.provider_direct_escape_hatch"
+        ],
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.retrieval.canonical_result_shape",
+          "jido_memory.matrix.retrieval.explanation_trace_lane",
+          "jido_memory.matrix.retrieval.query_extension_hints"
+        ],
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
       {
         "covers": [
           "jido_memory.package.structured_memory_contract",
@@ -672,6 +1210,19 @@
       },
       {
         "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.ingestion_capability_family",
+          "jido_memory.provider_capabilities.explainability_routing_trace_boundary",
+          "jido_memory.provider_capabilities.governance_protected_memory",
+          "jido_memory.provider_capabilities.typed_unsupported_error"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
           "jido_memory.provider_core.required_behaviour",
           "jido_memory.provider_core.bootstrap_boundary",
           "jido_memory.provider_core.provider_bundle_selection",
@@ -684,6 +1235,17 @@
       },
       {
         "covers": [
+          "jido_memory.provider_core.required_contract_stability",
+          "jido_memory.provider_core.bootstrap_boundary",
+          "jido_memory.provider_core.provider_bundle_selection"
+        ],
+        "file": ".spec/specs/provider_core.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_core",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
+      },
+      {
+        "covers": [
           "jido_memory.provider_facade.provider_configurable_plugin",
           "jido_memory.provider_facade.canonical_dispatch_boundary",
           "jido_memory.provider_facade.shared_record_query_contract",
@@ -693,6 +1255,17 @@
         "kind": "source_file",
         "subject_id": "jido_memory.provider_facade",
         "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md"
+      },
+      {
+        "covers": [
+          "jido_memory.provider_facade.narrow_runtime_boundary",
+          "jido_memory.provider_facade.provider_native_extension_boundary",
+          "jido_memory.provider_facade.shared_record_query_contract"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_facade",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md"
       },
       {
         "covers": [
@@ -747,16 +1320,148 @@
   "specification_version": "1.0",
   "summary": {
     "decision_parse_errors": 0,
-    "decisions": 0,
+    "decisions": 1,
     "exceptions": 0,
     "findings": 0,
-    "requirements": 27,
-    "scenarios": 13,
-    "subjects": 7,
-    "verifications": 12
+    "requirements": 46,
+    "scenarios": 26,
+    "subjects": 11,
+    "verifications": 19
   },
   "verification": {
     "claims": [
+      {
+        "cover_id": "jido_memory.matrix.governance.no_mandatory_vault_core",
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.governance",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.governance.protected_memory_lane",
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.governance",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.governance.selective_runtime_exposure",
+        "file": ".spec/specs/matrix/governance_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.governance",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.ingestion.core_write_stability",
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.ingestion.optional_ingestion_lane",
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.ingestion.plugin_core_only_boundary",
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.provider_surface.classified_extension_lanes",
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.provider_surface.core_lane_stability",
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.provider_surface.provider_direct_escape_hatch",
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.retrieval.canonical_result_shape",
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.retrieval.explanation_trace_lane",
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.matrix.retrieval.query_extension_hints",
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 0
+      },
       {
         "cover_id": "jido_memory.package.auto_capture",
         "file": ".spec/specs/package.spec.md",
@@ -945,6 +1650,61 @@
         "verification_index": 0
       },
       {
+        "cover_id": "jido_memory.provider_capabilities.additive_extension_boundary",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.explainability_routing_trace_boundary",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.governance_protected_memory",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.ingestion_capability_family",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_capabilities.typed_unsupported_error",
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_capabilities",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
         "cover_id": "jido_memory.provider_core.bootstrap_boundary",
         "file": ".spec/specs/provider_core.spec.md",
         "kind": "source_file",
@@ -989,6 +1749,39 @@
         "verification_index": 0
       },
       {
+        "cover_id": "jido_memory.provider_core.bootstrap_boundary",
+        "file": ".spec/specs/provider_core.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_core",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_core.provider_bundle_selection",
+        "file": ".spec/specs/provider_core.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_core",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_core.required_contract_stability",
+        "file": ".spec/specs/provider_core.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_core",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
         "cover_id": "jido_memory.provider_facade.built_in_provider_selection",
         "file": ".spec/specs/provider_facade.spec.md",
         "kind": "source_file",
@@ -1031,6 +1824,39 @@
         "subject_id": "jido_memory.provider_facade",
         "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
         "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.narrow_runtime_boundary",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.provider_native_extension_boundary",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
+      },
+      {
+        "cover_id": "jido_memory.provider_facade.shared_record_query_contract",
+        "file": ".spec/specs/provider_facade.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_facade",
+        "target": ".spec/decisions/0001-additive-provider-extension-boundary.md",
+        "verification_index": 1
       },
       {
         "cover_id": "jido_memory.provider_migration.basic_provider_default",
@@ -1126,12 +1952,12 @@
     "strength_summary": {
       "claimed": 0,
       "executed": 6,
-      "linked": 27
+      "linked": 50
     },
     "threshold_failures": 0
   },
   "workspace": {
-    "decision_count": 0,
-    "spec_count": 7
+    "decision_count": 1,
+    "spec_count": 11
   }
 }

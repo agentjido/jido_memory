@@ -19,6 +19,8 @@ surface:
   - lib/jido_memory/actions/*.ex
   - lib/jido_memory/query.ex
   - lib/jido_memory/record.ex
+decisions:
+  - jido_memory.provider_extension_boundary
 ```
 
 ## Requirements
@@ -32,8 +34,16 @@ surface:
   statement: Actions and runtime-facing helpers shall dispatch through a canonical memory facade rather than calling provider-specific modules directly.
   priority: must
   stability: evolving
+- id: jido_memory.provider_facade.narrow_runtime_boundary
+  statement: The common runtime facade shall stay selective, standardizing only broadly reusable operations while leaving provider-specific manager controls, retrieval plans, and specialized workflows to capability-specific helpers, info payloads, or provider-direct APIs.
+  priority: must
+  stability: evolving
 - id: jido_memory.provider_facade.shared_record_query_contract
   statement: Jido.Memory.Record and the base Jido.Memory.Query contract shall remain canonical, while provider-specific retrieval features stay in backward-compatible options or hints rather than mandatory core fields.
+  priority: must
+  stability: evolving
+- id: jido_memory.provider_facade.provider_native_extension_boundary
+  statement: Provider-specific retrieval or ingestion features shall travel through optional hints, explainability payloads, or provider-direct APIs so the shared plugin and runtime surface stays stable across basic, tiered, and more specialized providers.
   priority: must
   stability: evolving
 - id: jido_memory.provider_facade.built_in_provider_selection
@@ -78,6 +88,17 @@ surface:
   covers:
     - jido_memory.provider_facade.provider_configurable_plugin
     - jido_memory.provider_facade.canonical_dispatch_boundary
+- id: jido_memory.provider_facade.specialized_provider_extension_path
+  given:
+    - a specialized provider that offers multimodal ingestion, active retrieval planning, or protected memory
+  when:
+    - the provider is used through the common plugin and runtime surface for shared memory operations
+  then:
+    - shared calls remain stable while specialized behavior is exposed through capability-specific helpers, explainability output, info payloads, or provider-direct APIs
+  covers:
+    - jido_memory.provider_facade.narrow_runtime_boundary
+    - jido_memory.provider_facade.provider_native_extension_boundary
+    - jido_memory.provider_facade.shared_record_query_contract
 ```
 
 ## Verification
@@ -90,4 +111,10 @@ surface:
     - jido_memory.provider_facade.canonical_dispatch_boundary
     - jido_memory.provider_facade.shared_record_query_contract
     - jido_memory.provider_facade.built_in_provider_selection
+- kind: source_file
+  target: .spec/decisions/0001-additive-provider-extension-boundary.md
+  covers:
+    - jido_memory.provider_facade.narrow_runtime_boundary
+    - jido_memory.provider_facade.provider_native_extension_boundary
+    - jido_memory.provider_facade.shared_record_query_contract
 ```

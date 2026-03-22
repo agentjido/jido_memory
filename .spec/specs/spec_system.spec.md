@@ -15,7 +15,7 @@ surface:
   - .spec/README.md
   - .spec/AGENTS.md
   - .spec/decisions/README.md
-  - .spec/specs/*.spec.md
+  - .spec/specs/**/*.spec.md
   - docs/rfcs/*.md
 ```
 

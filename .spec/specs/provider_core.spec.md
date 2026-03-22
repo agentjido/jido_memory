@@ -16,6 +16,8 @@ surface:
   - lib/jido_memory.ex
   - lib/jido_memory/plugin.ex
   - lib/jido_memory/store.ex
+decisions:
+  - jido_memory.provider_extension_boundary
 ```
 
 ## Requirements
@@ -23,6 +25,10 @@ surface:
 ```spec-requirements
 - id: jido_memory.provider_core.required_behaviour
   statement: The canonical provider layer shall define a required core behaviour that covers configuration validation, child spec declaration, initialization, capability reporting, and the base remember, get, retrieve, forget, prune, and info operations.
+  priority: must
+  stability: evolving
+- id: jido_memory.provider_core.required_contract_stability
+  statement: The required core provider behaviour shall remain small and cross-provider so specialized concerns such as multimodal ingestion, memory-type routing, retrieval planning, and protected vault semantics do not become mandatory callbacks for all providers.
   priority: must
   stability: evolving
 - id: jido_memory.provider_core.bootstrap_boundary
@@ -72,7 +78,18 @@ surface:
   then:
     - provider metadata and child specs enter through provider callbacks rather than plugin-specific special cases
   covers:
+    - jido_memory.provider_core.required_contract_stability
     - jido_memory.provider_core.bootstrap_boundary
+    - jido_memory.provider_core.provider_bundle_selection
+- id: jido_memory.provider_core.specialized_provider_boundary
+  given:
+    - a specialized provider with multimodal ingestion, routed retrieval, and protected memory concepts
+  when:
+    - the provider is integrated through the canonical layer
+  then:
+    - it satisfies the shared core callbacks while exposing its specialized behavior through optional capabilities or provider-direct APIs rather than expanding the required provider contract
+  covers:
+    - jido_memory.provider_core.required_contract_stability
     - jido_memory.provider_core.provider_bundle_selection
 ```
 
@@ -86,4 +103,10 @@ surface:
     - jido_memory.provider_core.bootstrap_boundary
     - jido_memory.provider_core.provider_bundle_selection
     - jido_memory.provider_core.built_in_provider_catalog
+- kind: source_file
+  target: .spec/decisions/0001-additive-provider-extension-boundary.md
+  covers:
+    - jido_memory.provider_core.required_contract_stability
+    - jido_memory.provider_core.bootstrap_boundary
+    - jido_memory.provider_core.provider_bundle_selection
 ```
