@@ -143,4 +143,37 @@ defmodule Jido.Memory.MirixProviderTest do
     assert resource_record.class == :working
     assert get_in(resource_record.metadata, ["mirix", "memory_type"]) == "resource"
   end
+
+  test "mirix vault workflows stay provider-direct and outside canonical retrieval" do
+    provider = ProviderFixtures.mirix_provider("mirix_phase04_vault")
+    target = %{id: "mirix-phase04-vault-#{System.unique_integer([:positive])}"}
+
+    assert ProviderContract.supports?(provider, [:governance, :protected_memory])
+    assert ProviderContract.supports?(provider, [:governance, :exact_preservation])
+    assert {:ok, capabilities} = ProviderContract.capabilities(provider)
+    assert capabilities.governance.access == :provider_direct
+
+    assert {:ok, %Record{id: vault_id, metadata: metadata}} =
+             Mirix.put_vault_entry(
+               target,
+               %{kind: :credential, text: "phase4 vault secret"},
+               provider: provider
+             )
+
+    assert get_in(metadata, ["mirix", "memory_type"]) == "vault"
+    assert get_in(metadata, ["mirix", "exact_preservation"]) == true
+
+    assert {:ok, %Record{id: ^vault_id}} = Mirix.get_vault_entry(target, vault_id, provider: provider)
+    assert {:error, :not_found} = Runtime.get(target, vault_id, provider: provider)
+    assert {:ok, []} = Runtime.retrieve(target, %{text_contains: "vault secret"}, provider: provider)
+
+    assert {:ok, explanation} =
+             Runtime.explain_retrieval(target, %{text_contains: "vault secret"}, provider: provider)
+
+    assert explanation.result_count == 0
+    refute Enum.any?(explanation.results, &(&1.id == vault_id))
+
+    assert {:ok, true} = Mirix.forget_vault_entry(target, vault_id, provider: provider)
+    assert {:error, :not_found} = Mirix.get_vault_entry(target, vault_id, provider: provider)
+  end
 end
