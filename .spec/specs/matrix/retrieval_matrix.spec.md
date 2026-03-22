@@ -62,6 +62,17 @@ decisions:
   covers:
     - jido_memory.matrix.retrieval.explanation_trace_lane
     - jido_memory.matrix.retrieval.query_extension_hints
+- id: jido_memory.matrix.retrieval.graph_augmented_memory_path
+  given:
+    - a Mem0-style provider that retrieves canonical memories while augmenting them with entity and relationship context
+  when:
+    - the provider is used through the canonical runtime surface
+  then:
+    - graph-specific retrieval context remains additive through explanation output or provider-direct APIs rather than replacing the canonical record-oriented retrieve/3 result shape
+  covers:
+    - jido_memory.matrix.retrieval.canonical_result_shape
+    - jido_memory.matrix.retrieval.explanation_trace_lane
+    - jido_memory.matrix.retrieval.query_extension_hints
 ```
 
 ## Verification

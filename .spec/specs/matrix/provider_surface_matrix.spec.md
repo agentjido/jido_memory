@@ -62,6 +62,16 @@ decisions:
   covers:
     - jido_memory.matrix.provider_surface.classified_extension_lanes
     - jido_memory.matrix.provider_surface.provider_direct_escape_hatch
+- id: jido_memory.matrix.provider_surface.extraction_reconciliation_provider_lane
+  given:
+    - a Mem0-style provider with extraction-and-reconciliation updates, scoped memory identities, and optional graph augmentation
+  when:
+    - the provider is classified against the matrix
+  then:
+    - canonical memory operations remain in the required core lane while extraction pipelines, scoped identity controls, and graph-specific behavior stay in optional capability or provider-direct lanes until they justify canonical treatment
+  covers:
+    - jido_memory.matrix.provider_surface.classified_extension_lanes
+    - jido_memory.matrix.provider_surface.provider_direct_escape_hatch
 ```
 
 ## Verification

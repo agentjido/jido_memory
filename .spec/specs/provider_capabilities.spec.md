@@ -97,6 +97,17 @@ decisions:
   covers:
     - jido_memory.provider_capabilities.additive_extension_boundary
     - jido_memory.provider_capabilities.explainability_routing_trace_boundary
+- id: jido_memory.provider_capabilities.extraction_reconciliation_negotiation
+  given:
+    - a Mem0-style provider that extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context
+  when:
+    - tooling inspects the provider capability and explanation surfaces
+  then:
+    - extraction, scoped identity, and graph-augmentation behavior stay discoverable through structured metadata, explainability output, or provider-direct APIs without enlarging the required provider core
+  covers:
+    - jido_memory.provider_capabilities.additive_extension_boundary
+    - jido_memory.provider_capabilities.structured_discovery
+    - jido_memory.provider_capabilities.explainability_routing_trace_boundary
 - id: jido_memory.provider_capabilities.protected_memory_negotiation
   given:
     - a built-in provider such as Mirix that includes protected exact-preservation memory

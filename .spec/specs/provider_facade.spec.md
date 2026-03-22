@@ -112,6 +112,18 @@ decisions:
     - jido_memory.provider_facade.narrow_runtime_boundary
     - jido_memory.provider_facade.provider_native_extension_boundary
     - jido_memory.provider_facade.shared_record_query_contract
+- id: jido_memory.provider_facade.mem0_style_provider_path
+  given:
+    - a plugin configuration that selects a Mem0-style provider
+  when:
+    - agent memory actions are executed through the common plugin and runtime surface
+  then:
+    - the shared agent-facing API remains stable for canonical memory operations while extraction-and-reconciliation updates, scoped identity controls, and graph-augmented retrieval details stay behind explainability metadata, provider config, or provider-direct APIs
+  covers:
+    - jido_memory.provider_facade.provider_configurable_plugin
+    - jido_memory.provider_facade.narrow_runtime_boundary
+    - jido_memory.provider_facade.provider_native_extension_boundary
+    - jido_memory.provider_facade.shared_record_query_contract
 ```
 
 ## Verification

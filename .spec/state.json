@@ -222,7 +222,7 @@
         "id": "jido_memory.provider_architecture.provider_roles",
         "priority": "must",
         "stability": "evolving",
-        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
+        "statement": "The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, leave room for a Mem0-style extraction-and-reconciliation provider archetype in jido_memory, and keep jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.",
         "subject_id": "jido_memory.provider_architecture"
       },
       {
@@ -368,6 +368,38 @@
         "stability": "evolving",
         "statement": "Jido.Memory.Record and the base Jido.Memory.Query contract shall remain canonical, while provider-specific retrieval features stay in backward-compatible options or hints rather than mandatory core fields.",
         "subject_id": "jido_memory.provider_facade"
+      },
+      {
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "id": "jido_memory.provider_mem0.extraction_reconciliation_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "A Mem0-style provider shall model long-term memory as extracted and reconciled salient facts rather than as raw transcript chunk storage, while still satisfying the canonical provider core contract.",
+        "subject_id": "jido_memory.provider_mem0"
+      },
+      {
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "id": "jido_memory.provider_mem0.graph_augmentation_boundary",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Optional graph-style memory augmentation for entity and relationship retrieval shall remain additive to the canonical retrieve/3 and explain_retrieval/3 surfaces rather than replacing the shared record-oriented result model.",
+        "subject_id": "jido_memory.provider_mem0"
+      },
+      {
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "id": "jido_memory.provider_mem0.provider_direct_advanced_ops",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "Advanced Mem0-style controls such as feedback, export, history, or provider-owned update semantics shall remain provider-direct until they demonstrate a reusable cross-provider canonical shape.",
+        "subject_id": "jido_memory.provider_mem0"
+      },
+      {
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "id": "jido_memory.provider_mem0.scoped_memory_identity",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "A Mem0-style provider shall support scoped memory identities such as user, agent, app, or run context through provider configuration, metadata, or provider-native controls without changing the canonical provider selection model.",
+        "subject_id": "jido_memory.provider_mem0"
       },
       {
         "file": ".spec/specs/provider_migration.spec.md",
@@ -541,6 +573,25 @@
       },
       {
         "covers": [
+          "jido_memory.matrix.ingestion.core_write_stability",
+          "jido_memory.matrix.ingestion.optional_ingestion_lane",
+          "jido_memory.matrix.ingestion.plugin_core_only_boundary"
+        ],
+        "file": ".spec/specs/matrix/ingestion_matrix.spec.md",
+        "given": [
+          "a Mem0-style provider that extracts salient memories from interaction batches and reconciles them against existing memory state"
+        ],
+        "id": "jido_memory.matrix.ingestion.extraction_reconciliation_provider_path",
+        "subject_id": "jido_memory.matrix.ingestion",
+        "then": [
+          "the canonical remember/3 path remains available while extraction, update, delete, or no-op style maintenance semantics stay in optional ingestion lanes or provider-direct APIs"
+        ],
+        "when": [
+          "the provider is integrated through the canonical layer"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.matrix.ingestion.optional_ingestion_lane",
           "jido_memory.matrix.ingestion.plugin_core_only_boundary"
         ],
@@ -555,6 +606,24 @@
         ],
         "when": [
           "the provider is integrated through the canonical layer"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.provider_surface.classified_extension_lanes",
+          "jido_memory.matrix.provider_surface.provider_direct_escape_hatch"
+        ],
+        "file": ".spec/specs/matrix/provider_surface_matrix.spec.md",
+        "given": [
+          "a Mem0-style provider with extraction-and-reconciliation updates, scoped memory identities, and optional graph augmentation"
+        ],
+        "id": "jido_memory.matrix.provider_surface.extraction_reconciliation_provider_lane",
+        "subject_id": "jido_memory.matrix.provider_surface",
+        "then": [
+          "canonical memory operations remain in the required core lane while extraction pipelines, scoped identity controls, and graph-specific behavior stay in optional capability or provider-direct lanes until they justify canonical treatment"
+        ],
+        "when": [
+          "the provider is classified against the matrix"
         ]
       },
       {
@@ -606,6 +675,25 @@
         "subject_id": "jido_memory.matrix.retrieval",
         "then": [
           "any plan-specific controls remain optional hints or provider-direct features rather than becoming mandatory base query fields"
+        ],
+        "when": [
+          "the provider is used through the canonical runtime surface"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.matrix.retrieval.canonical_result_shape",
+          "jido_memory.matrix.retrieval.explanation_trace_lane",
+          "jido_memory.matrix.retrieval.query_extension_hints"
+        ],
+        "file": ".spec/specs/matrix/retrieval_matrix.spec.md",
+        "given": [
+          "a Mem0-style provider that retrieves canonical memories while augmenting them with entity and relationship context"
+        ],
+        "id": "jido_memory.matrix.retrieval.graph_augmented_memory_path",
+        "subject_id": "jido_memory.matrix.retrieval",
+        "then": [
+          "graph-specific retrieval context remains additive through explanation output or provider-direct APIs rather than replacing the canonical record-oriented retrieve/3 result shape"
         ],
         "when": [
           "the provider is used through the canonical runtime surface"
@@ -680,6 +768,25 @@
         ],
         "when": [
           "a caller asks the canonical layer for retrieval explanation"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_capabilities.additive_extension_boundary",
+          "jido_memory.provider_capabilities.structured_discovery",
+          "jido_memory.provider_capabilities.explainability_routing_trace_boundary"
+        ],
+        "file": ".spec/specs/provider_capabilities.spec.md",
+        "given": [
+          "a Mem0-style provider that extracts salient facts, reconciles them against existing memory, and optionally augments retrieval with graph context"
+        ],
+        "id": "jido_memory.provider_capabilities.extraction_reconciliation_negotiation",
+        "subject_id": "jido_memory.provider_capabilities",
+        "then": [
+          "extraction, scoped identity, and graph-augmentation behavior stay discoverable through structured metadata, explainability output, or provider-direct APIs without enlarging the required provider core"
+        ],
+        "when": [
+          "tooling inspects the provider capability and explanation surfaces"
         ]
       },
       {
@@ -910,6 +1017,26 @@
       },
       {
         "covers": [
+          "jido_memory.provider_facade.provider_configurable_plugin",
+          "jido_memory.provider_facade.narrow_runtime_boundary",
+          "jido_memory.provider_facade.provider_native_extension_boundary",
+          "jido_memory.provider_facade.shared_record_query_contract"
+        ],
+        "file": ".spec/specs/provider_facade.spec.md",
+        "given": [
+          "a plugin configuration that selects a Mem0-style provider"
+        ],
+        "id": "jido_memory.provider_facade.mem0_style_provider_path",
+        "subject_id": "jido_memory.provider_facade",
+        "then": [
+          "the shared agent-facing API remains stable for canonical memory operations while extraction-and-reconciliation updates, scoped identity controls, and graph-augmented retrieval details stay behind explainability metadata, provider config, or provider-direct APIs"
+        ],
+        "when": [
+          "agent memory actions are executed through the common plugin and runtime surface"
+        ]
+      },
+      {
+        "covers": [
           "jido_memory.provider_facade.narrow_runtime_boundary",
           "jido_memory.provider_facade.provider_native_extension_boundary",
           "jido_memory.provider_facade.shared_record_query_contract"
@@ -925,6 +1052,59 @@
         ],
         "when": [
           "the provider is used through the common plugin and runtime surface for shared memory operations"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_mem0.graph_augmentation_boundary",
+          "jido_memory.provider_mem0.provider_direct_advanced_ops"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "given": [
+          "a Mem0-style provider that augments retrieval with entity and relationship context"
+        ],
+        "id": "jido_memory.provider_mem0.graph_augmented_retrieval_path",
+        "subject_id": "jido_memory.provider_mem0",
+        "then": [
+          "canonical record results remain stable while graph-specific context is exposed additively through explanation output or provider-direct APIs"
+        ],
+        "when": [
+          "a caller asks for retrieval results or retrieval explanation through the canonical runtime"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_mem0.scoped_memory_identity"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "given": [
+          "a Mem0-style provider that maintains separate user, agent, app, or run memory scopes"
+        ],
+        "id": "jido_memory.provider_mem0.scoped_identity_path",
+        "subject_id": "jido_memory.provider_mem0",
+        "then": [
+          "the scoped identity model is expressed through provider configuration, metadata, or provider-native controls without changing shared provider selection precedence"
+        ],
+        "when": [
+          "the provider is configured through the canonical memory layer"
+        ]
+      },
+      {
+        "covers": [
+          "jido_memory.provider_mem0.extraction_reconciliation_boundary",
+          "jido_memory.provider_mem0.provider_direct_advanced_ops"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "given": [
+          "a plugin configuration that selects a Mem0-style provider"
+        ],
+        "id": "jido_memory.provider_mem0.shared_facade_path",
+        "subject_id": "jido_memory.provider_mem0",
+        "then": [
+          "canonical remember, retrieve, recall, and explainability flows remain stable while provider-native extraction and reconciliation stay behind the provider boundary"
+        ],
+        "when": [
+          "agent memory calls use the common plugin and runtime surface"
         ]
       },
       {
@@ -1120,7 +1300,7 @@
           "id": "jido_memory.provider_architecture",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving jido_memory_os as a standalone advanced library.",
+          "summary": "Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving room for additional provider archetypes such as a Mem0-style extraction-and-reconciliation path and keeping jido_memory_os as a standalone advanced library.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -1196,6 +1376,27 @@
           "verification_minimum_strength": null
         },
         "title": "Provider Facade Contract"
+      },
+      {
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "id": "jido_memory.provider_mem0",
+        "meta": {
+          "decisions": null,
+          "id": "jido_memory.provider_mem0",
+          "kind": "architecture",
+          "status": "draft",
+          "summary": "Draft Mem0-style provider direction for extraction-and-reconciliation memory, scoped retrieval, and optional graph augmentation in jido_memory.",
+          "surface": [
+            ".spec/specs/provider_architecture.spec.md",
+            ".spec/specs/provider_capabilities.spec.md",
+            ".spec/specs/provider_facade.spec.md",
+            ".spec/specs/matrix/provider_surface_matrix.spec.md",
+            ".spec/specs/matrix/ingestion_matrix.spec.md",
+            ".spec/specs/matrix/retrieval_matrix.spec.md"
+          ],
+          "verification_minimum_strength": null
+        },
+        "title": "Mem0-Style Provider Direction"
       },
       {
         "file": ".spec/specs/provider_migration.spec.md",
@@ -1427,6 +1628,18 @@
       },
       {
         "covers": [
+          "jido_memory.provider_mem0.extraction_reconciliation_boundary",
+          "jido_memory.provider_mem0.scoped_memory_identity",
+          "jido_memory.provider_mem0.graph_augmentation_boundary",
+          "jido_memory.provider_mem0.provider_direct_advanced_ops"
+        ],
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": ".spec/specs/provider_mem0.spec.md"
+      },
+      {
+        "covers": [
           "jido_memory.provider_migration.basic_provider_default",
           "jido_memory.provider_migration.tiered_provider_in_core",
           "jido_memory.provider_migration.standalone_memory_os_boundary",
@@ -1481,10 +1694,10 @@
     "decisions": 2,
     "exceptions": 0,
     "findings": 0,
-    "requirements": 50,
-    "scenarios": 30,
-    "subjects": 12,
-    "verifications": 21
+    "requirements": 54,
+    "scenarios": 38,
+    "subjects": 13,
+    "verifications": 22
   },
   "verification": {
     "claims": [
@@ -2105,6 +2318,50 @@
         "verification_index": 1
       },
       {
+        "cover_id": "jido_memory.provider_mem0.extraction_reconciliation_boundary",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": ".spec/specs/provider_mem0.spec.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_mem0.graph_augmentation_boundary",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": ".spec/specs/provider_mem0.spec.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_mem0.provider_direct_advanced_ops",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": ".spec/specs/provider_mem0.spec.md",
+        "verification_index": 0
+      },
+      {
+        "cover_id": "jido_memory.provider_mem0.scoped_memory_identity",
+        "file": ".spec/specs/provider_mem0.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_mem0",
+        "target": ".spec/specs/provider_mem0.spec.md",
+        "verification_index": 0
+      },
+      {
         "cover_id": "jido_memory.provider_migration.basic_provider_default",
         "file": ".spec/specs/provider_migration.spec.md",
         "kind": "source_file",
@@ -2198,12 +2455,12 @@
     "strength_summary": {
       "claimed": 0,
       "executed": 6,
-      "linked": 58
+      "linked": 62
     },
     "threshold_failures": 0
   },
   "workspace": {
     "decision_count": 2,
-    "spec_count": 12
+    "spec_count": 13
   }
 }

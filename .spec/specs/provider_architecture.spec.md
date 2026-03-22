@@ -12,12 +12,13 @@ Detailed implementation subjects are tracked separately in:
 - `.spec/specs/provider_capabilities.spec.md`
 - `.spec/specs/provider_facade.spec.md`
 - `.spec/specs/provider_migration.spec.md`
+- `.spec/specs/provider_mem0.spec.md`
 
 ```spec-meta
 id: jido_memory.provider_architecture
 kind: architecture
 status: draft
-summary: Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving jido_memory_os as a standalone advanced library.
+summary: Draft provider architecture for making jido_memory the unified Jido memory package with built-in provider choices such as Basic, Tiered, and Mirix, while leaving room for additional provider archetypes such as a Mem0-style extraction-and-reconciliation path and keeping jido_memory_os as a standalone advanced library.
 surface:
   - docs/rfcs/0001-canonical-memory-provider-architecture.md
   - lib/jido_memory.ex
@@ -41,7 +42,7 @@ surface:
   priority: must
   stability: evolving
 - id: jido_memory.provider_architecture.provider_roles
-  statement: The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, and leave jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.
+  statement: The proposal shall treat the current runtime and store stack as the Basic provider path, position a native Tiered provider in jido_memory as the standard built-in tiered path, support a native Mirix provider in jido_memory as the built-in routed memory-type path, leave room for a Mem0-style extraction-and-reconciliation provider archetype in jido_memory, and keep jido_memory_os as a standalone advanced library with optional future interop rather than a required core dependency.
   priority: must
   stability: evolving
 ```

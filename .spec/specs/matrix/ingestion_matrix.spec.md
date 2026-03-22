@@ -61,6 +61,17 @@ decisions:
   covers:
     - jido_memory.matrix.ingestion.optional_ingestion_lane
     - jido_memory.matrix.ingestion.plugin_core_only_boundary
+- id: jido_memory.matrix.ingestion.extraction_reconciliation_provider_path
+  given:
+    - a Mem0-style provider that extracts salient memories from interaction batches and reconciles them against existing memory state
+  when:
+    - the provider is integrated through the canonical layer
+  then:
+    - the canonical remember/3 path remains available while extraction, update, delete, or no-op style maintenance semantics stay in optional ingestion lanes or provider-direct APIs
+  covers:
+    - jido_memory.matrix.ingestion.core_write_stability
+    - jido_memory.matrix.ingestion.optional_ingestion_lane
+    - jido_memory.matrix.ingestion.plugin_core_only_boundary
 ```
 
 ## Verification
