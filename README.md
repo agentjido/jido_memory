@@ -341,6 +341,7 @@ change the built-in defaults or make `jido_memory_os` a required dependency.
 
 - `/Users/Pascal/code/agentjido/jido_memory/examples/basic_provider_agent.exs`
 - `/Users/Pascal/code/agentjido/jido_memory/examples/tiered_provider_agent.exs`
+- `/Users/Pascal/code/agentjido/jido_memory/examples/postgres_tiered_agent.exs`
 - `/Users/Pascal/code/agentjido/jido_memory/examples/external_provider_agent.exs`
 
 ## Record Model

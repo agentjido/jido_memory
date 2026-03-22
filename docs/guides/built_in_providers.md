@@ -136,6 +136,9 @@ Current support boundaries for the built-in Postgres backend:
 If you want to use the built-in Postgres backend, include `:postgrex` in the
 host application dependency set.
 
+For deployment, migration, and pruning guidance, see
+[Durable Long-Term Storage](/Users/Pascal/code/agentjido/jido_memory/docs/guides/durable_long_term_storage.md).
+
 ## Custom Long-Term Persistence
 
 Applications can provide a custom long-term backend by implementing

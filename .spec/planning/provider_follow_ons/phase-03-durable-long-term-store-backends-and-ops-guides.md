@@ -37,15 +37,15 @@ Description: document how to run Tiered with durable long-term persistence in re
 
 ### Task 3.3.1 - Add operational guides for long-term persistence
 Description: give users a concrete path from local ETS usage to durable deployment.
-- [ ] Add guides for selecting and configuring a durable long-term backend.
-- [ ] Document migration considerations from ETS long-term storage to a durable backend.
-- [ ] Explain durability, consistency, and pruning tradeoffs clearly.
+- [x] Add guides for selecting and configuring a durable long-term backend.
+- [x] Document migration considerations from ETS long-term storage to a durable backend.
+- [x] Explain durability, consistency, and pruning tradeoffs clearly.
 
 ### Task 3.3.2 - Clarify support boundaries
 Description: keep the initial durable-backend story focused and supportable.
-- [ ] Mark additional durable backends as follow-on work until the first backend path is stable.
-- [ ] Keep unsupported backend features explicit rather than implying full parity.
-- [ ] Capture open questions around pagination, indexing, and backend-native querying.
+- [x] Mark additional durable backends as follow-on work until the first backend path is stable.
+- [x] Keep unsupported backend features explicit rather than implying full parity.
+- [x] Capture open questions around pagination, indexing, and backend-native querying.
 
 ## Section 3.4 - Phase 3 Integration Tests
 Description: validate that durable long-term storage works end to end through Tiered.
