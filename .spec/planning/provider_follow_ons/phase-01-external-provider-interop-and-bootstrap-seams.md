@@ -7,15 +7,15 @@ Description: define the explicit boundary between built-in providers and optiona
 
 ### Task 1.1.1 - Formalize external provider selection rules
 Description: make external provider selection predictable for runtime calls, plugin state, and release docs.
-- [ ] Define and document how built-in aliases, direct modules, and external tuples are resolved.
-- [ ] Keep invalid external provider failures deterministic and compatibility-safe at the runtime boundary.
-- [ ] Prevent ambiguous provider precedence between runtime opts, plugin state, and provider defaults.
+- [x] Define and document how built-in aliases, direct modules, and external tuples are resolved.
+- [x] Keep invalid external provider failures deterministic and compatibility-safe at the runtime boundary.
+- [x] Prevent ambiguous provider precedence between runtime opts, plugin state, and provider defaults.
 
 ### Task 1.1.2 - Add optional provider registration helpers
 Description: provide a small ergonomic layer for libraries that want to advertise provider modules without making registration mandatory.
-- [ ] Decide whether provider registration is config-driven, module-driven, or helper-only.
-- [ ] Add helper APIs for provider discovery and validation that external packages can reuse.
-- [ ] Keep direct tuple and module provider selection working even when no registry is configured.
+- [x] Decide whether provider registration is config-driven, module-driven, or helper-only.
+- [x] Add helper APIs for provider discovery and validation that external packages can reuse.
+- [x] Keep direct tuple and module provider selection working even when no registry is configured.
 
 ## Section 1.2 - Provider Bootstrap and Runtime Ownership
 Description: clarify how external providers participate in initialization and optional supervised startup.

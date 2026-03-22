@@ -27,6 +27,7 @@ defmodule Jido.Memory.PluginSupport do
   def state_schema do
     Zoi.object(%{
       provider: Zoi.any() |> Zoi.optional(),
+      provider_aliases: Zoi.any() |> Zoi.default(%{}),
       namespace: Zoi.string() |> Zoi.optional(),
       store: Zoi.any() |> Zoi.optional(),
       auto_capture: Zoi.boolean() |> Zoi.default(true),
@@ -41,6 +42,7 @@ defmodule Jido.Memory.PluginSupport do
   def config_schema do
     Zoi.object(%{
       provider: Zoi.any() |> Zoi.optional(),
+      provider_aliases: Zoi.any() |> Zoi.default(%{}),
       provider_opts: Zoi.any() |> Zoi.default([]),
       store: Zoi.any() |> Zoi.default(@default_store),
       store_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
@@ -72,13 +74,15 @@ defmodule Jido.Memory.PluginSupport do
   def mount(agent, config, mode) do
     config_map = normalize_map(config)
 
-    with {:ok, provider_ref} <- resolve_provider_ref(config_map, mode),
+    with {:ok, provider_aliases} <- resolve_provider_aliases(config_map),
+         {:ok, provider_ref} <- resolve_provider_ref(config_map, mode, provider_aliases),
          {:ok, legacy_state} <- resolve_legacy_state(agent, config_map, provider_ref, mode) do
       provider_ref = maybe_enrich_provider_ref(provider_ref, legacy_state)
 
       {:ok,
        legacy_state
        |> Map.put(:provider, provider_ref)
+       |> Map.put(:provider_aliases, provider_aliases)
        |> Map.put(:auto_capture, map_get(config_map, :auto_capture, true))
        |> Map.put(:capture_signal_patterns, map_get(config_map, :capture_signal_patterns, @default_capture_patterns))
        |> Map.put(:capture_rules, map_get(config_map, :capture_rules, %{}))}
@@ -126,23 +130,23 @@ defmodule Jido.Memory.PluginSupport do
   def on_restore(pointer, _context, :legacy_ets) when is_map(pointer), do: {:ok, pointer}
   def on_restore(_pointer, _context, _mode), do: {:ok, nil}
 
-  defp resolve_provider_ref(config_map, :legacy_ets) do
+  defp resolve_provider_ref(config_map, :legacy_ets, provider_aliases) do
     provider_ref = {Basic, legacy_provider_opts(config_map)}
 
-    with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref),
+    with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref, provider_aliases),
          {:ok, _provider_meta} <- provider_ref.module.init(provider_ref.opts) do
       {:ok, provider_ref}
     end
   end
 
-  defp resolve_provider_ref(config_map, :provider_aware) do
+  defp resolve_provider_ref(config_map, :provider_aware, provider_aliases) do
     provider_input = map_get(config_map, :provider)
     provider_opts = map_get(config_map, :provider_opts, [])
 
     if is_nil(provider_input) or is_list(provider_opts) do
       provider_ref = provider_ref_input(provider_input, provider_opts, config_map)
 
-      with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref),
+      with {:ok, provider_ref} <- ProviderRef.normalize(provider_ref, provider_aliases),
            {:ok, _provider_meta} <- provider_ref.module.init(provider_ref.opts) do
         {:ok, provider_ref}
       end
@@ -169,18 +173,19 @@ defmodule Jido.Memory.PluginSupport do
 
   defp normalize_state(state, mode) do
     state_map = normalize_map(state)
+    provider_aliases = normalize_provider_aliases(state_map)
 
     provider =
       case map_get(state_map, :provider) do
         nil ->
-          resolve_provider_ref(state_map, mode)
+          resolve_provider_ref(state_map, mode, provider_aliases)
           |> case do
             {:ok, provider_ref} -> provider_ref
             _ -> ProviderRef.default()
           end
 
         provider ->
-          case ProviderRef.normalize(provider) do
+          case ProviderRef.normalize(provider, provider_aliases) do
             {:ok, provider_ref} -> provider_ref
             _ -> ProviderRef.default()
           end
@@ -188,6 +193,7 @@ defmodule Jido.Memory.PluginSupport do
 
     %{
       provider: provider,
+      provider_aliases: provider_aliases,
       namespace: normalize_optional_string(map_get(state_map, :namespace)),
       store: map_get(state_map, :store),
       auto_capture: map_get(state_map, :auto_capture, true),
@@ -421,6 +427,22 @@ defmodule Jido.Memory.PluginSupport do
   end
 
   defp normalize_optional_string(_value), do: nil
+
+  defp resolve_provider_aliases(config_map) do
+    config_map
+    |> map_get(:provider_aliases, %{})
+    |> Jido.Memory.ProviderRegistry.normalize_aliases()
+  end
+
+  defp normalize_provider_aliases(state_map) do
+    state_map
+    |> map_get(:provider_aliases, %{})
+    |> Jido.Memory.ProviderRegistry.normalize_aliases()
+    |> case do
+      {:ok, aliases} -> aliases
+      {:error, _reason} -> %{}
+    end
+  end
 
   defp provider_ref_input(nil, _provider_opts, config_map), do: {Basic, legacy_provider_opts(config_map)}
 

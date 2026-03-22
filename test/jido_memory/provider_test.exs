@@ -3,6 +3,7 @@ defmodule Jido.Memory.ProviderTest do
 
   alias Jido.Memory.LongTermStore.ETS, as: LongTermETS
   alias Jido.Memory.Provider.Basic
+  alias Jido.Memory.ProviderRegistry
   alias Jido.Memory.Provider.Tiered
   alias Jido.Memory.ProviderContract
   alias Jido.Memory.ProviderRef
@@ -21,6 +22,29 @@ defmodule Jido.Memory.ProviderTest do
     def validate_config(_opts), do: :ok
   end
 
+  defmodule ExternalSelectionProvider do
+    @behaviour Jido.Memory.Provider
+
+    alias Jido.Memory.Provider.Basic
+
+    def validate_config(opts), do: Basic.validate_config(opts)
+    def child_specs(_opts), do: []
+    def init(opts), do: Basic.init(opts)
+
+    def capabilities(meta) do
+      meta
+      |> Basic.capabilities()
+      |> Map.put(:interop, %{external: true})
+    end
+
+    def remember(target, attrs, opts), do: Basic.remember(target, attrs, opts)
+    def get(target, id, opts), do: Basic.get(target, id, opts)
+    def retrieve(target, query, opts), do: Basic.retrieve(target, query, opts)
+    def forget(target, id, opts), do: Basic.forget(target, id, opts)
+    def prune(target, opts), do: Basic.prune(target, opts)
+    def info(meta, fields), do: Basic.info(meta, fields)
+  end
+
   test "provider ref defaults to the Basic provider" do
     assert {:ok, %ProviderRef{module: Basic, opts: []}} = ProviderRef.normalize(nil)
   end
@@ -29,9 +53,77 @@ defmodule Jido.Memory.ProviderTest do
     assert {:ok, %ProviderRef{module: Tiered, opts: []}} = ProviderRef.normalize(:tiered)
   end
 
+  test "provider registry merges built-in and external aliases" do
+    assert {:ok, aliases} =
+             ProviderRegistry.registered(external_demo: ExternalSelectionProvider)
+
+    assert aliases.basic == Basic
+    assert aliases.tiered == Tiered
+    assert aliases.external_demo == ExternalSelectionProvider
+  end
+
+  test "provider ref accepts external aliases through registry helpers" do
+    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: []}} =
+             ProviderRef.normalize(:external_demo, external_demo: ExternalSelectionProvider)
+  end
+
+  test "provider ref accepts direct external modules and tuples without registration", %{store: store} do
+    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: []}} =
+             ProviderRef.normalize(ExternalSelectionProvider)
+
+    assert {:ok, %ProviderRef{module: ExternalSelectionProvider, opts: provider_opts}} =
+             ProviderRef.normalize({ExternalSelectionProvider, [store: store]})
+
+    assert Keyword.get(provider_opts, :store) == store
+  end
+
   test "provider ref rejects modules missing required callbacks" do
     assert {:error, %Jido.Memory.Error.InvalidProvider{provider: MissingCallbacksProvider}} =
              ProviderRef.normalize(MissingCallbacksProvider)
+  end
+
+  test "provider resolution precedence is runtime opts then attrs then plugin state then default", %{store: store} do
+    plugin_state = %{provider: {ExternalSelectionProvider, [store: store]}}
+    attrs = %{provider: Basic}
+
+    assert {:ok, %ProviderRef{module: Tiered}} =
+             ProviderRef.resolve(attrs, [provider: :tiered], plugin_state)
+
+    assert {:ok, %ProviderRef{module: Basic}} =
+             ProviderRef.resolve(attrs, [], plugin_state)
+
+    assert {:ok, %ProviderRef{module: ExternalSelectionProvider}} =
+             ProviderRef.resolve(%{}, [], plugin_state)
+
+    assert {:ok, %ProviderRef{module: Basic}} =
+             ProviderRef.resolve(%{}, [], %{})
+  end
+
+  test "provider resolution rejects invalid alias maps deterministically" do
+    assert {:error, :invalid_provider_aliases} =
+             ProviderRef.resolve(%{provider: :external_demo, provider_aliases: %{external_demo: "bad"}}, [], %{})
+  end
+
+  test "runtime rejects invalid provider alias maps at the compatibility boundary", %{store: store} do
+    assert {:error, :invalid_provider_aliases} =
+             Runtime.remember(
+               %{id: "provider-alias-invalid"},
+               %{class: :episodic, text: "x"},
+               store: store,
+               provider: :external_demo,
+               provider_aliases: %{external_demo: "bad"}
+             )
+  end
+
+  test "runtime rejects invalid provider opts deterministically", %{store: store} do
+    assert {:error, :invalid_provider_opts} =
+             Runtime.remember(
+               %{id: "provider-opts-invalid"},
+               %{class: :episodic, text: "x"},
+               store: store,
+               provider: ExternalSelectionProvider,
+               provider_opts: :invalid
+             )
   end
 
   test "basic provider exposes core capabilities and info", %{store: store} do
