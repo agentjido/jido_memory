@@ -411,6 +411,14 @@
       },
       {
         "file": ".spec/specs/provider_migration.spec.md",
+        "id": "jido_memory.provider_migration.built_in_advanced_providers_in_core",
+        "priority": "must",
+        "stability": "evolving",
+        "statement": "The common advanced memory paths for Jido shall be implemented as built-in providers inside jido_memory, including Tiered, Mem0, and Mirix, rather than requiring jido_memory_os or an external provider as the standard advanced provider choice.",
+        "subject_id": "jido_memory.provider_migration"
+      },
+      {
+        "file": ".spec/specs/provider_migration.spec.md",
         "id": "jido_memory.provider_migration.incremental_compatibility",
         "priority": "must",
         "stability": "evolving",
@@ -423,14 +431,6 @@
         "priority": "must",
         "stability": "evolving",
         "statement": "jido_memory_os shall remain a standalone advanced library with its native facade and plugin rather than becoming a required dependency of jido_memory for standard memory context management.",
-        "subject_id": "jido_memory.provider_migration"
-      },
-      {
-        "file": ".spec/specs/provider_migration.spec.md",
-        "id": "jido_memory.provider_migration.tiered_provider_in_core",
-        "priority": "must",
-        "stability": "evolving",
-        "statement": "The common advanced memory path for Jido shall be implemented as a built-in Tiered provider inside jido_memory rather than requiring jido_memory_os as the standard provider choice.",
         "subject_id": "jido_memory.provider_migration"
       },
       {
@@ -1109,20 +1109,20 @@
       },
       {
         "covers": [
-          "jido_memory.provider_migration.tiered_provider_in_core",
+          "jido_memory.provider_migration.built_in_advanced_providers_in_core",
           "jido_memory.provider_migration.incremental_compatibility"
         ],
         "file": ".spec/specs/provider_migration.spec.md",
         "given": [
-          "an application that later adopts the built-in Tiered provider"
+          "an application that later adopts one of the built-in advanced providers such as Tiered, Mem0, or Mirix"
         ],
-        "id": "jido_memory.provider_migration.built_in_tiered_adoption",
+        "id": "jido_memory.provider_migration.built_in_provider_adoption",
         "subject_id": "jido_memory.provider_migration",
         "then": [
-          "the application gains tiered behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency"
+          "the application gains advanced provider behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency"
         ],
         "when": [
-          "the application enables tiered memory through the shared plugin and runtime surface"
+          "the application enables that provider through the shared plugin and runtime surface"
         ]
       },
       {
@@ -1410,7 +1410,7 @@
           "id": "jido_memory.provider_migration",
           "kind": "architecture",
           "status": "draft",
-          "summary": "Draft migration path for introducing the provider model, preserving current jido_memory behavior, and adding a built-in Tiered provider while leaving jido_memory_os standalone.",
+          "summary": "Draft migration path for introducing the provider model, preserving current jido_memory behavior, and expanding the built-in provider set inside jido_memory while leaving jido_memory_os standalone.",
           "surface": [
             "docs/rfcs/0001-canonical-memory-provider-architecture.md",
             "lib/jido_memory.ex",
@@ -1705,7 +1705,7 @@
       {
         "covers": [
           "jido_memory.provider_migration.basic_provider_default",
-          "jido_memory.provider_migration.tiered_provider_in_core",
+          "jido_memory.provider_migration.built_in_advanced_providers_in_core",
           "jido_memory.provider_migration.standalone_memory_os_boundary",
           "jido_memory.provider_migration.incremental_compatibility"
         ],
@@ -2569,6 +2569,17 @@
         "verification_index": 0
       },
       {
+        "cover_id": "jido_memory.provider_migration.built_in_advanced_providers_in_core",
+        "file": ".spec/specs/provider_migration.spec.md",
+        "kind": "source_file",
+        "meets_minimum": true,
+        "required_strength": "claimed",
+        "strength": "linked",
+        "subject_id": "jido_memory.provider_migration",
+        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
+        "verification_index": 0
+      },
+      {
         "cover_id": "jido_memory.provider_migration.incremental_compatibility",
         "file": ".spec/specs/provider_migration.spec.md",
         "kind": "source_file",
@@ -2581,17 +2592,6 @@
       },
       {
         "cover_id": "jido_memory.provider_migration.standalone_memory_os_boundary",
-        "file": ".spec/specs/provider_migration.spec.md",
-        "kind": "source_file",
-        "meets_minimum": true,
-        "required_strength": "claimed",
-        "strength": "linked",
-        "subject_id": "jido_memory.provider_migration",
-        "target": "docs/rfcs/0001-canonical-memory-provider-architecture.md",
-        "verification_index": 0
-      },
-      {
-        "cover_id": "jido_memory.provider_migration.tiered_provider_in_core",
         "file": ".spec/specs/provider_migration.spec.md",
         "kind": "source_file",
         "meets_minimum": true,

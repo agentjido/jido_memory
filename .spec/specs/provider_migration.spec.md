@@ -10,7 +10,7 @@ Make the rollout sequence explicit so implementation can proceed in additive pha
 id: jido_memory.provider_migration
 kind: architecture
 status: draft
-summary: Draft migration path for introducing the provider model, preserving current jido_memory behavior, and adding a built-in Tiered provider while leaving jido_memory_os standalone.
+summary: Draft migration path for introducing the provider model, preserving current jido_memory behavior, and expanding the built-in provider set inside jido_memory while leaving jido_memory_os standalone.
 surface:
   - docs/rfcs/0001-canonical-memory-provider-architecture.md
   - lib/jido_memory.ex
@@ -26,8 +26,8 @@ surface:
   statement: The first provider implementation shall wrap the existing Jido.Memory.Runtime and Jido.Memory.Store path so current ETS-backed behavior remains the default.
   priority: must
   stability: evolving
-- id: jido_memory.provider_migration.tiered_provider_in_core
-  statement: The common advanced memory path for Jido shall be implemented as a built-in Tiered provider inside jido_memory rather than requiring jido_memory_os as the standard provider choice.
+- id: jido_memory.provider_migration.built_in_advanced_providers_in_core
+  statement: The common advanced memory paths for Jido shall be implemented as built-in providers inside jido_memory, including Tiered, Mem0, and Mirix, rather than requiring jido_memory_os or an external provider as the standard advanced provider choice.
   priority: must
   stability: evolving
 - id: jido_memory.provider_migration.standalone_memory_os_boundary
@@ -53,15 +53,15 @@ surface:
   covers:
     - jido_memory.provider_migration.basic_provider_default
     - jido_memory.provider_migration.incremental_compatibility
-- id: jido_memory.provider_migration.built_in_tiered_adoption
+- id: jido_memory.provider_migration.built_in_provider_adoption
   given:
-    - an application that later adopts the built-in Tiered provider
+    - an application that later adopts one of the built-in advanced providers such as Tiered, Mem0, or Mirix
   when:
-    - the application enables tiered memory through the shared plugin and runtime surface
+    - the application enables that provider through the shared plugin and runtime surface
   then:
-    - the application gains tiered behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency
+    - the application gains advanced provider behavior without changing its agent-facing memory API or taking on a second library as the standard advanced dependency
   covers:
-    - jido_memory.provider_migration.tiered_provider_in_core
+    - jido_memory.provider_migration.built_in_advanced_providers_in_core
     - jido_memory.provider_migration.incremental_compatibility
 - id: jido_memory.provider_migration.standalone_memory_os_usage
   given:
@@ -81,7 +81,7 @@ surface:
   target: docs/rfcs/0001-canonical-memory-provider-architecture.md
   covers:
     - jido_memory.provider_migration.basic_provider_default
-    - jido_memory.provider_migration.tiered_provider_in_core
+    - jido_memory.provider_migration.built_in_advanced_providers_in_core
     - jido_memory.provider_migration.standalone_memory_os_boundary
     - jido_memory.provider_migration.incremental_compatibility
 ```

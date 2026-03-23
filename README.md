@@ -481,7 +481,7 @@ The built-in Tiered provider does not try to replace request-level journaling,
 replay, or manager-driven audit history. Its explainability and lifecycle
 inspection surfaces are intentionally lighter-weight.
 
-The built-in release story for `jido_memory` is now `:basic`, `:tiered`, and `:mirix`.
+The built-in release story for `jido_memory` is now `:basic`, `:tiered`, `:mem0`, and `:mirix`.
 External-provider interop is available as an opt-in seam, but it does not
 change the built-in defaults or make `jido_memory_os` a required dependency.
 

@@ -1,8 +1,8 @@
 # External Providers
 
-`jido_memory` ships built-in `:basic` and `:tiered` providers, but the provider
-contract is intentionally open so other libraries can plug in their own memory
-implementation.
+`jido_memory` ships built-in `:basic`, `:tiered`, `:mem0`, and `:mirix`
+providers, but the provider contract is intentionally open so other libraries
+can plug in their own memory implementation.
 
 External-provider interop is opt-in:
 
@@ -12,7 +12,7 @@ External-provider interop is opt-in:
 
 Choose an external provider when:
 
-- the built-in `:basic` or `:tiered` paths do not fit your runtime architecture
+- the built-in `:basic`, `:tiered`, `:mem0`, or `:mirix` paths do not fit your runtime architecture
 - you need a provider-specific storage or retrieval model that should not become a built-in default
 - you are willing to own any provider bootstrap that requires supervised processes
 

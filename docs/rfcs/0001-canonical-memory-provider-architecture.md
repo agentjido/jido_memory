@@ -20,6 +20,8 @@ That means applications can choose a memory implementation at configuration time
 
 - a minimal `Basic` provider backed by the current `Jido.Memory.Runtime` and `Jido.Memory.Store`
 - a built-in `Tiered` provider that brings core short, mid, and long memory principles into `jido_memory`
+- a built-in `Mem0` provider for extraction-and-reconciliation memory with scoped retrieval and provider-direct maintenance workflows
+- a built-in `Mirix` provider for routed memory-type retrieval, provider-direct ingestion, and protected vault workflows
 - optional future external providers for graph, vector, remote-service, or domain-specific memory systems
 
 The design centers on:
@@ -410,7 +412,7 @@ The `Tiered` provider should focus on the common tiered-memory principles that b
 - configurable long-term persistence
 
 <!-- covers: jido_memory.provider_migration.basic_provider_default -->
-<!-- covers: jido_memory.provider_migration.tiered_provider_in_core -->
+<!-- covers: jido_memory.provider_migration.built_in_advanced_providers_in_core -->
 
 ### `jido_memory_os`
 
