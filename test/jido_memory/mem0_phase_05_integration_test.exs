@@ -158,7 +158,7 @@ defmodule Jido.Memory.Mem0Phase05IntegrationTest do
 
     assert File.read!("/Users/Pascal/code/agentjido/jido_memory/README.md") =~ "`:mem0`"
 
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md") =~
              "Built-in `:mem0`"
 
     assert File.read!("/Users/Pascal/code/agentjido/jido_memory/.spec/topology.md") =~ "built-in `:mem0`"
@@ -170,7 +170,7 @@ defmodule Jido.Memory.Mem0Phase05IntegrationTest do
              "/Users/Pascal/code/agentjido/jido_memory/.spec/planning/provider_benchmarking/phase-03-provider-specific-scenario-packs.md"
            ) =~ "Mem0"
 
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md") =~
              "Benchmarking stays intentionally outside the release gate"
   end
 

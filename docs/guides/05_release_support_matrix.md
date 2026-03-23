@@ -1,4 +1,4 @@
-# Follow-On Acceptance Matrix
+# Release Support Matrix
 
 This matrix defines the supported combinations after the follow-on phases.
 

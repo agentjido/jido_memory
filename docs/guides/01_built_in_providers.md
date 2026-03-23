@@ -16,7 +16,7 @@ runtime, plugin, and actions plus a small set of built-in provider choices.
 
 Built-in provider selection is still explicit and config-driven, but the full
 resolution rules live in
-[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/provider_selection.md).
+[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/02_provider_selection.md).
 
 Use this guide to decide which built-in provider you want. Use the provider
 selection guide when you need precedence rules, runtime override behavior, or
@@ -279,7 +279,7 @@ If you want to use the built-in Postgres backend, include `:postgrex` in the
 host application dependency set.
 
 For deployment, migration, and pruning guidance, see
-[Durable Long-Term Storage](/Users/Pascal/code/agentjido/jido_memory/docs/guides/durable_long_term_storage.md).
+[Durable Long-Term Storage](/Users/Pascal/code/agentjido/jido_memory/docs/guides/03_durable_long_term_storage.md).
 
 ## Custom Long-Term Persistence
 
@@ -347,4 +347,4 @@ plugin. It is no longer part of the release-critical built-in provider story for
 `jido_memory`.
 
 If you want to plug in another provider implementation instead of using the
-built-in matrix, see [External Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md).
+built-in matrix, see [External Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/04_external_providers.md).

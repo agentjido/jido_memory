@@ -172,6 +172,6 @@ What can change is the behavior behind that surface:
 
 ## Related Guides
 
-- [Built-In Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/built_in_providers.md)
-- [External Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md)
-- [Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md)
+- [Built-In Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/01_built_in_providers.md)
+- [External Providers](/Users/Pascal/code/agentjido/jido_memory/docs/guides/04_external_providers.md)
+- [Release Support Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md)

@@ -97,11 +97,11 @@ defmodule JidoMemory.MixProject do
     [
       extras: [
         "README.md",
-        "docs/guides/built_in_providers.md",
-        "docs/guides/provider_selection.md",
-        "docs/guides/external_providers.md",
-        "docs/guides/durable_long_term_storage.md",
-        "docs/guides/follow_on_acceptance_matrix.md",
+        "docs/guides/01_built_in_providers.md",
+        "docs/guides/02_provider_selection.md",
+        "docs/guides/03_durable_long_term_storage.md",
+        "docs/guides/04_external_providers.md",
+        "docs/guides/05_release_support_matrix.md",
         "CONTRIBUTING.md",
         "CHANGELOG.md",
         "docs/rfcs/0001-canonical-memory-provider-architecture.md"

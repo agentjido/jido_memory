@@ -5,7 +5,7 @@ Back to index: [README](./README.md)
 ## Relevant Shared APIs / Interfaces
 - `mix.exs` aliases
 - Benchmark helper modules and result envelopes
-- `docs/guides/follow_on_acceptance_matrix.md`
+- `docs/guides/05_release_support_matrix.md`
 - `.spec/specs/matrix/benchmarking_matrix.spec.md`
 
 ## Relevant Assumptions / Defaults

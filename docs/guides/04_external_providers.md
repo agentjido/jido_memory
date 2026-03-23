@@ -18,10 +18,10 @@ Choose an external provider when:
 
 Stay on the built-in provider paths when your needs match the release-gated
 matrix documented in
-[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+[Release Support Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md).
 
 For runtime precedence, plugin-state fallback, and alias resolution, see
-[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/provider_selection.md).
+[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/02_provider_selection.md).
 
 ## Provider Contract
 

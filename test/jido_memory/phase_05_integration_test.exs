@@ -135,7 +135,7 @@ defmodule Jido.Memory.Phase05IntegrationTest do
 
     assert File.read!("/Users/Pascal/code/agentjido/jido_memory/README.md") =~ "`:mirix`"
 
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md") =~
              "Built-in `:mirix`"
 
     assert File.read!("/Users/Pascal/code/agentjido/jido_memory/.spec/topology.md") =~ "built-in `:mirix`"

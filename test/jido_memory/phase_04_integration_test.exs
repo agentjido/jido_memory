@@ -93,13 +93,13 @@ defmodule Jido.Memory.Phase04IntegrationTest do
   end
 
   test "published guides and release notes match the tested follow-on architecture" do
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md") =~
              "Built-in `:tiered` with Postgres long-term"
 
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/durable_long_term_storage.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/03_durable_long_term_storage.md") =~
              "Postgres is the first supported durable backend"
 
-    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md") =~
+    assert File.read!("/Users/Pascal/code/agentjido/jido_memory/docs/guides/04_external_providers.md") =~
              "External-provider interop is opt-in"
 
     assert File.read!("/Users/Pascal/code/agentjido/jido_memory/CHANGELOG.md") =~

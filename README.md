@@ -47,7 +47,7 @@ Use the shared plugin or runtime with a chosen provider, and let that provider
 handle any internal routing it supports.
 
 For precedence, alias handling, and runtime override examples, see
-[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/provider_selection.md).
+[Provider Selection](/Users/Pascal/code/agentjido/jido_memory/docs/guides/02_provider_selection.md).
 
 ## Adoption Paths
 
@@ -62,7 +62,7 @@ The supported adoption story is incremental:
 7. adopt `jido_memory_os` when you need manager-driven workflows that are intentionally outside the built-in package scope
 
 The release-gated support matrix is documented in
-[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+[Release Support Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md).
 
 ## Installation
 
@@ -455,7 +455,7 @@ aliases = %{external_demo: MyApp.Memory.ExternalProvider}
 ```
 
 Guide:
-- `/Users/Pascal/code/agentjido/jido_memory/docs/guides/external_providers.md`
+- `/Users/Pascal/code/agentjido/jido_memory/docs/guides/04_external_providers.md`
 
 ## Compatibility Guarantees
 

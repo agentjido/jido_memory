@@ -143,4 +143,4 @@ Reference material:
 
 - `.spec/specs/provider_architecture.spec.md`
 - `docs/rfcs/0001-canonical-memory-provider-architecture.md`
-- `docs/guides/follow_on_acceptance_matrix.md`
+- `docs/guides/05_release_support_matrix.md`

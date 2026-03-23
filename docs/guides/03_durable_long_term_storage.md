@@ -99,7 +99,7 @@ Not yet first-party:
 - backend-native ranking beyond the canonical overlap
 
 For the broader supported release matrix, see
-[Follow-On Acceptance Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/follow_on_acceptance_matrix.md).
+[Release Support Matrix](/Users/Pascal/code/agentjido/jido_memory/docs/guides/05_release_support_matrix.md).
 
 ## Open Questions
 
