@@ -1,11 +1,11 @@
-defmodule Jido.Memory.Actions.Recall do
+defmodule Jido.Memory.Actions.Retrieve do
   @moduledoc """
-  Compatibility action for querying memory records and returning bare record lists.
+  Canonical action for querying memory through provider-aware retrieval.
   """
 
   use Jido.Action,
-    name: "memory_recall",
-    description: "Query memory records",
+    name: "memory_retrieve",
+    description: "Query memory records and return a canonical retrieval result",
     schema: [
       namespace: [type: :string, required: false, doc: "Override namespace"],
       classes: [type: :any, required: false, doc: "Class filters"],
@@ -27,10 +27,10 @@ defmodule Jido.Memory.Actions.Recall do
 
   @impl true
   def run(params, context) do
-    case Jido.Memory.Runtime.recall(context, params) do
-      {:ok, records} ->
-        key = params[:memory_result_key] || :memory_results
-        {:ok, %{key => records}}
+    case Jido.Memory.Runtime.retrieve(context, params) do
+      {:ok, result} ->
+        key = params[:memory_result_key] || :memory_result
+        {:ok, %{key => result}}
 
       {:error, reason} ->
         {:error, reason}

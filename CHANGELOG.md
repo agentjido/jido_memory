@@ -18,3 +18,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-capture hooks for AI and non-LLM signal flows
 - Per-agent and shared namespace modes
 - RAG-ready schema with embedding field support
+
+## [Unreleased]
+
+### Added
+
+- Provider-first runtime dispatch through `Jido.Memory.Provider`
+- Built-in `Jido.Memory.Provider.Basic`
+- Provider alias resolution through `Jido.Memory.ProviderRegistry`
+- Provider bootstrap helper via `Jido.Memory.ProviderBootstrap`
+- Canonical provider-facing structs:
+  - `Scope`
+  - `Hit`
+  - `RetrieveResult`
+  - `Explanation`
+  - `CapabilitySet`
+  - `ProviderInfo`
+  - `IngestRequest`
+  - `IngestResult`
+  - `ConsolidationResult`
+- Canonical runtime operations:
+  - `retrieve/3`
+  - `capabilities/2`
+  - `info/2`
+  - `ingest/3`
+  - `explain_retrieval/3`
+  - `consolidate/2`
+- Compatibility alias `resolve_runtime/3`
+- Canonical retrieval action `Jido.Memory.Actions.Retrieve`
+- Shared provider contract test helper in `Jido.Memory.Testing.ProviderContractCase`
+- External adapter package scaffolds:
+  - `jido_memory_mempalace`
+  - `jido_memory_mem0`
+
+### Changed
+
+- `retrieve/3` is now the canonical read path and returns `RetrieveResult`
+- `recall/2` and `recall/3` now unwrap `RetrieveResult` hits into bare records
+- `Jido.Memory.ETSPlugin` exposes both `memory.retrieve` and `memory.recall`
+- `Jido.Memory.Query` now carries provider-specific `extensions`

@@ -1,72 +1,174 @@
 # Jido.Memory
 
-`Jido.Memory` is a basic, data-driven memory system for Jido agents.
+`Jido.Memory` is the canonical memory API package for Jido agents.
 
-Version 1 uses ETS as the authoritative store and provides:
-- Structured records (`Jido.Memory.Record`)
-- Structured query filters (`Jido.Memory.Query`)
-- A Jido plugin (`Jido.Memory.ETSPlugin`)
-- Explicit actions (`memory.remember`, `memory.recall`, `memory.forget`)
-- Auto-capture hooks for AI and non-LLM signal flows
+It provides:
+
+- a stable runtime facade in `Jido.Memory.Runtime`
+- canonical memory structs such as `Record`, `Query`, `Hit`, and `RetrieveResult`
+- a provider contract for backend-specific implementations
+- a built-in `:basic` provider backed by `Jido.Memory.Store`
+- a provider-aware Jido plugin in `Jido.Memory.ETSPlugin`
+- compatibility wrappers for existing `remember/get/forget/recall` flows
+
+Advanced memory systems should integrate as provider packages rather than
+stretching the core package into backend-specific semantics.
+
+## Package Topology
+
+Core package:
+
+- `jido_memory`
+
+External provider packages:
+
+- `jido_memory_mempalace`
+- `jido_memory_mem0`
+
+The core package owns the API contract. External packages own backend-specific
+implementation details and dependencies.
 
 ## Installation
 
-Add dependencies in `mix.exs`:
+Core package only:
 
 ```elixir
 defp deps do
   [
-    {:jido, "2.0.0-rc.5"},
-    {:jido_action, github: "agentjido/jido_action", branch: "main", override: true},
-    {:jido_ai, github: "agentjido/jido_ai", ref: "ae4d37a0dfae564bc7a6a94323fd5a9756a3853d"}
+    {:jido_memory, path: "../jido_memory"}
   ]
 end
 ```
 
-## Use As A Jido Plugin
+Core package with optional providers:
 
-Jido includes a default memory plugin at `:__memory__`, so replace it explicitly:
+```elixir
+defp deps do
+  [
+    {:jido_memory, path: "../jido_memory"},
+    {:jido_memory_mempalace, path: "../jido_memory_mempalace"},
+    {:jido_memory_mem0, path: "../jido_memory_mem0"}
+  ]
+end
+```
+
+## Canonical Runtime API
+
+Core operations:
+
+- `remember/3`
+- `get/3`
+- `forget/3`
+- `retrieve/3`
+- `capabilities/2`
+- `info/2`
+- `ingest/3`
+- `explain_retrieval/3`
+- `consolidate/2`
+
+Compatibility operations:
+
+- `recall/2` and `recall/3`
+- `prune_expired/2`
+
+### Canonical Retrieval
+
+`retrieve/3` is the canonical read path and returns `Jido.Memory.RetrieveResult`.
+
+```elixir
+{:ok, result} =
+  Jido.Memory.Runtime.retrieve(%{id: "agent-1"}, %{
+    namespace: "agent:agent-1",
+    text_contains: "market",
+    limit: 5
+  })
+
+records = Jido.Memory.RetrieveResult.records(result)
+```
+
+`recall/2` remains available as a compatibility wrapper and returns bare
+`[Jido.Memory.Record.t()]`.
+
+```elixir
+{:ok, records} =
+  Jido.Memory.Runtime.recall(%{id: "agent-1"}, %{
+    namespace: "agent:agent-1",
+    text_contains: "market"
+  })
+```
+
+### Provider Selection
+
+The built-in default provider is `:basic`.
+
+You can also select a provider explicitly by alias or module:
+
+```elixir
+{:ok, result} =
+  Jido.Memory.Runtime.retrieve(%{id: "agent-1"}, %{text_contains: "memory"},
+    provider: :basic,
+    provider_opts: [
+      namespace: "agent:agent-1",
+      store: {Jido.Memory.Store.ETS, [table: :agent_memory]}
+    ]
+  )
+```
+
+When external provider packages are present, these aliases resolve through the
+ runtime registry:
+
+- `:mempalace`
+- `:mem0`
+
+## Canonical Structs
+
+Shared structs exposed by `jido_memory`:
+
+- `Jido.Memory.Record`
+- `Jido.Memory.Query`
+- `Jido.Memory.Scope`
+- `Jido.Memory.Hit`
+- `Jido.Memory.RetrieveResult`
+- `Jido.Memory.Explanation`
+- `Jido.Memory.CapabilitySet`
+- `Jido.Memory.ProviderInfo`
+- `Jido.Memory.IngestRequest`
+- `Jido.Memory.IngestResult`
+- `Jido.Memory.ConsolidationResult`
+
+These structs are the stable shapes agents should depend on instead of backend-
+specific maps.
+
+## Built-In Basic Provider
+
+`Jido.Memory.Provider.Basic` keeps the existing simple ETS/store path intact.
+
+It supports:
+
+- canonical record write/read/delete
+- canonical retrieval results
+- capability and provider metadata
+- batch ingest
+- retrieval explanation
+- lifecycle consolidation via prune semantics
+
+It uses `Jido.Memory.Store` underneath, so store adapters remain useful as
+provider infrastructure.
+
+## Jido Plugin and Actions
+
+The package exposes a provider-aware plugin at `Jido.Memory.ETSPlugin`.
 
 ```elixir
 defmodule MyApp.Agent do
   use Jido.Agent,
-    name: "my_agent",
+    name: "memory_agent",
     default_plugins: %{__memory__: false},
     plugins: [
       {Jido.Memory.ETSPlugin,
        %{
-         store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
-         namespace_mode: :per_agent,
-         auto_capture: true,
-         capture_signal_patterns: ["ai.react.query", "ai.llm.response", "ai.tool.result"]
-       }}
-    ]
-end
-```
-
-### Shared Namespace Mode
-
-```elixir
-{Jido.Memory.ETSPlugin,
- %{
-   store: {Jido.Memory.Store.ETS, [table: :shared_memory]},
-   namespace_mode: :shared,
-   shared_namespace: "strategy-team"
- }}
-```
-
-## Jido.AI Agent Example
-
-```elixir
-defmodule MyApp.ReActAgent do
-  use Jido.AI.Agent,
-    name: "react_memory_agent",
-    tools: [MyApp.Tools.Search],
-    default_plugins: %{__memory__: false},
-    plugins: [
-      {Jido.Memory.ETSPlugin,
-       %{
-         store: {Jido.Memory.Store.ETS, [table: :react_memory]},
+         provider: :basic,
+         provider_opts: [store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]}],
          namespace_mode: :per_agent,
          auto_capture: true
        }}
@@ -74,98 +176,40 @@ defmodule MyApp.ReActAgent do
 end
 ```
 
-Auto-captured events include:
-- `ai.react.query` -> `class: :episodic`, `kind: :user_query`
-- `ai.llm.response` -> `class: :episodic`, `kind: :assistant_response`
-- `ai.tool.result` -> `class: :episodic`, `kind: :tool_result`
+Signal routes:
 
-## Non-LLM / Behavior-Tree Style Example
+- `memory.remember`
+- `memory.retrieve`
+- `memory.recall`
+- `memory.forget`
 
-```elixir
-# Configure capture for behavior-tree signals
-{Jido.Memory.ETSPlugin,
- %{
-   store: {Jido.Memory.Store.ETS, [table: :bt_memory]},
-   capture_signal_patterns: ["bt.*", "strategy.*"]
- }}
-```
+Canonical action/result pairing:
 
-Signals matching `bt.*` are captured as generic memory events by default:
-- `class: :working`
-- `kind: :signal_event`
+- `memory.retrieve` -> `%{memory_result: %RetrieveResult{}}`
+- `memory.recall` -> `%{memory_results: [%Record{}]}`
 
-You can still write/read memory explicitly through actions or API calls.
+## Provider Authoring
 
-## Explicit API
+Provider authors should implement `Jido.Memory.Provider` and, when supported,
+the optional capability behaviours:
 
-```elixir
-# Write
-{:ok, record} =
-  Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
-    class: :semantic,
-    kind: :fact,
-    text: "Market opened at 09:30",
-    tags: ["market", "session"]
-  }, store: {Jido.Memory.Store.ETS, [table: :my_memory]})
+- `Jido.Memory.Capability.Ingestion`
+- `Jido.Memory.Capability.ExplainableRetrieval`
+- `Jido.Memory.Capability.Lifecycle`
 
-# Read one
-{:ok, same_record} =
-  Jido.Memory.Runtime.get(%{id: "agent-1"}, record.id, store: {Jido.Memory.Store.ETS, [table: :my_memory]})
+See:
 
-# Query
-{:ok, results} =
-  Jido.Memory.Runtime.recall(%{id: "agent-1"}, %{
-    classes: [:semantic],
-    tags_any: ["market"],
-    limit: 10,
-    order: :desc,
-    store: {Jido.Memory.Store.ETS, [table: :my_memory]}
-  })
+- [Provider Contract](./docs/provider_contract.md)
+- [Provider-First Migration Guide](./docs/provider_migration.md)
+- [Provider Migration Plan](./docs/plans/provider-memory-api-migration-plan.md)
 
-# Delete
-{:ok, deleted?} =
-  Jido.Memory.Runtime.forget(%{id: "agent-1"}, record.id, store: {Jido.Memory.Store.ETS, [table: :my_memory]})
-```
+## External Provider Packages
 
-## Memory Actions
+Two implementation packages are scaffolded in this workspace:
 
-The plugin exposes these signal routes:
-- `memory.remember` -> `Jido.Memory.Actions.Remember`
-- `memory.recall` -> `Jido.Memory.Actions.Recall`
-- `memory.forget` -> `Jido.Memory.Actions.Forget`
+- `jido_memory_mempalace`
+- `jido_memory_mem0`
 
-Action result conventions:
-- `Remember` -> `%{last_memory_id: id}`
-- `Recall` -> `%{memory_results: [...]}` (or custom `memory_result_key`)
-- `Forget` -> `%{last_memory_deleted?: boolean}`
-
-## Record Model
-
-`Jido.Memory.Record` fields:
-- `id`, `namespace`, `class`, `kind`, `text`, `content`, `tags`, `source`
-- `observed_at`, `expires_at`
-- `embedding` (stored only; no vector search in v1)
-- `metadata`, `version`
-
-Canonical `class` values:
-- `:episodic`
-- `:semantic`
-- `:procedural`
-- `:working`
-
-`kind` remains open (`atom` or `string`) for domain-specific memory shapes.
-
-## RAG Roadmap Compatibility
-
-v1 is intentionally not a vector retrieval system.
-
-It is RAG-ready by schema:
-- `embedding` field exists on records
-- store behavior (`Jido.Memory.Store`) is adapter-based
-
-You can introduce advanced backends later without changing the high-level API.
-
-## ETS Durability Note
-
-ETS is in-memory only. Memory records are lost on node restart.
-For durable storage, implement another `Jido.Memory.Store` adapter.
+Both currently ship a contract-compatible shim adapter so the runtime aliasing,
+shared structs, and provider contract are stable before a real backend transport
+is added.

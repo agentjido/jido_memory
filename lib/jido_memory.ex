@@ -4,16 +4,24 @@ defmodule Jido.Memory.Runtime do
 
   Works with either:
   - agent/context inputs that already carry memory plugin state, or
-  - explicit `namespace` and `store` options for non-plugin callers.
+  - explicit `namespace` and optional `provider` options for non-plugin callers.
   """
 
-  alias Jido.Memory.Query
-  alias Jido.Memory.Record
-  alias Jido.Memory.Store
+  alias Jido.Memory.{
+    CapabilitySet,
+    ConsolidationResult,
+    Explanation,
+    Helpers,
+    IngestResult,
+    ProviderInfo,
+    ProviderRef,
+    Query,
+    Record,
+    RetrieveResult,
+    Scope
+  }
 
-  @default_store {Jido.Memory.Store.ETS, [table: :jido_memory]}
   @plugin_state_key :__memory__
-
   @type target :: map() | struct()
 
   @doc "Returns the plugin state key used for memory metadata."
@@ -28,12 +36,9 @@ defmodule Jido.Memory.Runtime do
     do: remember(target, Map.new(attrs), opts)
 
   def remember(target, attrs, opts) when is_map(attrs) and is_list(opts) do
-    with {:ok, runtime} <- resolve_runtime(target, attrs, opts),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts),
-         {:ok, record} <- build_record(attrs, runtime.namespace, runtime.now),
-         {:ok, stored} <- runtime.store_mod.put(record, runtime.store_opts) do
-      {:ok, stored}
-    end
+    with_provider(target, attrs, opts, fn provider_mod, _provider_opts, dispatch_opts ->
+      provider_mod.remember(target, attrs, dispatch_opts)
+    end)
   end
 
   def remember(_target, _attrs, _opts), do: {:error, :invalid_attrs}
@@ -43,12 +48,9 @@ defmodule Jido.Memory.Runtime do
   def get(target, id, opts \\ [])
 
   def get(target, id, opts) when is_binary(id) and is_list(opts) do
-    with {:ok, runtime} <- resolve_runtime(target, %{}, opts),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts),
-         {:ok, record} <-
-           Store.fetch(runtime.store_mod, {runtime.namespace, id}, runtime.store_opts) do
-      {:ok, record}
-    end
+    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
+      provider_mod.get(target, id, dispatch_opts)
+    end)
   end
 
   def get(_target, _id, _opts), do: {:error, :invalid_id}
@@ -58,199 +60,424 @@ defmodule Jido.Memory.Runtime do
   def forget(target, id, opts \\ [])
 
   def forget(target, id, opts) when is_binary(id) and is_list(opts) do
-    with {:ok, runtime} <- resolve_runtime(target, %{}, opts),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts) do
-      case runtime.store_mod.get({runtime.namespace, id}, runtime.store_opts) do
-        {:ok, _record} ->
-          :ok = runtime.store_mod.delete({runtime.namespace, id}, runtime.store_opts)
-          {:ok, true}
-
-        :not_found ->
-          {:ok, false}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end
+    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
+      provider_mod.forget(target, id, dispatch_opts)
+    end)
   end
 
   def forget(_target, _id, _opts), do: {:error, :invalid_id}
 
-  @doc "Queries memory records by structured filters."
-  @spec recall(target(), Query.t() | map() | keyword()) :: {:ok, [Record.t()]} | {:error, term()}
-  def recall(target, %Query{} = query) do
-    with {:ok, runtime} <- resolve_runtime(target, %{namespace: query.namespace}, []),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts),
-         {:ok, effective_query} <- attach_namespace(query, runtime.namespace),
-         {:ok, records} <- runtime.store_mod.query(effective_query, runtime.store_opts) do
-      {:ok, records}
+  @doc """
+  Compatibility wrapper that unwraps canonical retrieval hits into bare records.
+  """
+  @spec recall(target(), Query.t() | map() | keyword(), keyword()) ::
+          {:ok, [Record.t()]} | {:error, term()}
+  def recall(target, query_attrs, opts \\ [])
+
+  def recall(target, query_attrs, opts) when is_list(query_attrs) and is_list(opts),
+    do: recall(target, Map.new(query_attrs), opts)
+
+  def recall(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with {:ok, %RetrieveResult{} = result} <- retrieve(target, query_attrs, opts) do
+      {:ok, RetrieveResult.records(result)}
     end
   end
 
-  def recall(target, query_attrs) when is_list(query_attrs),
-    do: recall(target, Map.new(query_attrs))
+  def recall(_target, _query, _opts), do: {:error, :invalid_query}
 
-  def recall(target, query_attrs) when is_map(query_attrs) do
-    with {:ok, runtime} <- resolve_runtime(target, query_attrs, []),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts),
-         {:ok, query} <- build_query(query_attrs, runtime.namespace),
-         {:ok, records} <- runtime.store_mod.query(query, runtime.store_opts) do
-      {:ok, records}
-    end
+  @doc "Canonical retrieval entrypoint that delegates through provider."
+  @spec retrieve(target(), Query.t() | map() | keyword(), keyword()) ::
+          {:ok, RetrieveResult.t()} | {:error, term()}
+  def retrieve(target, query_attrs, opts \\ [])
+
+  def retrieve(target, query_attrs, opts) when is_list(query_attrs) and is_list(opts),
+    do: retrieve(target, Map.new(query_attrs), opts)
+
+  def retrieve(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with_provider(target, query_attrs, opts, fn provider_mod, _provider_opts, dispatch_opts ->
+      with {:ok, result} <- provider_mod.retrieve(target, query_attrs, dispatch_opts),
+           {:ok, query} <- normalize_query(query_attrs),
+           {:ok, normalized} <-
+             normalize_retrieve_result(result, query, provider_mod, target, query_attrs, dispatch_opts) do
+        {:ok, normalized}
+      end
+    end)
   end
 
-  def recall(_target, _query), do: {:error, :invalid_query}
+  def retrieve(_target, _query, _opts), do: {:error, :invalid_query}
+
+  @doc "Returns the canonical capability set for the active provider."
+  @spec capabilities(target(), keyword()) :: {:ok, CapabilitySet.t()} | {:error, term()}
+  def capabilities(target, opts \\ []) when is_list(opts) do
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts, _dispatch_opts ->
+      with {:ok, capability_set} <- provider_mod.capabilities(provider_opts),
+           {:ok, normalized} <- normalize_capability_set(capability_set, provider_mod) do
+        {:ok, normalized}
+      end
+    end)
+  end
+
+  @doc "Returns canonical provider metadata."
+  @spec info(target(), keyword()) :: {:ok, ProviderInfo.t()} | {:error, term()}
+  def info(target, opts \\ []) when is_list(opts), do: info(target, opts, :all)
+
+  @doc "Returns provider metadata, optionally filtered to selected fields."
+  @spec info(target(), keyword(), :all | [atom()]) :: {:ok, ProviderInfo.t() | map()} | {:error, term()}
+  def info(target, opts, fields) when is_list(opts) do
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts, _dispatch_opts ->
+      with {:ok, info} <- provider_mod.info(provider_opts, :all),
+           {:ok, normalized} <- normalize_provider_info(info, provider_mod) do
+        case fields do
+          :all -> {:ok, normalized}
+          values when is_list(values) -> {:ok, Map.take(Map.from_struct(normalized), values)}
+        end
+      end
+    end)
+  end
+
+  @doc "Runs canonical ingestion when supported by the provider."
+  @spec ingest(target(), map() | keyword(), keyword()) :: {:ok, IngestResult.t()} | {:error, term()}
+  def ingest(target, request, opts \\ [])
+
+  def ingest(target, request, opts) when is_list(request) and is_list(opts),
+    do: ingest(target, Map.new(request), opts)
+
+  def ingest(target, request, opts) when is_map(request) and is_list(opts) do
+    with_provider_capability(target, request, opts, :ingest, :ingest, 3, fn provider_mod,
+                                                                            _provider_opts,
+                                                                            dispatch_opts ->
+      with {:ok, result} <- provider_mod.ingest(target, request, dispatch_opts),
+           {:ok, normalized} <-
+             normalize_ingest_result(result, provider_mod, target, request, dispatch_opts) do
+        {:ok, normalized}
+      end
+    end)
+  end
+
+  def ingest(_target, _request, _opts), do: {:error, :invalid_ingest_request}
+
+  @doc "Returns a canonical retrieval explanation when supported by the provider."
+  @spec explain_retrieval(target(), Query.t() | map() | keyword(), keyword()) ::
+          {:ok, Explanation.t()} | {:error, term()}
+  def explain_retrieval(target, query_attrs, opts \\ [])
+
+  def explain_retrieval(target, query_attrs, opts) when is_list(query_attrs) and is_list(opts),
+    do: explain_retrieval(target, Map.new(query_attrs), opts)
+
+  def explain_retrieval(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
+    with_provider_capability(
+      target,
+      query_attrs,
+      opts,
+      :explain_retrieval,
+      :explain_retrieval,
+      3,
+      fn provider_mod, _provider_opts, dispatch_opts ->
+        with {:ok, explanation} <- provider_mod.explain_retrieval(target, query_attrs, dispatch_opts),
+             {:ok, normalized} <-
+               normalize_explanation(explanation, provider_mod, target, query_attrs, dispatch_opts) do
+          {:ok, normalized}
+        end
+      end
+    )
+  end
+
+  def explain_retrieval(_target, _query, _opts), do: {:error, :invalid_query}
+
+  @doc "Runs canonical lifecycle consolidation when supported by the provider."
+  @spec consolidate(target(), keyword()) :: {:ok, ConsolidationResult.t()} | {:error, term()}
+  def consolidate(target, opts \\ []) when is_list(opts) do
+    with_provider_capability(target, %{}, opts, :consolidate, :consolidate, 2, fn provider_mod,
+                                                                                  _provider_opts,
+                                                                                  dispatch_opts ->
+      with {:ok, result} <- provider_mod.consolidate(target, dispatch_opts),
+           {:ok, normalized} <- normalize_consolidation_result(result, provider_mod, target, dispatch_opts) do
+        {:ok, normalized}
+      end
+    end)
+  end
 
   @doc "Prunes expired records in the active store."
   @spec prune_expired(target(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
   def prune_expired(target, opts \\ []) when is_list(opts) do
-    with {:ok, runtime} <- resolve_runtime(target, %{}, opts),
-         :ok <- runtime.store_mod.ensure_ready(runtime.store_opts),
-         {:ok, count} <- runtime.store_mod.prune_expired(runtime.store_opts) do
-      {:ok, count}
+    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
+      provider_mod.prune(target, dispatch_opts)
+    end)
+  end
+
+  @doc "Infers provider and provider options for plugin and action code paths."
+  @spec resolve_provider(target(), map(), keyword()) ::
+          {:ok, {module(), keyword()}} | {:error, term()}
+  def resolve_provider(target, attrs, opts) when is_map(attrs) and is_list(opts) do
+    plugin_state = Helpers.plugin_state(target, @plugin_state_key)
+    provider_input = Helpers.pick_value(opts, attrs, :provider, Helpers.map_get(plugin_state, :provider))
+
+    with {:ok, provider_ref} <- ProviderRef.normalize(provider_input),
+         {:ok, provider_opts} <- merge_provider_opts(provider_ref.opts, plugin_state, attrs, opts),
+         {:ok, _module} <- ProviderRef.validate(%{provider_ref | opts: provider_opts}) do
+      {:ok, {provider_ref.module, provider_opts}}
     end
   end
 
-  @doc "Infers namespace and store for plugin and action code paths."
+  @doc """
+  Compatibility alias preserved for callers that previously resolved runtime state
+  before invoking operations.
+  """
   @spec resolve_runtime(target(), map(), keyword()) ::
-          {:ok,
-           %{
-             namespace: String.t(),
-             store_mod: module(),
-             store_opts: keyword(),
-             now: integer(),
-             plugin_state: map()
-           }}
-          | {:error, term()}
-  def resolve_runtime(target, attrs, opts) when is_map(attrs) and is_list(opts) do
-    plugin_state = plugin_state(target)
-    now = Keyword.get(opts, :now, System.system_time(:millisecond))
+          {:ok, {module(), keyword()}} | {:error, term()}
+  def resolve_runtime(target, attrs, opts), do: resolve_provider(target, attrs, opts)
 
-    with {:ok, namespace} <- resolve_namespace(target, attrs, opts, plugin_state),
-         {:ok, {store_mod, store_opts}} <- resolve_store(attrs, opts, plugin_state) do
-      {:ok,
-       %{
-         namespace: namespace,
-         store_mod: store_mod,
-         store_opts: store_opts,
-         now: now,
-         plugin_state: plugin_state
-       }}
+  @spec merge_provider_opts(keyword(), map(), map(), keyword()) :: {:ok, keyword()} | {:error, term()}
+  defp merge_provider_opts(base_opts, plugin_state, attrs, opts)
+       when is_list(base_opts) and is_map(plugin_state) and is_map(attrs) and is_list(opts) do
+    plugin_state_opts = Helpers.map_get(plugin_state, :provider_opts, [])
+    attr_opts = Helpers.map_get(attrs, :provider_opts, [])
+    runtime_opts = Keyword.get(opts, :provider_opts, [])
+
+    with :ok <- validate_provider_opts_input(plugin_state_opts),
+         :ok <- validate_provider_opts_input(attr_opts),
+         :ok <- validate_provider_opts_input(runtime_opts) do
+      merged_opts =
+        [plugin_state_opts, attr_opts, runtime_opts]
+        |> Enum.reduce(base_opts, &Keyword.merge(&2, &1))
+
+      {:ok, merged_opts}
     end
   end
 
-  @doc "Resolves namespace using explicit values, plugin state, then agent id fallback."
-  @spec resolve_namespace(target(), map(), keyword(), map()) ::
-          {:ok, String.t()} | {:error, term()}
-  def resolve_namespace(target, attrs, opts, plugin_state) do
-    explicit = pick_value(opts, attrs, :namespace)
-    from_plugin = map_get(plugin_state, :namespace)
+  @spec provider_dispatch_opts(keyword(), keyword()) :: keyword()
+  defp provider_dispatch_opts(opts, provider_opts) do
+    opts
+    |> Keyword.delete(:provider)
+    |> Keyword.delete(:provider_opts)
+    |> Keyword.put(:provider_opts, provider_opts)
+  end
 
-    resolved =
-      cond do
-        is_binary(explicit) and String.trim(explicit) != "" -> String.trim(explicit)
-        is_binary(from_plugin) and String.trim(from_plugin) != "" -> String.trim(from_plugin)
-        is_binary(target_id(target)) -> "agent:" <> target_id(target)
-        true -> nil
+  defp normalize_retrieve_result(%RetrieveResult{} = result, query, provider_mod, target, attrs, opts) do
+    {:ok, merge_retrieve_defaults(result, query, provider_mod, target, attrs, opts)}
+  end
+
+  defp normalize_retrieve_result(records, query, provider_mod, target, attrs, opts) when is_list(records) do
+    {:ok,
+     RetrieveResult.from_records(records,
+       query: query,
+       scope: infer_scope(target, attrs, provider_mod, opts),
+       provider: infer_provider_info(provider_mod, opts)
+     )}
+  end
+
+  defp normalize_retrieve_result(%{} = attrs, query, provider_mod, target, query_attrs, opts) do
+    with {:ok, result} <- RetrieveResult.new(attrs) do
+      {:ok, merge_retrieve_defaults(result, query, provider_mod, target, query_attrs, opts)}
+    end
+  end
+
+  defp normalize_retrieve_result(other, _query, _provider_mod, _target, _attrs, _opts),
+    do: {:error, {:invalid_retrieve_result, other}}
+
+  defp merge_retrieve_defaults(%RetrieveResult{} = result, query, provider_mod, target, attrs, opts) do
+    default_scope = infer_scope(target, attrs, provider_mod, opts)
+    default_provider = infer_provider_info(provider_mod, opts)
+
+    %RetrieveResult{
+      result
+      | query: result.query || query,
+        scope: result.scope || default_scope,
+        provider: result.provider || default_provider,
+        total_count:
+          if(result.total_count == 0 and result.hits != [], do: length(result.hits), else: result.total_count)
+    }
+  end
+
+  defp normalize_capability_set(%CapabilitySet{} = capabilities, _provider_mod), do: {:ok, capabilities}
+
+  defp normalize_capability_set(%{} = attrs, provider_mod) do
+    CapabilitySet.new(Map.put_new(attrs, :provider, provider_mod))
+  end
+
+  defp normalize_capability_set(values, provider_mod) when is_list(values) do
+    CapabilitySet.new(%{provider: provider_mod, capabilities: values})
+  end
+
+  defp normalize_capability_set(other, _provider_mod), do: {:error, {:invalid_capability_set, other}}
+
+  defp normalize_provider_info(%ProviderInfo{} = info, _provider_mod), do: {:ok, info}
+
+  defp normalize_provider_info(%{} = attrs, provider_mod) do
+    ProviderInfo.new(Map.put_new(attrs, :provider, provider_mod))
+  end
+
+  defp normalize_provider_info(other, _provider_mod), do: {:error, {:invalid_provider_info, other}}
+
+  defp normalize_ingest_result(%IngestResult{} = result, provider_mod, _target, request, opts) do
+    {:ok, merge_ingest_defaults(result, provider_mod, request, opts)}
+  end
+
+  defp normalize_ingest_result(%{} = attrs, provider_mod, _target, request, opts) do
+    with {:ok, result} <- IngestResult.new(attrs) do
+      {:ok, merge_ingest_defaults(result, provider_mod, request, opts)}
+    end
+  end
+
+  defp normalize_ingest_result(other, _provider_mod, _target, _request, _opts),
+    do: {:error, {:invalid_ingest_result, other}}
+
+  defp merge_ingest_defaults(%IngestResult{} = result, provider_mod, request, opts) do
+    %IngestResult{
+      result
+      | scope: result.scope || infer_scope_from_request(request, provider_mod, opts),
+        provider: result.provider || infer_provider_info(provider_mod, opts)
+    }
+  end
+
+  defp normalize_explanation(%Explanation{} = explanation, provider_mod, target, query, opts) do
+    {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, opts)}
+  end
+
+  defp normalize_explanation(%{} = attrs, provider_mod, target, query, opts) do
+    with {:ok, explanation} <- Explanation.new(attrs) do
+      {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, opts)}
+    end
+  end
+
+  defp normalize_explanation(other, _provider_mod, _target, _query, _opts),
+    do: {:error, {:invalid_explanation, other}}
+
+  defp merge_explanation_defaults(%Explanation{} = explanation, provider_mod, target, query, opts) do
+    %Explanation{
+      explanation
+      | query: explanation.query || normalize_query!(query),
+        scope: explanation.scope || infer_scope(target, query, provider_mod, opts),
+        provider: explanation.provider || infer_provider_info(provider_mod, opts)
+    }
+  end
+
+  defp normalize_consolidation_result(%ConsolidationResult{} = result, provider_mod, target, opts) do
+    {:ok, merge_consolidation_defaults(result, provider_mod, target, opts)}
+  end
+
+  defp normalize_consolidation_result(%{} = attrs, provider_mod, target, opts) do
+    with {:ok, result} <- ConsolidationResult.new(attrs) do
+      {:ok, merge_consolidation_defaults(result, provider_mod, target, opts)}
+    end
+  end
+
+  defp normalize_consolidation_result(other, _provider_mod, _target, _opts),
+    do: {:error, {:invalid_consolidation_result, other}}
+
+  defp merge_consolidation_defaults(%ConsolidationResult{} = result, provider_mod, target, opts) do
+    %ConsolidationResult{
+      result
+      | scope: result.scope || infer_scope(target, %{}, provider_mod, opts),
+        provider: result.provider || infer_provider_info(provider_mod, opts)
+    }
+  end
+
+  defp ensure_capability(provider_mod, callback, arity, capability) do
+    if function_exported?(provider_mod, callback, arity) do
+      :ok
+    else
+      {:error, {:unsupported_capability, capability, provider_mod}}
+    end
+  end
+
+  defp infer_provider_info(provider_mod, opts) do
+    case provider_mod.info(Keyword.get(opts, :provider_opts, []), :all) do
+      {:ok, info} ->
+        case normalize_provider_info(info, provider_mod) do
+          {:ok, %ProviderInfo{} = normalized} -> normalized
+          {:error, _reason} -> default_provider_info(provider_mod)
+        end
+
+      {:error, _reason} ->
+        default_provider_info(provider_mod)
+    end
+  end
+
+  defp default_provider_info(provider_mod) do
+    ProviderInfo.new!(%{
+      name: Scope.provider_name(provider_mod) || "provider",
+      provider: provider_mod,
+      capabilities: []
+    })
+  end
+
+  defp infer_scope(target, attrs, provider_mod, opts) do
+    namespace =
+      Helpers.pick_value(
+        opts,
+        attrs,
+        :namespace,
+        Helpers.map_get(Helpers.plugin_state(target, @plugin_state_key), :namespace)
+      )
+
+    provider_opts =
+      Keyword.get(opts, :provider_opts, [])
+      |> maybe_put(:namespace, namespace)
+
+    Scope.from_provider(provider_mod, provider_opts)
+  end
+
+  defp infer_scope_from_request(request, provider_mod, opts) when is_map(request) do
+    scope = Helpers.map_get(request, :scope)
+
+    case scope do
+      %Scope{} = scope ->
+        scope
+
+      %{} = scope_map ->
+        Scope.new!(scope_map)
+
+      _ ->
+        records = Helpers.map_get(request, :records, [])
+
+        namespace =
+          records
+          |> List.wrap()
+          |> Enum.find_value(fn
+            %Record{namespace: namespace} -> namespace
+            %{} = attrs -> Helpers.map_get(attrs, :namespace)
+            _ -> nil
+          end)
+
+        Scope.from_provider(provider_mod, maybe_put(Keyword.get(opts, :provider_opts, []), :namespace, namespace))
+    end
+  end
+
+  defp infer_scope_from_request(_request, provider_mod, opts),
+    do: Scope.from_provider(provider_mod, Keyword.get(opts, :provider_opts, []))
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put_new(opts, key, value)
+
+  defp with_provider(target, attrs, opts, fun) when is_map(attrs) and is_list(opts) and is_function(fun, 3) do
+    with {:ok, {provider_mod, provider_opts}} <- resolve_provider(target, attrs, opts),
+         :ok <- provider_mod.validate_config(provider_opts) do
+      fun.(provider_mod, provider_opts, provider_dispatch_opts(opts, provider_opts))
+    end
+  end
+
+  defp with_provider_capability(target, attrs, opts, capability, callback, arity, fun)
+       when is_map(attrs) and is_list(opts) and is_function(fun, 3) do
+    with_provider(target, attrs, opts, fn provider_mod, provider_opts, dispatch_opts ->
+      with :ok <- ensure_capability(provider_mod, callback, arity, capability) do
+        fun.(provider_mod, provider_opts, dispatch_opts)
       end
-
-    if is_binary(resolved), do: {:ok, resolved}, else: {:error, :namespace_required}
+    end)
   end
 
-  @doc "Resolves store from explicit values, plugin state, then defaults."
-  @spec resolve_store(map(), keyword(), map()) :: {:ok, {module(), keyword()}} | {:error, term()}
-  def resolve_store(attrs, opts, plugin_state) do
-    explicit_store = pick_value(opts, attrs, :store)
-    explicit_store_opts = pick_value(opts, attrs, :store_opts, [])
+  defp normalize_query(%Query{} = query), do: {:ok, query}
+  defp normalize_query(query_attrs) when is_list(query_attrs), do: Query.new(query_attrs)
+  defp normalize_query(query_attrs) when is_map(query_attrs), do: Query.new(query_attrs)
+  defp normalize_query(_query), do: {:error, :invalid_query}
 
-    plugin_store = map_get(plugin_state, :store)
-
-    store_value =
-      cond do
-        not is_nil(explicit_store) ->
-          explicit_store
-
-        not is_nil(plugin_store) ->
-          plugin_store
-
-        true ->
-          @default_store
-      end
-
-    with {:ok, {store_mod, base_opts}} <- Store.normalize_store(store_value),
-         {:ok, merged_opts} <- normalize_store_opts(base_opts, explicit_store_opts) do
-      {:ok, {store_mod, merged_opts}}
+  defp normalize_query!(query_attrs) do
+    case normalize_query(query_attrs) do
+      {:ok, query} -> query
+      {:error, _reason} -> Query.new!(%{})
     end
   end
 
-  @spec build_record(map(), String.t(), integer()) :: {:ok, Record.t()} | {:error, term()}
-  defp build_record(attrs, namespace, now) do
-    attrs =
-      attrs
-      |> Map.put(:namespace, namespace)
-      |> Map.put_new(:observed_at, now)
-
-    Record.new(attrs, now: now)
-  end
-
-  @spec build_query(map(), String.t()) :: {:ok, Query.t()} | {:error, term()}
-  defp build_query(attrs, namespace) do
-    attrs = Map.put_new(attrs, :namespace, namespace)
-    Query.new(attrs)
-  end
-
-  @spec attach_namespace(Query.t(), String.t()) :: {:ok, Query.t()} | {:error, term()}
-  defp attach_namespace(%Query{namespace: nil} = query, namespace) when is_binary(namespace),
-    do: {:ok, %{query | namespace: namespace}}
-
-  defp attach_namespace(%Query{namespace: query_namespace} = query, runtime_namespace)
-       when is_binary(query_namespace) and is_binary(runtime_namespace),
-       do: {:ok, query}
-
-  defp attach_namespace(%Query{}, _), do: {:error, :namespace_required}
-
-  @spec normalize_store_opts(keyword(), keyword()) :: {:ok, keyword()} | {:error, term()}
-  defp normalize_store_opts(base_opts, override_opts)
-       when is_list(base_opts) and is_list(override_opts),
-       do: {:ok, Keyword.merge(base_opts, override_opts)}
-
-  defp normalize_store_opts(_base, _override), do: {:error, :invalid_store_opts}
-
-  @spec plugin_state(target()) :: map()
-  defp plugin_state(%{state: %{} = state}) do
-    case Map.get(state, @plugin_state_key) do
-      %{} = plugin_state -> plugin_state
-      _ -> %{}
-    end
-  end
-
-  defp plugin_state(%{} = map) do
-    case Map.get(map, @plugin_state_key) do
-      %{} = plugin_state -> plugin_state
-      _ -> %{}
-    end
-  end
-
-  defp plugin_state(_), do: %{}
-
-  @spec target_id(target()) :: String.t() | nil
-  defp target_id(%{id: id}) when is_binary(id), do: id
-  defp target_id(%{agent: %{id: id}}) when is_binary(id), do: id
-  defp target_id(_), do: nil
-
-  @spec pick_value(keyword(), map(), atom(), term()) :: term()
-  defp pick_value(opts, attrs, key, default \\ nil) do
-    case Keyword.fetch(opts, key) do
-      {:ok, value} ->
-        value
-
-      :error ->
-        Map.get(attrs, key, Map.get(attrs, Atom.to_string(key), default))
-    end
-  end
-
-  @spec map_get(map(), atom(), term()) :: term()
-  defp map_get(map, key, default \\ nil) do
-    Map.get(map, key, Map.get(map, Atom.to_string(key), default))
-  end
+  defp validate_provider_opts_input(opts) when is_list(opts), do: :ok
+  defp validate_provider_opts_input(_), do: {:error, :invalid_provider_opts}
 end

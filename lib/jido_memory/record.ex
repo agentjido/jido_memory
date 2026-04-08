@@ -21,12 +21,10 @@ defmodule Jido.Memory.Record do
               tags: Zoi.list(Zoi.string(), description: "Normalized tag list") |> Zoi.default([]),
               source: Zoi.string(description: "Event source") |> Zoi.optional(),
               observed_at: Zoi.integer(description: "Observation timestamp in milliseconds"),
-              expires_at:
-                Zoi.integer(description: "Expiration timestamp in milliseconds") |> Zoi.optional(),
+              expires_at: Zoi.integer(description: "Expiration timestamp in milliseconds") |> Zoi.optional(),
               embedding: Zoi.any(description: "Optional embedding payload") |> Zoi.optional(),
               metadata: Zoi.map(description: "Arbitrary metadata") |> Zoi.default(%{}),
-              version:
-                Zoi.integer(description: "Record schema version") |> Zoi.default(@default_version)
+              version: Zoi.integer(description: "Record schema version") |> Zoi.default(@default_version)
             },
             coerce: true
           )
@@ -161,7 +159,7 @@ defmodule Jido.Memory.Record do
     |> Enum.reduce_while([], fn tag, acc ->
       case normalize_tag(tag) do
         {:ok, normalized} ->
-          if normalized in acc, do: {:cont, acc}, else: {:cont, acc ++ [normalized]}
+          if normalized in acc, do: {:cont, acc}, else: {:cont, [normalized | acc]}
 
         {:error, reason} ->
           {:halt, {:error, reason}}
@@ -169,7 +167,7 @@ defmodule Jido.Memory.Record do
     end)
     |> case do
       {:error, _} = error -> error
-      normalized -> {:ok, normalized}
+      normalized -> {:ok, Enum.reverse(normalized)}
     end
   end
 
@@ -182,8 +180,8 @@ defmodule Jido.Memory.Record do
     if trimmed == "", do: {:error, :namespace_required}, else: {:ok, trimmed}
   end
 
-  defp normalize_namespace(value) when is_atom(value), do: {:ok, Atom.to_string(value)}
   defp normalize_namespace(nil), do: {:error, :namespace_required}
+  defp normalize_namespace(value) when is_atom(value), do: {:ok, Atom.to_string(value)}
   defp normalize_namespace(other), do: {:error, {:invalid_namespace, other}}
 
   @spec normalize_id(term()) :: {:ok, String.t() | nil} | {:error, term()}

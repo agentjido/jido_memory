@@ -22,9 +22,9 @@ defmodule Jido.Memory.Store do
 
   @doc "Normalizes store declarations into `{module, opts}` tuples."
   @spec normalize_store(store() | nil) :: {:ok, {module(), keyword()}} | {:error, term()}
+  def normalize_store(nil), do: {:error, :missing_store}
   def normalize_store({mod, opts}) when is_atom(mod) and is_list(opts), do: {:ok, {mod, opts}}
   def normalize_store(mod) when is_atom(mod), do: {:ok, {mod, []}}
-  def normalize_store(nil), do: {:error, :missing_store}
   def normalize_store(other), do: {:error, {:invalid_store, other}}
 
   @doc "Fetches a single record and normalizes not-found semantics."

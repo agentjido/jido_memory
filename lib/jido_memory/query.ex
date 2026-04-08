@@ -17,19 +17,18 @@ defmodule Jido.Memory.Query do
               namespace: Zoi.string(description: "Logical namespace") |> Zoi.optional(),
               classes: Zoi.list(Zoi.atom(), description: "Class filters") |> Zoi.default([]),
               kinds: Zoi.list(Zoi.any(), description: "Open kind filters") |> Zoi.default([]),
-              tags_any:
-                Zoi.list(Zoi.string(), description: "Match at least one tag") |> Zoi.default([]),
+              tags_any: Zoi.list(Zoi.string(), description: "Match at least one tag") |> Zoi.default([]),
               tags_all: Zoi.list(Zoi.string(), description: "Match all tags") |> Zoi.default([]),
-              text_contains:
-                Zoi.string(description: "Case-insensitive text substring") |> Zoi.optional(),
-              since:
-                Zoi.integer(description: "Start timestamp in milliseconds") |> Zoi.optional(),
+              text_contains: Zoi.string(description: "Case-insensitive text substring") |> Zoi.optional(),
+              since: Zoi.integer(description: "Start timestamp in milliseconds") |> Zoi.optional(),
               until: Zoi.integer(description: "End timestamp in milliseconds") |> Zoi.optional(),
-              limit:
-                Zoi.integer(description: "Maximum result count") |> Zoi.default(@default_limit),
+              limit: Zoi.integer(description: "Maximum result count") |> Zoi.default(@default_limit),
               order:
                 Zoi.atom(description: "Sort order by observed_at")
-                |> Zoi.default(@default_order)
+                |> Zoi.default(@default_order),
+              extensions:
+                Zoi.map(description: "Provider-specific retrieval hints")
+                |> Zoi.default(%{})
             },
             coerce: true
           )
@@ -58,7 +57,8 @@ defmodule Jido.Memory.Query do
          {:ok, since} <- normalize_optional_time(get_attr(attrs, :since)),
          {:ok, until} <- normalize_optional_time(get_attr(attrs, :until)),
          {:ok, limit} <- normalize_limit(get_attr(attrs, :limit, @default_limit)),
-         {:ok, order} <- normalize_order(get_attr(attrs, :order, @default_order)) do
+         {:ok, order} <- normalize_order(get_attr(attrs, :order, @default_order)),
+         {:ok, extensions} <- normalize_extensions(get_attr(attrs, :extensions, %{})) do
       {:ok,
        struct!(__MODULE__, %{
          namespace: namespace,
@@ -70,7 +70,8 @@ defmodule Jido.Memory.Query do
          since: since,
          until: until,
          limit: limit,
-         order: order
+         order: order,
+         extensions: extensions
        })}
     end
   end
@@ -122,7 +123,7 @@ defmodule Jido.Memory.Query do
     |> Enum.reduce_while([], fn class, acc ->
       case Record.normalize_class(class) do
         {:ok, normalized} ->
-          if normalized in acc, do: {:cont, acc}, else: {:cont, acc ++ [normalized]}
+          if normalized in acc, do: {:cont, acc}, else: {:cont, [normalized | acc]}
 
         {:error, reason} ->
           {:halt, {:error, reason}}
@@ -130,7 +131,7 @@ defmodule Jido.Memory.Query do
     end)
     |> case do
       {:error, _} = error -> error
-      normalized -> {:ok, normalized}
+      normalized -> {:ok, Enum.reverse(normalized)}
     end
   end
 
@@ -146,7 +147,7 @@ defmodule Jido.Memory.Query do
           if Record.kind_key(normalized) in Enum.map(acc, &Record.kind_key/1) do
             {:cont, acc}
           else
-            {:cont, acc ++ [normalized]}
+            {:cont, [normalized | acc]}
           end
 
         {:error, reason} ->
@@ -155,7 +156,7 @@ defmodule Jido.Memory.Query do
     end)
     |> case do
       {:error, _} = error -> error
-      normalized -> {:ok, normalized}
+      normalized -> {:ok, Enum.reverse(normalized)}
     end
   end
 
@@ -194,6 +195,11 @@ defmodule Jido.Memory.Query do
   defp normalize_order("desc"), do: {:ok, :desc}
   defp normalize_order(nil), do: {:ok, @default_order}
   defp normalize_order(other), do: {:error, {:invalid_order, other}}
+
+  @spec normalize_extensions(term()) :: {:ok, map()} | {:error, term()}
+  defp normalize_extensions(%{} = extensions), do: {:ok, extensions}
+  defp normalize_extensions(nil), do: {:ok, %{}}
+  defp normalize_extensions(other), do: {:error, {:invalid_extensions, other}}
 
   @spec get_attr(map(), atom(), term()) :: term()
   defp get_attr(map, key, default \\ nil) do

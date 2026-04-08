@@ -14,6 +14,7 @@ defmodule JidoMemory.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
+      cli: cli(),
       # Documentation
       name: "Jido Memory",
       source_url: @source_url,
@@ -21,12 +22,7 @@ defmodule JidoMemory.MixProject do
       description: @description,
       docs: docs(),
       # Testing
-      test_coverage: [tool: :coveralls],
-      preferred_cli_env: [
-        "coveralls.html": :test,
-        "test.watch": :test,
-        quality: :test
-      ]
+      test_coverage: [summary: [threshold: 0]]
     ]
   end
 
@@ -42,6 +38,7 @@ defmodule JidoMemory.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "cmd npm install"],
+      "example.memory": ["run examples/memory_agent_demo.exs"],
       quality: [
         "format",
         "credo --strict",
@@ -53,12 +50,28 @@ defmodule JidoMemory.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [
+        "coveralls.html": :test,
+        "test.watch": :test,
+        quality: :test
+      ]
+    ]
+  end
+
   defp deps do
     [
       # Jido ecosystem
       {:jido, "~> 2.0.0-rc.5"},
-      {:jido_action, github: "agentjido/jido_action", branch: "main"},
-      {:jido_ai, github: "agentjido/jido_ai", ref: "ae4d37a0dfae564bc7a6a94323fd5a9756a3853d"},
+      {:jido_action, "~> 2.0", override: true},
+      {:jido_ai, "== 2.0.0-rc.0"},
+      # `tzdata` currently pulls an older `hackney` that expects these Erlang apps
+      # to be present at runtime but does not bring them into this Mix lock path.
+      {:mimerl, "~> 1.0"},
+      {:certifi, "~> 0.7.0"},
+      {:ssl_verify_fun, "~> 1.1"},
+      {:metrics, "~> 1.0"},
       # Validation & errors
       {:zoi, "~> 0.16"},
       {:splode, "~> 0.3"},
@@ -78,7 +91,9 @@ defmodule JidoMemory.MixProject do
       extras: [
         "README.md",
         "CONTRIBUTING.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "docs/provider_contract.md",
+        "docs/provider_migration.md"
       ],
       main: "readme",
       source_ref: "main",
