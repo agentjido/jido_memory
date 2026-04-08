@@ -8,6 +8,7 @@ defmodule Jido.Memory.ProviderRef do
   @schema Zoi.struct(
             __MODULE__,
             %{
+              key: Zoi.atom(description: "Canonical provider key") |> Zoi.optional(),
               module: Zoi.atom(description: "Concrete provider module") |> Zoi.default(Basic),
               opts:
                 Zoi.list(Zoi.any(), description: "Provider initialization options")
@@ -31,6 +32,7 @@ defmodule Jido.Memory.ProviderRef do
   defstruct Zoi.Struct.struct_fields(@schema)
 
   @type t :: %__MODULE__{
+          key: atom() | nil,
           module: module(),
           opts: keyword()
         }
@@ -41,33 +43,39 @@ defmodule Jido.Memory.ProviderRef do
   def schema, do: @schema
 
   @spec normalize(provider_input()) :: {:ok, t()} | {:error, term()}
-  def normalize(nil), do: validate(%__MODULE__{module: Basic, opts: []})
+  def normalize(nil), do: validate(%__MODULE__{key: :basic, module: Basic, opts: []})
   def normalize(%__MODULE__{} = provider), do: validate(provider)
 
   def normalize({provider, opts}) when is_atom(provider) and is_list(opts) do
-    with {:ok, module} <- ProviderRegistry.resolve(provider) do
-      validate(%__MODULE__{module: module, opts: opts})
+    with {:ok, {key, module}} <- resolve_provider(provider) do
+      validate(%__MODULE__{key: key, module: module, opts: opts})
     end
   end
 
   def normalize(provider) when is_atom(provider) do
-    with {:ok, module} <- ProviderRegistry.resolve(provider) do
-      validate(%__MODULE__{module: module, opts: []})
+    with {:ok, {key, module}} <- resolve_provider(provider) do
+      validate(%__MODULE__{key: key, module: module, opts: []})
     end
   end
 
   def normalize(_), do: {:error, :invalid_provider}
 
   @spec validate(t()) :: {:ok, t()} | {:error, term()}
-  def validate(%__MODULE__{module: module, opts: opts}) when is_atom(module) and is_list(opts) do
+  def validate(%__MODULE__{key: key, module: module, opts: opts}) when is_atom(module) and is_list(opts) do
     with {:ok, loaded} <- ensure_loaded(module),
          :ok <- ensure_callbacks(loaded),
          :ok <- loaded.validate_config(opts) do
-      {:ok, %__MODULE__{module: loaded, opts: opts}}
+      {:ok, %__MODULE__{key: key || ProviderRegistry.key_for(loaded), module: loaded, opts: opts}}
     end
   end
 
   def validate(_), do: {:error, :invalid_provider}
+
+  defp resolve_provider(provider) when is_atom(provider) do
+    case ProviderRegistry.resolve(provider) do
+      {:ok, module} -> {:ok, {ProviderRegistry.key_for(provider) || ProviderRegistry.key_for(module), module}}
+    end
+  end
 
   defp ensure_loaded(module) do
     case Code.ensure_loaded(module) do

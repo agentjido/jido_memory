@@ -3,11 +3,14 @@ defmodule Jido.Memory.Scope do
   Provider-neutral memory scope metadata.
   """
 
+  alias Jido.Memory.ProviderRegistry
+
   @schema Zoi.struct(
             __MODULE__,
             %{
               namespace: Zoi.string(description: "Logical memory namespace") |> Zoi.optional(),
               provider: Zoi.atom(description: "Concrete provider module or alias") |> Zoi.optional(),
+              provider_key: Zoi.atom(description: "Canonical provider key") |> Zoi.optional(),
               provider_name:
                 Zoi.string(description: "Normalized provider display name")
                 |> Zoi.optional(),
@@ -32,17 +35,20 @@ defmodule Jido.Memory.Scope do
   def new(attrs) when is_map(attrs) do
     provider = get_attr(attrs, :provider)
     namespace = normalize_optional_string(get_attr(attrs, :namespace))
+    provider_key = normalize_provider_key(get_attr(attrs, :provider_key), provider)
     provider_name = normalize_provider_name(get_attr(attrs, :provider_name), provider)
     metadata = normalize_metadata(get_attr(attrs, :metadata, %{}))
 
     with {:ok, namespace} <- namespace,
          {:ok, provider} <- normalize_provider(provider),
+         {:ok, provider_key} <- provider_key,
          {:ok, provider_name} <- provider_name,
          {:ok, metadata} <- metadata do
       {:ok,
        struct!(__MODULE__, %{
          namespace: namespace,
          provider: provider,
+         provider_key: provider_key,
          provider_name: provider_name,
          metadata: metadata
        })}
@@ -66,6 +72,7 @@ defmodule Jido.Memory.Scope do
     new!(%{
       namespace: Keyword.get(provider_opts, :namespace),
       provider: provider,
+      provider_key: ProviderRegistry.key_for(provider),
       metadata: %{provider_opts: provider_opts}
     })
   end
@@ -89,6 +96,11 @@ defmodule Jido.Memory.Scope do
   defp normalize_provider(nil), do: {:ok, nil}
   defp normalize_provider(provider) when is_atom(provider), do: {:ok, provider}
   defp normalize_provider(other), do: {:error, {:invalid_provider, other}}
+
+  defp normalize_provider_key(nil, provider) when is_atom(provider), do: {:ok, ProviderRegistry.key_for(provider)}
+  defp normalize_provider_key(nil, _provider), do: {:ok, nil}
+  defp normalize_provider_key(value, _provider) when is_atom(value), do: {:ok, value}
+  defp normalize_provider_key(other, _provider), do: {:error, {:invalid_provider_key, other}}
 
   defp normalize_provider_name(nil, provider), do: {:ok, provider_name(provider)}
 

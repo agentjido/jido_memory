@@ -14,6 +14,7 @@ defmodule Jido.Memory.Runtime do
     Helpers,
     IngestResult,
     ProviderInfo,
+    ProviderRegistry,
     ProviderRef,
     Query,
     Record,
@@ -66,24 +67,6 @@ defmodule Jido.Memory.Runtime do
   end
 
   def forget(_target, _id, _opts), do: {:error, :invalid_id}
-
-  @doc """
-  Compatibility wrapper that unwraps canonical retrieval hits into bare records.
-  """
-  @spec recall(target(), Query.t() | map() | keyword(), keyword()) ::
-          {:ok, [Record.t()]} | {:error, term()}
-  def recall(target, query_attrs, opts \\ [])
-
-  def recall(target, query_attrs, opts) when is_list(query_attrs) and is_list(opts),
-    do: recall(target, Map.new(query_attrs), opts)
-
-  def recall(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
-    with {:ok, %RetrieveResult{} = result} <- retrieve(target, query_attrs, opts) do
-      {:ok, RetrieveResult.records(result)}
-    end
-  end
-
-  def recall(_target, _query, _opts), do: {:error, :invalid_query}
 
   @doc "Canonical retrieval entrypoint that delegates through provider."
   @spec retrieve(target(), Query.t() | map() | keyword(), keyword()) ::
@@ -210,7 +193,7 @@ defmodule Jido.Memory.Runtime do
           {:ok, {module(), keyword()}} | {:error, term()}
   def resolve_provider(target, attrs, opts) when is_map(attrs) and is_list(opts) do
     plugin_state = Helpers.plugin_state(target, @plugin_state_key)
-    provider_input = Helpers.pick_value(opts, attrs, :provider, Helpers.map_get(plugin_state, :provider))
+    provider_input = Helpers.pick_value(opts, attrs, :provider)
 
     with {:ok, provider_ref} <- ProviderRef.normalize(provider_input),
          {:ok, provider_opts} <- merge_provider_opts(provider_ref.opts, plugin_state, attrs, opts),
@@ -219,27 +202,25 @@ defmodule Jido.Memory.Runtime do
     end
   end
 
-  @doc """
-  Compatibility alias preserved for callers that previously resolved runtime state
-  before invoking operations.
-  """
-  @spec resolve_runtime(target(), map(), keyword()) ::
-          {:ok, {module(), keyword()}} | {:error, term()}
-  def resolve_runtime(target, attrs, opts), do: resolve_provider(target, attrs, opts)
-
   @spec merge_provider_opts(keyword(), map(), map(), keyword()) :: {:ok, keyword()} | {:error, term()}
   defp merge_provider_opts(base_opts, plugin_state, attrs, opts)
        when is_list(base_opts) and is_map(plugin_state) and is_map(attrs) and is_list(opts) do
-    plugin_state_opts = Helpers.map_get(plugin_state, :provider_opts, [])
+    plugin_state_opts = provider_defaults_from_plugin_state(plugin_state)
+    attr_defaults = provider_defaults_from_map(attrs)
     attr_opts = Helpers.map_get(attrs, :provider_opts, [])
+    runtime_defaults = provider_defaults_from_opts(opts)
     runtime_opts = Keyword.get(opts, :provider_opts, [])
 
     with :ok <- validate_provider_opts_input(plugin_state_opts),
+         :ok <- validate_provider_opts_input(attr_defaults),
          :ok <- validate_provider_opts_input(attr_opts),
+         :ok <- validate_provider_opts_input(runtime_defaults),
          :ok <- validate_provider_opts_input(runtime_opts) do
-      merged_opts =
-        [plugin_state_opts, attr_opts, runtime_opts]
-        |> Enum.reduce(base_opts, &Keyword.merge(&2, &1))
+      merged_opts = Keyword.merge(base_opts, plugin_state_opts)
+      merged_opts = Keyword.merge(merged_opts, attr_defaults)
+      merged_opts = Keyword.merge(merged_opts, attr_opts)
+      merged_opts = Keyword.merge(merged_opts, runtime_defaults)
+      merged_opts = Keyword.merge(merged_opts, runtime_opts)
 
       {:ok, merged_opts}
     end
@@ -292,11 +273,18 @@ defmodule Jido.Memory.Runtime do
   defp normalize_capability_set(%CapabilitySet{} = capabilities, _provider_mod), do: {:ok, capabilities}
 
   defp normalize_capability_set(%{} = attrs, provider_mod) do
-    CapabilitySet.new(Map.put_new(attrs, :provider, provider_mod))
+    attrs
+    |> Map.put_new(:provider, provider_mod)
+    |> Map.put_new(:key, ProviderRegistry.key_for(provider_mod))
+    |> CapabilitySet.new()
   end
 
   defp normalize_capability_set(values, provider_mod) when is_list(values) do
-    CapabilitySet.new(%{provider: provider_mod, capabilities: values})
+    CapabilitySet.new(%{
+      provider: provider_mod,
+      key: ProviderRegistry.key_for(provider_mod),
+      capabilities: values
+    })
   end
 
   defp normalize_capability_set(other, _provider_mod), do: {:error, {:invalid_capability_set, other}}
@@ -304,7 +292,10 @@ defmodule Jido.Memory.Runtime do
   defp normalize_provider_info(%ProviderInfo{} = info, _provider_mod), do: {:ok, info}
 
   defp normalize_provider_info(%{} = attrs, provider_mod) do
-    ProviderInfo.new(Map.put_new(attrs, :provider, provider_mod))
+    attrs
+    |> Map.put_new(:provider, provider_mod)
+    |> Map.put_new(:key, ProviderRegistry.key_for(provider_mod))
+    |> ProviderInfo.new()
   end
 
   defp normalize_provider_info(other, _provider_mod), do: {:error, {:invalid_provider_info, other}}
@@ -397,6 +388,7 @@ defmodule Jido.Memory.Runtime do
   defp default_provider_info(provider_mod) do
     ProviderInfo.new!(%{
       name: Scope.provider_name(provider_mod) || "provider",
+      key: ProviderRegistry.key_for(provider_mod),
       provider: provider_mod,
       capabilities: []
     })
@@ -480,4 +472,31 @@ defmodule Jido.Memory.Runtime do
 
   defp validate_provider_opts_input(opts) when is_list(opts), do: :ok
   defp validate_provider_opts_input(_), do: {:error, :invalid_provider_opts}
+
+  defp provider_defaults_from_plugin_state(plugin_state) when is_map(plugin_state) do
+    []
+    |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Helpers.map_get(plugin_state, :namespace)))
+    |> maybe_put_provider_opt(:store, Helpers.map_get(plugin_state, :store))
+  end
+
+  defp provider_defaults_from_map(attrs) when is_map(attrs) do
+    []
+    |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Helpers.map_get(attrs, :namespace)))
+    |> maybe_put_provider_opt(:store, Helpers.map_get(attrs, :store))
+    |> maybe_put_provider_opt(:store_opts, normalize_provider_store_opts(Helpers.map_get(attrs, :store_opts)))
+  end
+
+  defp provider_defaults_from_opts(opts) when is_list(opts) do
+    []
+    |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Keyword.get(opts, :namespace)))
+    |> maybe_put_provider_opt(:store, Keyword.get(opts, :store))
+    |> maybe_put_provider_opt(:store_opts, normalize_provider_store_opts(Keyword.get(opts, :store_opts)))
+  end
+
+  defp maybe_put_provider_opt(opts, _key, nil), do: opts
+  defp maybe_put_provider_opt(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_provider_store_opts(nil), do: nil
+  defp normalize_provider_store_opts(opts) when is_list(opts), do: opts
+  defp normalize_provider_store_opts(opts), do: opts
 end

@@ -12,7 +12,7 @@ The current local baseline in `jido_memory` is:
 
 - `Jido.Memory.Runtime` is store-centric and directly resolves `namespace` and `store`.
 - `Jido.Memory.Store` is the main abstraction boundary.
-- `Jido.Memory.ETSPlugin` is the canonical plugin surface.
+- `Jido.Memory.BasicPlugin` is the canonical plugin surface.
 - `Jido.Memory.Record` and `Jido.Memory.Query` are the only canonical typed memory structs.
 - Retrieval returns bare `[Record.t()]`.
 - There is no provider registry, provider bootstrap, provider capability discovery, or provider contract test suite.
@@ -118,7 +118,6 @@ Canonical runtime operations:
 - `get/3`
 - `forget/3`
 - `retrieve/3`
-- `recall/2` as compatibility wrapper
 - `capabilities/2`
 - `info/3`
 - `ingest/3` when supported
@@ -128,27 +127,18 @@ Canonical runtime operations:
 Compatibility rule:
 
 - `retrieve/3` becomes the canonical read path and returns `RetrieveResult`
-- `recall/2` remains available and unwraps `RetrieveResult.hits` into `[Record.t()]`
 
 ### Plugin and actions
 
 Canonical plugin surface:
 
-- `Jido.Memory.Plugin`
-
-Compatibility wrapper:
-
-- `Jido.Memory.ETSPlugin`
+- `Jido.Memory.BasicPlugin`
 
 Canonical actions:
 
 - `memory.remember`
 - `memory.retrieve`
 - `memory.forget`
-
-Compatibility alias:
-
-- `memory.recall`
 
 ## Common vs Provider-Direct Boundaries
 
@@ -220,7 +210,7 @@ Those are exactly the fields a stable cross-provider API should standardize.
 
 ### Gap 4: Plugin is ETS-first, not provider-first
 
-The current plugin identity is `ETSPlugin`.
+The current plugin identity should be `BasicPlugin`.
 
 That bakes the storage mechanism into the public story instead of making Jido memory provider-driven.
 
@@ -292,8 +282,8 @@ Instead:
 1. introduce provider-first internals
 2. wrap current behavior with `Provider.Basic`
 3. add typed richer APIs
-4. preserve `recall` and `ETSPlugin` as compatibility surfaces
-5. move users toward `retrieve` and `Jido.Memory.Plugin`
+4. keep the Jido integration narrow around `BasicPlugin`
+5. move users toward `retrieve`
 
 ## Phased Execution Plan
 
@@ -381,7 +371,7 @@ Change `Runtime` so that:
 Deliverables:
 
 - provider-aware runtime
-- compatibility wrappers preserved
+- canonical result normalization preserved
 - error model updated for unsupported capability cases
 
 Exit criteria:
@@ -392,19 +382,11 @@ Exit criteria:
 
 Add canonical plugin:
 
-- `Jido.Memory.Plugin`
-
-Retain compatibility wrapper:
-
-- `Jido.Memory.ETSPlugin`
+- `Jido.Memory.BasicPlugin`
 
 Add actions:
 
 - `memory.retrieve`
-
-Retain compatibility alias:
-
-- `memory.recall`
 
 Deliverables:
 

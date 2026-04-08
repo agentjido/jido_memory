@@ -193,7 +193,6 @@ defmodule Jido.Memory.RuntimeNormalizationTest do
 
   test "runtime validates invalid public inputs" do
     assert {:error, :invalid_query} = Runtime.retrieve(%{}, :bad)
-    assert {:error, :invalid_query} = Runtime.recall(%{}, :bad)
     assert {:error, :invalid_ingest_request} = Runtime.ingest(%{}, :bad)
     assert {:error, :invalid_query} = Runtime.explain_retrieval(%{}, :bad)
   end

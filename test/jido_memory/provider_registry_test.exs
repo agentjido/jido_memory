@@ -26,20 +26,22 @@ defmodule Jido.Memory.ProviderRegistryTest do
     assert ProviderRegistry.alias?(:basic)
     assert {:ok, Jido.Memory.Provider.Basic} = ProviderRegistry.resolve(:basic)
     assert ProviderRegistry.resolve!(Jido.Memory.Provider.Basic) == Jido.Memory.Provider.Basic
+    assert ProviderRegistry.key_for(:basic) == :basic
+    assert ProviderRegistry.key_for(Jido.Memory.Provider.Basic) == :basic
     assert {:ok, :unknown_provider} = ProviderRegistry.resolve(:unknown_provider)
     refute ProviderRegistry.alias?(:unknown_provider)
     refute ProviderRegistry.alias?("basic")
   end
 
-  test "configured aliases merge with and can override built-ins" do
+  test "configured aliases merge with but do not override built-ins" do
     Application.put_env(:jido_memory, :provider_aliases, basic: CustomProvider, custom: CustomProvider)
 
     assert ProviderRegistry.alias?(:custom)
     assert ProviderRegistry.aliases()[:custom] == CustomProvider
-    assert ProviderRegistry.aliases()[:basic] == CustomProvider
-    assert ProviderRegistry.aliases()[:mempalace] == Jido.Memory.Provider.MemPalace
+    assert ProviderRegistry.aliases()[:basic] == Jido.Memory.Provider.Basic
 
     assert {:ok, CustomProvider} = ProviderRegistry.resolve(:custom)
-    assert {:ok, CustomProvider} = ProviderRegistry.resolve(:basic)
+    assert {:ok, Jido.Memory.Provider.Basic} = ProviderRegistry.resolve(:basic)
+    assert ProviderRegistry.key_for(CustomProvider) == :custom
   end
 end

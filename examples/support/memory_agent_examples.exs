@@ -1,11 +1,11 @@
-defmodule Jido.Memory.Examples.Actions.RecallNotes do
+defmodule Jido.Memory.Examples.Actions.RetrieveNotes do
   @moduledoc false
 
   use Jido.Action,
-    name: "example_recall_notes",
-    description: "Recall stored notes from Jido.Memory for a running agent",
+    name: "example_retrieve_notes",
+    description: "Retrieve stored notes from Jido.Memory for a running agent",
     schema: [
-      query: [type: :string, required: true, doc: "Case-insensitive text to recall"],
+      query: [type: :string, required: true, doc: "Case-insensitive text to retrieve"],
       namespace: [type: :string, required: false, doc: "Optional explicit namespace override"],
       limit: [type: :integer, required: false, default: 5, doc: "Maximum notes to return"]
     ]
@@ -29,8 +29,8 @@ defmodule Jido.Memory.Examples.Actions.RecallNotes do
 
         {:ok,
          %{
-           recalled_texts: texts,
-           recalled_count: length(texts),
+           retrieved_texts: texts,
+           retrieved_count: length(texts),
            memory_result: result
          }}
 
@@ -49,10 +49,10 @@ defmodule Jido.Memory.Examples.JidoAgent do
 
   use Jido.Agent,
     name: "jido_memory_examples_agent",
-    description: "Example Jido agent using Jido.Memory.ETSPlugin",
+    description: "Example Jido agent using Jido.Memory.BasicPlugin",
     default_plugins: %{__memory__: false},
     plugins: [
-      {Jido.Memory.ETSPlugin,
+      {Jido.Memory.BasicPlugin,
        %{
          store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_agent]},
          namespace_mode: :per_agent,
@@ -60,11 +60,11 @@ defmodule Jido.Memory.Examples.JidoAgent do
        }}
     ],
     signal_routes: [
-      {"demo.recall", Jido.Memory.Examples.Actions.RecallNotes}
+      {"demo.retrieve", Jido.Memory.Examples.Actions.RetrieveNotes}
     ],
     schema: [
-      recalled_texts: [type: :any, default: []],
-      recalled_count: [type: :integer, default: 0]
+      retrieved_texts: [type: :any, default: []],
+      retrieved_count: [type: :integer, default: 0]
     ]
 end
 
@@ -72,7 +72,7 @@ defmodule Jido.Memory.Examples.AIEnabledAgent do
   @moduledoc false
 
   @strategy_opts [
-    tools: [Jido.Memory.Examples.Actions.RecallNotes],
+    tools: [Jido.Memory.Examples.Actions.RetrieveNotes],
     model: :fast,
     max_iterations: 4,
     request_policy: :reject,
@@ -83,7 +83,7 @@ defmodule Jido.Memory.Examples.AIEnabledAgent do
     observability: %{},
     tool_context: %{},
     system_prompt:
-      "You are a memory-enabled demo agent. Use the example_recall_notes tool when memory lookups are needed."
+      "You are a memory-enabled demo agent. Use the example_retrieve_notes tool when memory lookups are needed."
   ]
 
   use Jido.Agent,
@@ -93,7 +93,7 @@ defmodule Jido.Memory.Examples.AIEnabledAgent do
     plugins:
       Jido.AI.PluginStack.default_plugins() ++
         [
-          {Jido.Memory.ETSPlugin,
+          {Jido.Memory.BasicPlugin,
            %{
              store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_ai]},
              namespace_mode: :per_agent,
@@ -119,7 +119,7 @@ defmodule Jido.Memory.Examples.Runner do
   alias Jido.AI.Actions.ToolCalling.ExecuteTool
   alias Jido.AgentServer
   alias Jido.Memory.Examples.{AIEnabledAgent, JidoAgent}
-  alias Jido.Memory.Examples.Actions.RecallNotes
+  alias Jido.Memory.Examples.Actions.RetrieveNotes
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS
   alias Jido.Signal
@@ -177,15 +177,15 @@ defmodule Jido.Memory.Examples.Runner do
              agent = agent_state.agent,
              {:ok, _record} <- remember_note(agent, "The BEAM runs Elixir processes efficiently."),
              {:ok, _record} <- remember_note(agent, "Phoenix uses PubSub for message fan-out."),
-             signal <- Signal.new!("demo.recall", %{query: "beam", limit: 5}, source: "/examples/plain"),
-             {:ok, recalled_agent} <- AgentServer.call(pid, signal) do
+             signal <- Signal.new!("demo.retrieve", %{query: "beam", limit: 5}, source: "/examples/plain"),
+             {:ok, retrieved_agent} <- AgentServer.call(pid, signal) do
           {:ok,
            %{
              agent_id: agent_id,
-             recalled_count: recalled_agent.state.recalled_count,
-             recalled_texts: recalled_agent.state.recalled_texts,
-             namespace: memory_namespace(recalled_agent),
-             plugin: Jido.Memory.ETSPlugin
+             retrieved_count: retrieved_agent.state.retrieved_count,
+             retrieved_texts: retrieved_agent.state.retrieved_texts,
+             namespace: memory_namespace(retrieved_agent),
+             plugin: Jido.Memory.BasicPlugin
            }}
         end
       after
@@ -209,12 +209,12 @@ defmodule Jido.Memory.Examples.Runner do
                Jido.Exec.run(
                  ExecuteTool,
                  %{
-                   tool_name: RecallNotes.name(),
+                   tool_name: RetrieveNotes.name(),
                    params: %{query: "memory", limit: 5}
                  },
                  %{
                    state: agent.state,
-                   tools: [RecallNotes]
+                   tools: [RetrieveNotes]
                  }
                ) do
           memory_result = tool_result.result
@@ -223,8 +223,8 @@ defmodule Jido.Memory.Examples.Runner do
            %{
              agent_id: agent_id,
              tool_name: tool_result.tool_name,
-             recalled_count: Map.get(memory_result, :recalled_count, 0),
-             recalled_texts: Map.get(memory_result, :recalled_texts, []),
+             retrieved_count: Map.get(memory_result, :retrieved_count, 0),
+             retrieved_texts: Map.get(memory_result, :retrieved_texts, []),
              memory_result: memory_result,
              namespace: memory_namespace(agent),
              plugins: AIEnabledAgent.plugins()

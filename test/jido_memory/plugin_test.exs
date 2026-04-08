@@ -1,9 +1,8 @@
-defmodule Jido.Memory.ETSPluginTest do
+defmodule Jido.Memory.BasicPluginTest do
   use ExUnit.Case, async: true
 
-  alias Jido.Memory.ETSPlugin, as: Plugin
-  alias Jido.Memory.Provider.Basic
-  alias Jido.Memory.ProviderRef
+  alias Jido.Memory.BasicPlugin, as: Plugin
+  alias Jido.Memory.{RetrieveResult, Runtime}
   alias Jido.Memory.Store.ETS
 
   setup do
@@ -20,11 +19,9 @@ defmodule Jido.Memory.ETSPluginTest do
 
     assert state.namespace == "agent:agent-1"
     assert state.store == store
-    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
-    assert Keyword.get(provider_opts, :namespace) == "agent:agent-1"
-    assert Keyword.get(provider_opts, :store) == store
-    assert state.provider_opts == provider_opts
     assert state.auto_capture == true
+    refute Map.has_key?(state, :provider)
+    refute Map.has_key?(state, :provider_opts)
   end
 
   test "mount supports shared namespaces", %{store: store} do
@@ -43,7 +40,6 @@ defmodule Jido.Memory.ETSPluginTest do
 
     assert {"remember", Jido.Memory.Actions.Remember} in routes
     assert {"retrieve", Jido.Memory.Actions.Retrieve} in routes
-    assert {"recall", Jido.Memory.Actions.Recall} in routes
     assert {"forget", Jido.Memory.Actions.Forget} in routes
   end
 
@@ -63,7 +59,8 @@ defmodule Jido.Memory.ETSPluginTest do
     assert {:ok, :continue} = Plugin.handle_signal(signal_query, context)
     assert {:ok, :continue} = Plugin.handle_signal(signal_bt, context)
 
-    assert {:ok, records} = Jido.Memory.Runtime.recall(agent, %{order: :asc})
+    assert {:ok, result} = Runtime.retrieve(agent, %{order: :asc})
+    records = RetrieveResult.records(result)
     assert Enum.any?(records, &(&1.kind == :user_query))
     assert Enum.any?(records, &(&1.kind == :signal_event and &1.class == :working))
   end
@@ -82,7 +79,7 @@ defmodule Jido.Memory.ETSPluginTest do
     signal_bt = Jido.Signal.new!("bt.node.enter", %{node: "root"}, source: "/bt")
 
     assert {:ok, :continue} = Plugin.handle_signal(signal_bt, context)
-    assert {:ok, []} = Jido.Memory.Runtime.recall(agent, %{order: :asc})
+    assert {:ok, %RetrieveResult{hits: []}} = Runtime.retrieve(agent, %{order: :asc})
   end
 
   test "capture rules can override fields and merge metadata", %{store: store} do
@@ -107,7 +104,8 @@ defmodule Jido.Memory.ETSPluginTest do
     signal = Jido.Signal.new!("bt.node.enter", %{node: "root"}, source: "/bt")
 
     assert {:ok, :continue} = Plugin.handle_signal(signal, context)
-    assert {:ok, [record]} = Jido.Memory.Runtime.recall(agent, %{order: :asc})
+    assert {:ok, result} = Runtime.retrieve(agent, %{order: :asc})
+    [record] = RetrieveResult.records(result)
     assert record.class == :episodic
     assert record.kind == :fact
     assert record.text == "entered node"
@@ -132,44 +130,25 @@ defmodule Jido.Memory.ETSPluginTest do
     assert {:ok, restored} = Plugin.on_restore(pointer, %{})
     assert restored.namespace == "agent:x"
     assert restored.store == {ETS, [table: :x]}
-    assert %ProviderRef{module: Basic} = restored.provider
+    refute Map.has_key?(restored, :provider)
+    refute Map.has_key?(restored, :provider_opts)
   end
 
-  test "mount retains explicit provider configuration" do
-    assert {:ok, state} =
-             Plugin.mount(%{id: "agent-provider"}, %{
-               provider: Basic,
-               provider_opts: [namespace: "custom:agent-provider"]
-             })
-
-    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
-    assert Keyword.get(provider_opts, :namespace) == "custom:agent-provider"
-    assert state.provider_opts == provider_opts
-  end
-
-  test "mount enriches the default basic provider with explicit store-backed state", %{store: store} do
-    assert {:ok, state} =
-             Plugin.mount(%{id: "agent-legacy"}, %{store: store, namespace_mode: :per_agent})
-
-    assert %ProviderRef{module: Basic, opts: provider_opts} = state.provider
-    assert Keyword.get(provider_opts, :namespace) == "agent:agent-legacy"
-    assert Keyword.get(provider_opts, :store) == store
-  end
-
-  test "restore normalizes provider pointers into ProviderRef", %{store: store} do
-    pointer = %{
-      namespace: "agent:restore",
-      store: store,
-      provider: Basic,
-      provider_opts: [namespace: "agent:restore", store: store],
-      auto_capture: false
+  test "runtime resolves the basic provider from plugin state", %{store: store} do
+    agent = %{
+      id: "agent-runtime",
+      state: %{
+        __memory__: %{
+          namespace: "agent:agent-runtime",
+          store: store
+        }
+      }
     }
 
-    assert {:ok, restored} = Plugin.on_restore(pointer, %{})
-    assert %ProviderRef{module: Basic, opts: provider_opts} = restored.provider
-    assert Keyword.get(provider_opts, :namespace) == "agent:restore"
+    assert {:ok, {Jido.Memory.Provider.Basic, provider_opts}} =
+             Runtime.resolve_provider(agent, %{}, [])
+
+    assert Keyword.get(provider_opts, :namespace) == "agent:agent-runtime"
     assert Keyword.get(provider_opts, :store) == store
-    assert restored.provider_opts == provider_opts
-    assert restored.auto_capture == false
   end
 end

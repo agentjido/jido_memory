@@ -3,7 +3,7 @@ defmodule JidoMemory.MixProject do
 
   @version "0.1.0"
   @source_url "https://github.com/agentjido/jido_memory"
-  @description "Data-driven, ETS-backed memory system for Jido agents"
+  @description "Provider-backed memory runtime and basic Jido integration for agents"
 
   def project do
     [
@@ -92,8 +92,13 @@ defmodule JidoMemory.MixProject do
         "README.md",
         "CONTRIBUTING.md",
         "CHANGELOG.md",
+        "guides/index.md",
+        "guides/using_jido_memory.md",
+        "guides/api_adapter_surface.md",
+        "guides/basic_provider.md",
         "docs/provider_contract.md",
-        "docs/provider_migration.md"
+        "docs/provider_migration.md",
+        "docs/plans/provider-memory-api-migration-plan.md"
       ],
       main: "readme",
       source_ref: "main",

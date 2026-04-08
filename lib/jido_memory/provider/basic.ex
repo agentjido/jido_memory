@@ -10,6 +10,7 @@ defmodule Jido.Memory.Provider.Basic do
 
   alias Jido.Memory.{
     CapabilitySet,
+    Capabilities,
     ConsolidationResult,
     Explanation,
     Helpers,
@@ -25,6 +26,21 @@ defmodule Jido.Memory.Provider.Basic do
 
   @default_store {Jido.Memory.Store.ETS, [table: :jido_memory]}
   @capabilities [:remember, :get, :retrieve, :forget, :prune, :ingest, :explain_retrieval, :consolidate]
+  @capability_descriptor Capabilities.normalize(%{
+                           core: true,
+                           retrieval: %{
+                             explainable: true,
+                             active: false,
+                             memory_types: false,
+                             provider_extensions: false,
+                             explanation_scope: :result_reasons
+                           },
+                           lifecycle: %{consolidate: true, inspect: false},
+                           ingestion: %{batch: true, multimodal: false, routed: false, access: :runtime},
+                           operations: %{},
+                           governance: %{protected_memory: false, exact_preservation: false, access: :none},
+                           hooks: %{}
+                         })
 
   @schema Zoi.struct(
             __MODULE__,
@@ -70,8 +86,10 @@ defmodule Jido.Memory.Provider.Basic do
   def capabilities(opts) when is_list(opts) do
     {:ok,
      CapabilitySet.new!(%{
+       key: :basic,
        provider: __MODULE__,
        capabilities: @capabilities,
+       descriptor: @capability_descriptor,
        metadata: %{provider_opts: opts}
      })}
   end
@@ -81,11 +99,30 @@ defmodule Jido.Memory.Provider.Basic do
     {:ok,
      ProviderInfo.new!(%{
        name: "basic",
+       key: :basic,
        provider: __MODULE__,
+       provider_style: :basic,
        version: version(),
        description: "Provider that persists canonical records through Jido.Memory.Store",
        capabilities: @capabilities,
+       capability_descriptor: @capability_descriptor,
        scope: Scope.from_provider(__MODULE__, opts),
+       topology: %{
+         archetype: :store_backed,
+         persistence: :single_store,
+         retrieval: %{structured: true, semantic: false}
+       },
+       advanced_operations: %{},
+       surface_boundary: %{
+         common_runtime: [:remember, :get, :retrieve, :forget, :prune_expired, :ingest, :explain_retrieval, :consolidate],
+         provider_direct: [],
+         plugin: Jido.Memory.BasicPlugin
+       },
+       defaults: %{
+         namespace: Keyword.get(opts, :namespace),
+         store: Keyword.get(opts, :store, @default_store),
+         store_opts: Keyword.get(opts, :store_opts, [])
+       },
        metadata: %{store: Keyword.get(opts, :store, @default_store)}
      })}
   end
@@ -487,7 +524,15 @@ defmodule Jido.Memory.Provider.Basic do
     info(provider_opts, :all)
     |> case do
       {:ok, %ProviderInfo{} = info} -> info
-      _ -> ProviderInfo.new!(%{name: "basic", provider: __MODULE__, capabilities: @capabilities})
+      _ ->
+        ProviderInfo.new!(%{
+          name: "basic",
+          key: :basic,
+          provider: __MODULE__,
+          provider_style: :basic,
+          capabilities: @capabilities,
+          capability_descriptor: @capability_descriptor
+        })
     end
   end
 

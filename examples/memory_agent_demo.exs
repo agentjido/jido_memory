@@ -13,8 +13,8 @@ case Runner.run() do
       %{
         agent_id: plain_agent.agent_id,
         namespace: plain_agent.namespace,
-        recalled_count: plain_agent.recalled_count,
-        recalled_texts: plain_agent.recalled_texts
+        retrieved_count: plain_agent.retrieved_count,
+        retrieved_texts: plain_agent.retrieved_texts
       },
       pretty: true
     )
@@ -27,8 +27,8 @@ case Runner.run() do
         agent_id: ai_agent.agent_id,
         namespace: ai_agent.namespace,
         tool_name: ai_agent.tool_name,
-        recalled_count: ai_agent.recalled_count,
-        recalled_texts: ai_agent.recalled_texts
+        retrieved_count: ai_agent.retrieved_count,
+        retrieved_texts: ai_agent.retrieved_texts
       },
       pretty: true
     )

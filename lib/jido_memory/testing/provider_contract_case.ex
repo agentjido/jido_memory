@@ -92,7 +92,7 @@ defmodule Jido.Memory.Testing.ProviderContractCase do
                  )
       end
 
-      test "recall remains a compatibility wrapper", context do
+      test "retrieve results expose canonical records through RetrieveResult.records/1", context do
         attrs = remember_attrs(context)
 
         assert {:ok, %Jido.Memory.Record{text: text}} =
@@ -103,13 +103,14 @@ defmodule Jido.Memory.Testing.ProviderContractCase do
 
         assert text == attrs.text
 
-        assert {:ok, [%Jido.Memory.Record{text: recalled_text} | _]} =
-                 Jido.Memory.Runtime.recall(provider_target(context), %{namespace: attrs.namespace},
+        assert {:ok, %Jido.Memory.RetrieveResult{} = result} =
+                 Jido.Memory.Runtime.retrieve(provider_target(context), %{namespace: attrs.namespace},
                    provider: provider_under_test(),
                    provider_opts: provider_opts(context)
                  )
 
-        assert recalled_text == attrs.text
+        assert [%Jido.Memory.Record{text: retrieved_text} | _] = Jido.Memory.RetrieveResult.records(result)
+        assert retrieved_text == attrs.text
       end
 
       test "optional capabilities use canonical result structs when supported", context do

@@ -181,13 +181,21 @@ defmodule Jido.Memory.CanonicalModelsTest do
   test "CapabilitySet, Scope, and ProviderInfo normalize shared metadata" do
     assert {:ok, %CapabilitySet{} = capability_set} =
              CapabilitySet.new(%{
+               key: :basic,
                provider: Jido.Memory.Provider.Basic,
                capabilities: [:retrieve, :ingest, :retrieve],
+               descriptor: %{
+                 retrieval: %{explainable: true},
+                 ingestion: %{batch: true, access: :runtime}
+               },
                metadata: %{mode: "unit"}
              })
 
     assert capability_set.capabilities == [:retrieve, :ingest]
+    assert capability_set.key == :basic
     assert CapabilitySet.supports?(capability_set, :ingest)
+    assert CapabilitySet.supports?(capability_set, [:retrieval, :explainable])
+    assert CapabilitySet.get(capability_set, [:ingestion, :access]) == :runtime
     refute CapabilitySet.supports?(capability_set, :forget)
 
     assert {:ok, %Scope{} = scope} =
@@ -198,6 +206,7 @@ defmodule Jido.Memory.CanonicalModelsTest do
              })
 
     assert scope.namespace == "agent:test"
+    assert scope.provider_key == :basic
     assert scope.provider_name == "basic"
     assert Scope.provider_name(Jido.Memory.Provider.Basic) == "basic"
 
@@ -211,10 +220,12 @@ defmodule Jido.Memory.CanonicalModelsTest do
       )
 
     assert info.name == "basic"
+    assert info.key == :basic
     assert info.scope == scope
     assert info.version == "1.0.0"
     assert info.description == "Basic provider"
     assert info.capabilities == [:retrieve, :ingest]
+    assert info.capability_descriptor.retrieval.explainable == true
   end
 
   test "CapabilitySet, Scope, and ProviderInfo validate invalid inputs" do

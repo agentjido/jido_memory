@@ -42,7 +42,7 @@ defmodule Jido.Memory.RuntimeTest do
              Runtime.get(%{}, id, namespace: "agent:explicit", store: store)
   end
 
-  test "retrieve returns canonical results while recall preserves bare records", %{store: store} do
+  test "retrieve returns canonical results", %{store: store} do
     assert {:ok, %Record{id: id}} =
              Runtime.remember(
                %{id: "agent-a"},
@@ -52,9 +52,6 @@ defmodule Jido.Memory.RuntimeTest do
 
     assert {:ok, %RetrieveResult{hits: [%{record: %Record{id: ^id, namespace: "agent:agent-a"}}]}} =
              Runtime.retrieve(%{id: "agent-a"}, %{store: store, order: :asc})
-
-    assert {:ok, [%Record{text: "A1"}]} =
-             Runtime.recall(%{id: "agent-a"}, %{store: store, order: :asc})
   end
 
   test "retrieve falls back to plugin namespace when query namespace is nil", %{store: store} do
@@ -63,8 +60,7 @@ defmodule Jido.Memory.RuntimeTest do
       state: %{
         __memory__: %{
           namespace: "agent:agent-plugin",
-          store: store,
-          provider_opts: [namespace: "agent:agent-plugin", store: store]
+          store: store
         }
       }
     }
@@ -127,11 +123,17 @@ defmodule Jido.Memory.RuntimeTest do
     assert {:ok, %CapabilitySet{provider: Jido.Memory.Provider.Basic} = capability_set} =
              Runtime.capabilities(%{}, provider: :basic, provider_opts: [store: store])
 
+    assert capability_set.key == :basic
     assert CapabilitySet.supports?(capability_set, :retrieve)
     assert CapabilitySet.supports?(capability_set, :ingest)
+    assert CapabilitySet.supports?(capability_set, [:retrieval, :explainable])
+    assert CapabilitySet.get(capability_set, [:lifecycle, :consolidate]) == true
 
-    assert {:ok, %ProviderInfo{name: "basic", provider: Jido.Memory.Provider.Basic}} =
+    assert {:ok, %ProviderInfo{name: "basic", key: :basic, provider: Jido.Memory.Provider.Basic} = info} =
              Runtime.info(%{}, provider: :basic, provider_opts: [store: store])
+
+    assert info.capability_descriptor.ingestion.batch == true
+    assert info.surface_boundary.plugin == Jido.Memory.BasicPlugin
 
     assert {:ok, %{name: "basic", capabilities: capabilities}} =
              Runtime.info(%{}, [provider: :basic, provider_opts: [store: store]], [:name, :capabilities])
@@ -181,11 +183,12 @@ defmodule Jido.Memory.RuntimeTest do
              )
   end
 
-  test "resolve_runtime remains available as a compatibility alias", %{store: store} do
+  test "resolve_provider folds runtime namespace and store into basic provider opts", %{store: store} do
     assert {:ok, {Jido.Memory.Provider.Basic, provider_opts}} =
-             Runtime.resolve_runtime(%{}, %{namespace: "agent:compat"}, provider_opts: [store: store])
+             Runtime.resolve_provider(%{}, %{namespace: "agent:compat"}, store: store)
 
     assert Keyword.get(provider_opts, :store) == store
+    assert Keyword.get(provider_opts, :namespace) == "agent:compat"
   end
 
   test "invalid provider option container fails fast", %{store: store} do

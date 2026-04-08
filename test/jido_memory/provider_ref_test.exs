@@ -9,20 +9,22 @@ defmodule Jido.Memory.ProviderRefTest do
   end
 
   test "normalizes nil provider as Basic with default opts" do
-    assert {:ok, %{module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(nil)
+    assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(nil)
   end
 
   test "normalizes explicit provider module and tuple providers" do
     opts = [namespace: "agent:test", store: {Jido.Memory.Store.ETS, [table: :jido_memory_ref_test]}]
 
-    assert {:ok, %{module: Jido.Memory.Provider.Basic, opts: ^opts}} =
+    assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: ^opts}} =
              ProviderRef.normalize({Jido.Memory.Provider.Basic, opts})
 
-    assert {:ok, %{module: Jido.Memory.Provider.Basic, opts: ^opts}} =
+    assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: ^opts}} =
              ProviderRef.normalize({:basic, opts})
 
-    assert {:ok, %{module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(Jido.Memory.Provider.Basic)
-    assert {:ok, %{module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(:basic)
+    assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: []}} =
+             ProviderRef.normalize(Jido.Memory.Provider.Basic)
+
+    assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(:basic)
   end
 
   test "validates required callbacks and config hook" do

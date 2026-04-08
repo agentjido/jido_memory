@@ -50,19 +50,34 @@ Compatibility note:
 - `Jido.Memory.Runtime` will normalize maps into canonical structs where
   possible, but providers should return the structs directly.
 
+`CapabilitySet` is more than a flat atom list. Providers should use it to expose:
+
+- supported flat capability atoms
+- a structured capability descriptor
+- a canonical provider key when one exists
+- provider-specific capability metadata when useful
+
+`ProviderInfo` is the canonical provider metadata surface. It can describe:
+
+- canonical provider key
+- provider style or family
+- structured capability descriptor
+- topology and resolved defaults
+- advanced provider-direct operations
+- surface boundaries between runtime, plugin, and provider-native APIs
+
 ## Provider Aliases
 
 Core aliases exposed by `Jido.Memory.ProviderRegistry`:
 
 - `:basic`
-- `:mempalace`
-- `:mem0`
 
-Applications can extend aliases through config:
+External provider packages can extend the atom alias registry through config:
 
 ```elixir
 config :jido_memory, :provider_aliases,
-  custom_provider: MyApp.Memory.Provider
+  custom_provider: MyApp.Memory.Provider,
+  mempalace: Jido.Memory.Provider.MemPalace
 ```
 
 ## Configuration Rules
@@ -96,7 +111,6 @@ This verifies:
 - capability exposure
 - provider metadata
 - remember/get/retrieve/forget lifecycle
-- `recall` compatibility
 - optional capability wrappers when supported
 
 ## Minimal Provider Skeleton
@@ -112,12 +126,33 @@ defmodule MyApp.Memory.Provider do
 
   @impl true
   def capabilities(_opts) do
-    {:ok, CapabilitySet.new!(%{provider: __MODULE__, capabilities: [:remember, :get, :retrieve]})}
+    {:ok,
+     CapabilitySet.new!(%{
+       provider: __MODULE__,
+       key: :custom,
+       capabilities: [:remember, :get, :retrieve],
+       descriptor: %{
+         retrieval: %{basic: true},
+         storage: %{durable: false}
+       }
+     })}
   end
 
   @impl true
   def info(_opts, _fields) do
-    {:ok, ProviderInfo.new!(%{name: "custom", provider: __MODULE__, capabilities: [:retrieve]})}
+    {:ok,
+     ProviderInfo.new!(%{
+       name: "custom",
+       key: :custom,
+       provider: __MODULE__,
+       provider_style: :custom,
+       capabilities: [:retrieve],
+       capability_descriptor: %{
+         retrieval: %{basic: true}
+       },
+       topology: %{storage: :memory_only},
+       surface_boundary: %{runtime: [:remember, :retrieve]}
+     })}
   end
 
   @impl true

@@ -1,23 +1,27 @@
 require Jido.Memory.Actions.Forget
-require Jido.Memory.Actions.Recall
 require Jido.Memory.Actions.Remember
 require Jido.Memory.Actions.Retrieve
 
-defmodule Jido.Memory.ETSPlugin do
+defmodule Jido.Memory.BasicPlugin do
   @moduledoc """
-  ETS-backed memory plugin for Jido agents.
+  Jido plugin for the built-in basic memory path.
 
-  This plugin owns `:__memory__` state and keeps only lightweight runtime
-  metadata in agent state while records live in ETS.
+  `BasicPlugin` is the clean Jido integration story in core `jido_memory`:
+
+  - it manages namespace derivation for agents
+  - it manages store configuration for the built-in `:basic` provider
+  - it exposes memory actions and optional signal auto-capture
+
+  More advanced providers should integrate through `Jido.Memory.Runtime` or
+  ship their own package-specific plugin story instead of expanding this plugin
+  into a generic backend adapter.
   """
 
-  alias Jido.Signal
-  alias Jido.Memory.Actions.{Forget, Recall, Remember, Retrieve}
+  alias Jido.Memory.Actions.{Forget, Remember, Retrieve}
   alias Jido.Memory.Helpers
-  alias Jido.Memory.Provider.Basic
-  alias Jido.Memory.ProviderRef
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store
+  alias Jido.Signal
 
   @default_store {Jido.Memory.Store.ETS, [table: :jido_memory]}
 
@@ -30,8 +34,6 @@ defmodule Jido.Memory.ETSPlugin do
   @state_schema Zoi.object(%{
                   namespace: Zoi.string() |> Zoi.optional(),
                   store: Zoi.any() |> Zoi.default(@default_store),
-                  provider: Zoi.any() |> Zoi.optional(),
-                  provider_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
                   auto_capture: Zoi.boolean() |> Zoi.default(true),
                   capture_signal_patterns:
                     Zoi.list(Zoi.string())
@@ -42,8 +44,6 @@ defmodule Jido.Memory.ETSPlugin do
   @config_schema Zoi.object(%{
                    store: Zoi.any() |> Zoi.default(@default_store),
                    store_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
-                   provider: Zoi.any() |> Zoi.optional(),
-                   provider_opts: Zoi.list(Zoi.any()) |> Zoi.default([]),
                    namespace: Zoi.string() |> Zoi.optional(),
                    namespace_mode: Zoi.atom() |> Zoi.default(:per_agent),
                    shared_namespace: Zoi.string() |> Zoi.optional(),
@@ -57,11 +57,11 @@ defmodule Jido.Memory.ETSPlugin do
   use Jido.Plugin,
     name: "memory",
     state_key: :__memory__,
-    actions: [Remember, Retrieve, Recall, Forget],
+    actions: [Remember, Retrieve, Forget],
     schema: @state_schema,
     config_schema: @config_schema,
     singleton: true,
-    description: "ETS-backed memory plugin with structured retrieval and auto-capture.",
+    description: "Basic memory plugin with namespace management and optional auto-capture.",
     capabilities: [:memory]
 
   @impl Jido.Plugin
@@ -71,10 +71,7 @@ defmodule Jido.Memory.ETSPlugin do
     with {:ok, namespace} <- resolve_namespace(agent, config_map),
          {:ok, {store_mod, store_opts}} <- resolve_store(config_map),
          :ok <- store_mod.ensure_ready(store_opts) do
-      store = {store_mod, store_opts}
-      provider_ref = build_provider_ref(config_map, namespace, store)
-
-      {:ok, build_plugin_state(config_map, namespace, store, provider_ref)}
+      {:ok, build_plugin_state(config_map, namespace, {store_mod, store_opts})}
     end
   end
 
@@ -83,7 +80,6 @@ defmodule Jido.Memory.ETSPlugin do
     [
       {"remember", Remember},
       {"retrieve", Retrieve},
-      {"recall", Recall},
       {"forget", Forget}
     ]
   end
@@ -104,37 +100,21 @@ defmodule Jido.Memory.ETSPlugin do
   def on_checkpoint(_plugin_state, _context), do: :keep
 
   @impl Jido.Plugin
-  def on_restore(pointer, _context) when is_map(pointer), do: {:ok, normalize_state(pointer)}
-  def on_restore(_pointer, _context), do: {:ok, nil}
+  def on_restore(pointer, _context) when is_map(pointer) do
+    state_map = Helpers.normalize_map(pointer)
+    namespace = Helpers.normalize_optional_string(Helpers.map_get(state_map, :namespace))
 
-  defp build_provider_ref(config, namespace, store) do
-    provider_input = Helpers.map_get(config, :provider)
-    provider_opts = normalize_provider_opts(Helpers.map_get(config, :provider_opts, []))
-
-    provider_input
-    |> normalize_provider_input(provider_opts)
-    |> ProviderRef.normalize()
-    |> case do
-      {:ok, provider_ref} -> maybe_enrich_basic_provider_ref(provider_ref, namespace, store)
-      {:error, _reason} -> ProviderRef.normalize({Basic, [namespace: namespace, store: store]}) |> elem(1)
+    with {:ok, {store_mod, store_opts}} <- resolve_store(state_map) do
+      {:ok, build_plugin_state(state_map, namespace, {store_mod, store_opts})}
     end
   end
 
-  defp normalize_state(state) do
-    state_map = Helpers.normalize_map(state)
-    namespace = Helpers.map_get(state_map, :namespace)
-    store = Helpers.map_get(state_map, :store)
-    provider_ref = build_provider_ref(state_map, namespace, store)
+  def on_restore(_pointer, _context), do: {:ok, nil}
 
-    build_plugin_state(state_map, namespace, store, provider_ref)
-  end
-
-  defp build_plugin_state(source, namespace, store, provider_ref) do
+  defp build_plugin_state(source, namespace, store) do
     %{
       namespace: Helpers.normalize_optional_string(namespace),
       store: store,
-      provider: provider_ref,
-      provider_opts: provider_ref.opts,
       auto_capture: Helpers.map_get(source, :auto_capture, true),
       capture_signal_patterns: Helpers.map_get(source, :capture_signal_patterns, @default_capture_patterns),
       capture_rules: Helpers.map_get(source, :capture_rules, %{})
@@ -387,32 +367,4 @@ defmodule Jido.Memory.ETSPlugin do
   end
 
   defp safe_existing_atom(_), do: nil
-
-  defp normalize_provider_input(nil, provider_opts), do: {Basic, provider_opts}
-
-  defp normalize_provider_input(%ProviderRef{} = provider_ref, provider_opts) do
-    %ProviderRef{provider_ref | opts: Keyword.merge(provider_ref.opts, provider_opts)}
-  end
-
-  defp normalize_provider_input({provider, embedded_opts}, provider_opts)
-       when is_atom(provider) and is_list(embedded_opts) do
-    {provider, Keyword.merge(embedded_opts, provider_opts)}
-  end
-
-  defp normalize_provider_input(provider, provider_opts), do: {provider, provider_opts}
-
-  defp maybe_enrich_basic_provider_ref(%ProviderRef{module: Basic} = provider_ref, namespace, store) do
-    %{provider_ref | opts: enrich_basic_provider_opts(provider_ref.opts, namespace, store)}
-  end
-
-  defp maybe_enrich_basic_provider_ref(provider_ref, _namespace, _store), do: provider_ref
-
-  defp enrich_basic_provider_opts(opts, namespace, store) do
-    opts
-    |> Helpers.put_opt_if_missing(:namespace, namespace)
-    |> Helpers.put_opt_if_missing(:store, store)
-  end
-
-  defp normalize_provider_opts(opts) when is_list(opts), do: opts
-  defp normalize_provider_opts(_opts), do: []
 end

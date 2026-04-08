@@ -21,24 +21,11 @@ Now:
 - `Provider` is the top-level memory-system abstraction
 - `Store` remains a persistence substrate used by providers
 - `retrieve/3` is the canonical read path
-- `recall/2` remains for compatibility only
+- `Jido.Memory.BasicPlugin` is the Jido integration for the simple built-in path
 
 ## Existing ETS Path
 
 The default path still works and now routes through `Jido.Memory.Provider.Basic`.
-
-Before:
-
-```elixir
-{:ok, records} =
-  Jido.Memory.Runtime.recall(%{id: "agent-1"}, %{
-    namespace: "agent:agent-1",
-    text_contains: "market",
-    store: {Jido.Memory.Store.ETS, [table: :agent_memory]}
-  })
-```
-
-After:
 
 ```elixir
 {:ok, result} =
@@ -55,7 +42,7 @@ records = Jido.Memory.RetrieveResult.records(result)
 Before:
 
 ```elixir
-{Jido.Memory.ETSPlugin,
+{Jido.Memory.BasicPlugin,
  %{
    store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
    namespace_mode: :per_agent
@@ -65,10 +52,9 @@ Before:
 After:
 
 ```elixir
-{Jido.Memory.ETSPlugin,
+{Jido.Memory.BasicPlugin,
  %{
-   provider: :basic,
-   provider_opts: [store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]}],
+   store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
    namespace_mode: :per_agent
  }}
 ```
@@ -76,7 +62,16 @@ After:
 ## External Providers
 
 When you add provider packages, keep agent and runtime code stable and switch
-the provider:
+the provider. Core only ships the built-in `:basic` alias, so external provider
+aliases should be registered explicitly:
+
+```elixir
+config :jido_memory, :provider_aliases,
+  mempalace: Jido.Memory.Provider.MemPalace,
+  mem0: Jido.Memory.Provider.Mem0
+```
+
+Then application code can select the provider:
 
 MemPalace:
 
@@ -91,11 +86,4 @@ provider: :mem0
 ```
 
 The point of the migration is that the agent-facing contract does not need to
-change when the backend does.
-
-## When To Stay On `recall/2`
-
-Keep `recall/2` only when you need drop-in compatibility with older code that
-expects `[Record.t()]`.
-
-For all new code, prefer `retrieve/3`.
+change when the backend does, and that the core Jido plugin story stays simple.
