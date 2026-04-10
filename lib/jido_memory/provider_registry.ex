@@ -21,7 +21,8 @@ defmodule Jido.Memory.ProviderRegistry do
   def built_in_aliases, do: @built_in_aliases
 
   @doc "Normalizes alias input into an atom-to-module map."
-  @spec normalize_aliases(aliases_input()) :: {:ok, %{optional(provider_alias()) => module()}} | {:error, :invalid_provider_aliases}
+  @spec normalize_aliases(aliases_input()) ::
+          {:ok, %{optional(provider_alias()) => module()}} | {:error, :invalid_provider_aliases}
   def normalize_aliases(nil), do: {:ok, %{}}
 
   def normalize_aliases(aliases) when is_list(aliases) do
