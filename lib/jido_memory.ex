@@ -521,15 +521,16 @@ defmodule Jido.Memory.Runtime do
   end
 
   defp maybe_put_provider_store_default(opts, provider_mod, key, value) do
-    if basic_provider?(provider_mod) do
+    if store_backed_provider?(provider_mod) do
       maybe_put_provider_opt(opts, key, value)
     else
       opts
     end
   end
 
-  defp basic_provider?(Jido.Memory.Provider.Basic), do: true
-  defp basic_provider?(_provider_mod), do: false
+  defp store_backed_provider?(Jido.Memory.Provider.Basic), do: true
+  defp store_backed_provider?(Jido.Memory.Provider.Redis), do: true
+  defp store_backed_provider?(_provider_mod), do: false
 
   defp normalize_provider_store_opts(nil), do: nil
   defp normalize_provider_store_opts(opts) when is_list(opts), do: opts

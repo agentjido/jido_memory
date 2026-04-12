@@ -14,6 +14,7 @@ defmodule Jido.Memory.ProviderRefTest do
 
   test "normalizes explicit provider module and tuple providers" do
     opts = [namespace: "agent:test", store: {Jido.Memory.Store.ETS, [table: :jido_memory_ref_test]}]
+    redis_opts = [namespace: "agent:test", store_opts: [command_fn: fn _args -> {:ok, "PONG"} end]]
 
     assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: ^opts}} =
              ProviderRef.normalize({Jido.Memory.Provider.Basic, opts})
@@ -25,6 +26,15 @@ defmodule Jido.Memory.ProviderRefTest do
              ProviderRef.normalize(Jido.Memory.Provider.Basic)
 
     assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: []}} = ProviderRef.normalize(:basic)
+
+    assert {:ok, %{key: :redis, module: Jido.Memory.Provider.Redis, opts: ^redis_opts}} =
+             ProviderRef.normalize({:redis, redis_opts})
+
+    assert {:ok, %{key: :redis, module: Jido.Memory.Provider.Redis, opts: []}} =
+             ProviderRef.normalize(Jido.Memory.Provider.Redis)
+
+    assert {:ok, %{key: :redis, module: Jido.Memory.Provider.Redis, opts: []}} =
+             ProviderRef.normalize(:redis)
   end
 
   test "validates required callbacks and config hook" do

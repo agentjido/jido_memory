@@ -10,7 +10,8 @@ defmodule Jido.Memory.ProviderRegistry do
   """
 
   @built_in_aliases %{
-    basic: Jido.Memory.Provider.Basic
+    basic: Jido.Memory.Provider.Basic,
+    redis: Jido.Memory.Provider.Redis
   }
 
   @type provider_alias :: atom()

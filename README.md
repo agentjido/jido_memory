@@ -58,15 +58,15 @@ The key distinction is:
 
 The built-in integration path in core is `Jido.Memory.BasicPlugin`.
 
-`BasicPlugin` is intentionally specific to the built-in `:basic` provider. It
-is not a generic adapter for every possible memory backend. That is a feature,
-not a limitation: it keeps the Jido integration in core clean and easy to
-understand.
+`BasicPlugin` is intentionally specific to the built-in store-backed path in
+core. It is not a generic adapter for every possible memory backend. That is a
+feature, not a limitation: it keeps the Jido integration in core clean and easy
+to understand.
 
 `BasicPlugin` handles:
 
 - namespace derivation
-- store setup for the built-in basic path
+- store setup for the built-in store-backed path
 - memory actions
 - optional signal auto-capture
 
@@ -345,8 +345,9 @@ The provider behind `BasicPlugin` is `Jido.Memory.Provider.Basic`.
 It uses `Jido.Memory.Store` underneath, and the default practical store is ETS.
 
 `Basic` can also use a Redis-backed store when you want durable storage without
-changing the provider story. Core still ships only the `:basic` provider; Redis
-fits underneath it as a `Jido.Memory.Store` implementation.
+changing the provider identity. Core now ships both `:basic` and `:redis`;
+Redis can either sit underneath `:basic` as a store implementation or be chosen
+explicitly as the provider.
 
 Example:
 
@@ -383,6 +384,25 @@ Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
 )
 ```
 
+If you want Redis to be the explicit provider identity in core, use `:redis`:
+
+```elixir
+Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
+  class: :semantic,
+  kind: :fact,
+  text: "Use the built-in redis provider."
+},
+  provider: :redis,
+  provider_opts: [
+    namespace: "agent:agent-1",
+    store_opts: [
+      command_fn: &MyApp.MemoryRedis.command/1,
+      prefix: "my_app:memory"
+    ]
+  ]
+)
+```
+
 `Basic` supports:
 
 - `remember`
@@ -412,6 +432,7 @@ Core `jido_memory` intentionally keeps the provider story narrow.
 Built into core:
 
 - `:basic`
+- `:redis`
 
 Implemented in separate packages:
 
@@ -448,7 +469,9 @@ Core ships exactly one plugin story:
 
 - `Jido.Memory.BasicPlugin`
 
-That plugin is for the built-in basic memory path only.
+That plugin is for the built-in store-backed path. `:redis` can be used through
+runtime provider selection, while agent/plugin integrations can still configure
+Redis under `BasicPlugin`.
 
 If another provider wants deeper Jido ergonomics, that provider package should
 ship its own plugin rather than expanding core into a generic backend adapter.
