@@ -70,6 +70,7 @@ defmodule Jido.Memory.BasicPlugin do
 
     with {:ok, namespace} <- resolve_namespace(agent, config_map),
          {:ok, {store_mod, store_opts}} <- resolve_store(config_map),
+         :ok <- Store.validate_options(store_mod, store_opts),
          :ok <- store_mod.ensure_ready(store_opts) do
       {:ok, build_plugin_state(config_map, namespace, {store_mod, store_opts})}
     end
@@ -104,7 +105,8 @@ defmodule Jido.Memory.BasicPlugin do
     state_map = Helpers.normalize_map(pointer)
     namespace = Helpers.normalize_optional_string(Helpers.map_get(state_map, :namespace))
 
-    with {:ok, {store_mod, store_opts}} <- resolve_store(state_map) do
+    with {:ok, {store_mod, store_opts}} <- resolve_store(state_map),
+         :ok <- Store.validate_options(store_mod, store_opts) do
       {:ok, build_plugin_state(state_map, namespace, {store_mod, store_opts})}
     end
   end

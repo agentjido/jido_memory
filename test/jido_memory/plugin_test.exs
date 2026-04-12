@@ -25,6 +25,14 @@ defmodule Jido.Memory.BasicPluginTest do
     refute Map.has_key?(state, :provider_opts)
   end
 
+  test "mount rejects invalid redis store config" do
+    assert {:error, :missing_command_fn} =
+             Plugin.mount(%{id: "agent-redis-invalid"}, %{
+               store: Redis,
+               namespace_mode: :per_agent
+             })
+  end
+
   test "mount supports shared namespaces", %{store: store} do
     assert {:ok, state} =
              Plugin.mount(%{id: "agent-2"}, %{

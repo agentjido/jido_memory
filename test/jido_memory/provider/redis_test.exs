@@ -35,6 +35,7 @@ defmodule Jido.Memory.Provider.RedisTest do
     assert :ok = Redis.validate_config(provider_opts)
     assert {:error, :invalid_namespace} = Redis.validate_config(namespace: 123, store_opts: [])
     assert {:error, :invalid_store} = Redis.validate_config(namespace: "agent:test", store: Jido.Memory.Store.ETS)
+    assert :ok = Redis.validate_config(namespace: "agent:test", store_opts: [])
     assert {:error, :invalid_store_opts} = Redis.validate_config(namespace: "agent:test", store_opts: :bad)
     assert {:error, :invalid_provider_opts} = Redis.validate_config(:bad)
     assert [] == Redis.child_specs([])
@@ -49,6 +50,13 @@ defmodule Jido.Memory.Provider.RedisTest do
 
     assert match?({Jido.Memory.Store.Redis, _}, info.metadata.store)
     assert info.surface_boundary.common_runtime != []
+  end
+
+  test "remember requires command_fn when redis provider executes" do
+    assert {:error, :missing_command_fn} =
+             Redis.remember(%{id: "redis-missing"}, %{class: :semantic, kind: :fact, text: "x"},
+               namespace: "agent:redis-missing"
+             )
   end
 
   test "remember get retrieve and forget keep redis provider identity", %{provider_opts: provider_opts} do

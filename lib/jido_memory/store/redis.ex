@@ -57,6 +57,27 @@ defmodule Jido.Memory.Store.Redis do
   end
 
   @impl true
+  @spec validate_options(keyword()) :: :ok | {:error, term()}
+  def validate_options(opts) when is_list(opts) do
+    _ = fetch_command_fn!(opts)
+    _ = prefix(opts)
+    _ = normalize_ttl(Keyword.get(opts, :ttl))
+    :ok
+  rescue
+    error in ArgumentError ->
+      message = Exception.message(error)
+
+      cond do
+        String.contains?(message, ":command_fn") -> {:error, :missing_command_fn}
+        String.contains?(message, "invalid redis prefix") -> {:error, :invalid_prefix}
+        String.contains?(message, "invalid redis ttl") -> {:error, :invalid_ttl}
+        true -> {:error, {:invalid_redis_options, error}}
+      end
+  end
+
+  def validate_options(_opts), do: {:error, :invalid_store_opts}
+
+  @impl true
   @spec put(Record.t(), keyword()) :: {:ok, Record.t()} | {:error, term()}
   def put(%Record{} = record, opts) do
     command_fn = fetch_command_fn!(opts)

@@ -3,7 +3,7 @@ defmodule Jido.Memory.Provider.BasicTest do
 
   alias Jido.Memory.{Explanation, IngestRequest, ProviderInfo, Query, Record, RetrieveResult, Runtime}
   alias Jido.Memory.Provider.Basic
-  alias Jido.Memory.Store.ETS
+  alias Jido.Memory.Store.{ETS, Redis}
 
   setup do
     table = String.to_atom("jido_memory_provider_basic_test_#{System.unique_integer([:positive])}")
@@ -17,8 +17,14 @@ defmodule Jido.Memory.Provider.BasicTest do
     assert {:error, :invalid_namespace} = Basic.validate_config(namespace: 123, store: store)
     assert {:error, :invalid_store} = Basic.validate_config(namespace: "agent:test", store: "bad_store")
 
+    assert {:error, {:store_not_loaded, MissingStore, _reason}} =
+             Basic.validate_config(namespace: "agent:test", store: MissingStore)
+
     assert {:error, :invalid_store_opts} =
              Basic.validate_config(namespace: "agent:test", store: store, store_opts: :bad)
+
+    assert {:error, :missing_command_fn} =
+             Basic.validate_config(namespace: "agent:test", store: Redis, store_opts: [])
 
     assert {:error, :invalid_provider_opts} = Basic.validate_config(:bad)
     assert [] == Basic.child_specs([])
