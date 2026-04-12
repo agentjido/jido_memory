@@ -66,7 +66,7 @@ defmodule Jido.Memory.ProviderRegistry do
   def resolve(value) when is_atom(value) do
     case Map.fetch(aliases(), value) do
       {:ok, module} -> {:ok, module}
-      :error -> {:ok, value}
+      :error -> resolve_module(value)
     end
   end
 
@@ -97,6 +97,13 @@ defmodule Jido.Memory.ProviderRegistry do
         |> Enum.find_value(fn {alias_name, module} ->
           if module == value, do: alias_name, else: nil
         end)
+    end
+  end
+
+  defp resolve_module(value) when is_atom(value) do
+    case Code.ensure_loaded(value) do
+      {:module, module} -> {:ok, module}
+      {:error, _reason} -> {:error, {:unknown_provider, value}}
     end
   end
 end

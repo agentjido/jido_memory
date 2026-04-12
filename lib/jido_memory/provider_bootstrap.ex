@@ -9,7 +9,7 @@ defmodule Jido.Memory.ProviderBootstrap do
   - core runtime never starts provider infrastructure implicitly
   """
 
-  alias Jido.Memory.{ProviderInfo, ProviderRef}
+  alias Jido.Memory.{ProviderInfo, ProviderRef, ProviderRegistry}
 
   @type provider_input :: ProviderRef.t() | module() | atom() | {module() | atom(), keyword()} | nil
 
@@ -36,7 +36,8 @@ defmodule Jido.Memory.ProviderBootstrap do
   def describe(provider_input, opts \\ []) when is_list(opts) do
     with {:ok, provider_ref} <- normalize_provider(provider_input, opts),
          {:ok, child_specs} <- describe_child_specs(provider_ref),
-         {:ok, provider_info} <- provider_ref.module.info(provider_ref.opts, :all) do
+         {:ok, provider_info} <- provider_ref.module.info(provider_ref.opts, :all),
+         {:ok, provider_info} <- normalize_provider_info(provider_info, provider_ref) do
       {:ok,
        %{
          provider: provider_ref.module,
@@ -77,4 +78,21 @@ defmodule Jido.Memory.ProviderBootstrap do
         {:ok, []}
     end
   end
+
+  defp normalize_provider_info(%ProviderInfo{} = provider_info, %ProviderRef{} = provider_ref) do
+    provider_info
+    |> Map.from_struct()
+    |> Map.put_new(:provider, provider_ref.module)
+    |> Map.put_new(:key, provider_ref.key || ProviderRegistry.key_for(provider_ref.module))
+    |> ProviderInfo.new()
+  end
+
+  defp normalize_provider_info(%{} = provider_info, %ProviderRef{} = provider_ref) do
+    provider_info
+    |> Map.put_new(:provider, provider_ref.module)
+    |> Map.put_new(:key, provider_ref.key || ProviderRegistry.key_for(provider_ref.module))
+    |> ProviderInfo.new()
+  end
+
+  defp normalize_provider_info(other, _provider_ref), do: {:error, {:invalid_provider_info, other}}
 end

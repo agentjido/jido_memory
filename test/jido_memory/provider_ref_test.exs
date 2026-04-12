@@ -43,7 +43,7 @@ defmodule Jido.Memory.ProviderRefTest do
   end
 
   test "normalization rejects malformed provider values" do
-    assert {:error, {:provider_not_loaded, :not_a_provider, _}} = ProviderRef.normalize(:not_a_provider)
+    assert {:error, {:unknown_provider, :not_a_provider}} = ProviderRef.normalize(:not_a_provider)
     assert {:error, :invalid_provider} = ProviderRef.normalize({Jido.Memory.Provider.Basic, :not_a_opts})
     assert {:error, :invalid_provider} = ProviderRef.normalize(%{module: Jido.Memory.Provider.Basic})
   end

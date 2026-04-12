@@ -185,8 +185,13 @@ Optional behaviors:
 - `Jido.Memory.Capability.ExplainableRetrieval`
 - `Jido.Memory.Capability.Lifecycle`
 
-`Runtime` checks whether a provider exports those callbacks and returns a stable
-unsupported-capability error when it does not.
+`Runtime` checks `CapabilitySet` first, then validates that the matching
+callback exists.
+
+That gives core two useful guarantees:
+
+- capability metadata is authoritative
+- providers cannot silently advertise operations they do not implement
 
 This keeps the API honest while still allowing a broad provider ecosystem.
 
