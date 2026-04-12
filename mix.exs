@@ -66,12 +66,9 @@ defmodule JidoMemory.MixProject do
       {:jido, "~> 2.0.0-rc.5"},
       {:jido_action, "~> 2.0", override: true},
       {:jido_ai, "== 2.0.0-rc.0"},
-      # `tzdata` currently pulls an older `hackney` that expects these Erlang apps
-      # to be present at runtime but does not bring them into this Mix lock path.
-      {:mimerl, "~> 1.0"},
-      {:certifi, "~> 0.7.0"},
-      {:ssl_verify_fun, "~> 1.1"},
-      {:metrics, "~> 1.0"},
+      # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
+      # does not resolve the retired legacy transport stack.
+      {:tzdata, "~> 1.1"},
       # Validation & errors
       {:zoi, "~> 0.16"},
       {:splode, "~> 0.3"},
