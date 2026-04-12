@@ -3,7 +3,8 @@ defmodule Jido.Memory.BasicPluginTest do
 
   alias Jido.Memory.BasicPlugin, as: Plugin
   alias Jido.Memory.{RetrieveResult, Runtime}
-  alias Jido.Memory.Store.ETS
+  alias Jido.Memory.Store.{ETS, Redis}
+  alias JidoMemory.Test.MockRedis
 
   setup do
     Application.ensure_all_started(:jido_signal)
@@ -150,5 +151,29 @@ defmodule Jido.Memory.BasicPluginTest do
 
     assert Keyword.get(provider_opts, :namespace) == "agent:agent-runtime"
     assert Keyword.get(provider_opts, :store) == store
+  end
+
+  test "plugin-backed runtime path works with the Redis store" do
+    {:ok, pid} = MockRedis.start_link()
+
+    store = {Redis, [command_fn: MockRedis.command_fn(pid), prefix: "jido:plugin:redis"]}
+
+    {:ok, plugin_state} =
+      Plugin.mount(%{id: "agent-redis"}, %{
+        store: store,
+        namespace_mode: :per_agent
+      })
+
+    agent = %{id: "agent-redis", state: %{__memory__: plugin_state}}
+
+    assert {:ok, _record} =
+             Runtime.remember(agent, %{
+               class: :semantic,
+               kind: :fact,
+               text: "redis-backed plugin memory"
+             })
+
+    assert {:ok, result} = Runtime.retrieve(agent, %{text_contains: "redis-backed"})
+    assert ["redis-backed plugin memory"] = Enum.map(RetrieveResult.records(result), & &1.text)
   end
 end

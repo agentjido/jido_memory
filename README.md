@@ -344,6 +344,45 @@ The provider behind `BasicPlugin` is `Jido.Memory.Provider.Basic`.
 
 It uses `Jido.Memory.Store` underneath, and the default practical store is ETS.
 
+`Basic` can also use a Redis-backed store when you want durable storage without
+changing the provider story. Core still ships only the `:basic` provider; Redis
+fits underneath it as a `Jido.Memory.Store` implementation.
+
+Example:
+
+```elixir
+defmodule MyApp.MemoryRedis do
+  def command(args), do: Redix.command(:memory_redis, args)
+end
+
+{Jido.Memory.BasicPlugin,
+ %{
+   store: {Jido.Memory.Store.Redis,
+    [
+      command_fn: &MyApp.MemoryRedis.command/1,
+      prefix: "my_app:memory"
+    ]},
+   namespace_mode: :per_agent
+ }}
+```
+
+The same store can be used through explicit runtime opts:
+
+```elixir
+Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
+  class: :semantic,
+  kind: :fact,
+  text: "Persist this in Redis."
+},
+  provider: :basic,
+  provider_opts: [
+    store:
+      {Jido.Memory.Store.Redis,
+       [command_fn: &MyApp.MemoryRedis.command/1, prefix: "my_app:memory"]}
+  ]
+)
+```
+
 `Basic` supports:
 
 - `remember`

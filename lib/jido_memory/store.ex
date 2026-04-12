@@ -2,8 +2,9 @@ defmodule Jido.Memory.Store do
   @moduledoc """
   Storage adapter behavior for memory persistence and retrieval.
 
-  v1 ships with ETS, but callers only depend on this behavior so they can
-  migrate to database/vector backends later without API churn.
+  `jido_memory` ships with ETS and Redis implementations, but callers only
+  depend on this behavior so they can migrate to other storage backends later
+  without API churn.
   """
 
   alias Jido.Memory.Query

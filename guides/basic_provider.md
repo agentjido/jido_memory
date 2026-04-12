@@ -69,6 +69,23 @@ The default store is ETS:
 {Jido.Memory.Store.ETS, [table: :jido_memory]}
 ```
 
+Redis is also supported as a storage backend for `Basic`:
+
+```elixir
+provider_opts = [
+  namespace: "agent:agent-1",
+  store:
+    {Jido.Memory.Store.Redis,
+     [
+       command_fn: &MyApp.MemoryRedis.command/1,
+       prefix: "my_app:memory"
+     ]}
+]
+```
+
+`jido_memory` still does not take a hard Redis dependency. Your application
+provides the command bridge, typically through a client such as Redix.
+
 ## Direct Runtime Usage
 
 ```elixir
