@@ -21,7 +21,9 @@ defmodule Jido.Memory.RuntimeTest do
     def capabilities(_opts), do: {:ok, CapabilitySet.new!(provider: __MODULE__, capabilities: [:retrieve])}
 
     def info(opts, _fields),
-      do: {:ok, ProviderInfo.new!(provider: __MODULE__, name: "neutral", capabilities: [:retrieve], metadata: %{opts: opts})}
+      do:
+        {:ok,
+         ProviderInfo.new!(provider: __MODULE__, name: "neutral", capabilities: [:retrieve], metadata: %{opts: opts})}
 
     def remember(_target, attrs, _opts) do
       {:ok,
@@ -240,7 +242,11 @@ defmodule Jido.Memory.RuntimeTest do
     }
 
     assert {:ok, {NeutralProvider, provider_opts}} =
-             Runtime.resolve_provider(agent, %{}, provider: NeutralProvider, store: store, store_opts: [table: :ignored])
+             Runtime.resolve_provider(agent, %{},
+               provider: NeutralProvider,
+               store: store,
+               store_opts: [table: :ignored]
+             )
 
     assert Keyword.get(provider_opts, :namespace) == "agent:agent-neutral"
     refute Keyword.has_key?(provider_opts, :store)

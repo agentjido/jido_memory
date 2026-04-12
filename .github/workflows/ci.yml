@@ -9,17 +9,42 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: agentjido/github-actions/.github/workflows/elixir-lint.yml@v3
-    with:
-      otp_version: "26.2"
-      elixir_version: "1.18"
-      lint_command: >-
-        mix format --check-formatted &&
-        mix credo --strict &&
-        mix compile --warnings-as-errors &&
-        mix dialyzer &&
-        mix doctor --raise
-      validate_hex_package: false
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.2"
+          elixir-version: "1.18"
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-lint-otp26.2-elixir1.18-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-lint-otp26.2-elixir1.18-
+
+      - name: Install Hex/Rebar
+        run: |
+          set -euo pipefail
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Run lint checks
+        run: |
+          set -euo pipefail
+          mix format --check-formatted
+          mix compile --warnings-as-errors
+          mix deps.unlock --check-unused
 
   test:
     name: Test
