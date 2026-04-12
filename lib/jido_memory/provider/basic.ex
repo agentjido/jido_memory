@@ -420,28 +420,26 @@ defmodule Jido.Memory.Provider.Basic do
   defp attach_namespace(%Query{}, _), do: {:error, :namespace_required}
 
   defp resolve_context(target, attrs, opts) when is_map(attrs) and is_list(opts) do
-    provider_opts = Keyword.get(opts, :provider_opts, [])
     plugin_state = Helpers.plugin_state(target, Jido.Memory.Runtime.plugin_state_key())
     now = Keyword.get(opts, :now, System.system_time(:millisecond))
 
-    with {:ok, namespace} <- resolve_namespace(target, attrs, opts, provider_opts, plugin_state),
-         {:ok, {store_mod, store_opts}} <- resolve_store(attrs, opts, provider_opts, plugin_state) do
+    with {:ok, namespace} <- resolve_namespace(target, attrs, opts, plugin_state),
+         {:ok, {store_mod, store_opts}} <- resolve_store(attrs, opts, plugin_state) do
       {:ok,
        %{
          namespace: namespace,
          store_mod: store_mod,
          store_opts: store_opts,
-         provider_opts: provider_opts,
+         provider_opts: opts,
          now: now
        }}
     end
   end
 
-  defp resolve_namespace(target, attrs, opts, provider_opts, plugin_state) do
+  defp resolve_namespace(target, attrs, opts, plugin_state) do
     resolved =
       Helpers.normalize_optional_string(Helpers.pick_value(opts, attrs, :namespace)) ||
         Helpers.normalize_optional_string(Helpers.map_get(plugin_state, :namespace)) ||
-        Helpers.normalize_optional_string(Keyword.get(provider_opts, :namespace)) ||
         case Helpers.target_id(target) do
           id when is_binary(id) -> "agent:" <> id
           _ -> nil
@@ -450,12 +448,10 @@ defmodule Jido.Memory.Provider.Basic do
     if is_binary(resolved), do: {:ok, resolved}, else: {:error, :namespace_required}
   end
 
-  defp resolve_store(attrs, opts, provider_opts, plugin_state) do
+  defp resolve_store(attrs, opts, plugin_state) do
     explicit_store = Helpers.pick_value(opts, attrs, :store)
     explicit_store_opts = Helpers.pick_value(opts, attrs, :store_opts, [])
     plugin_store = Helpers.map_get(plugin_state, :store)
-    provider_store = Keyword.get(provider_opts, :store)
-    provider_store_opts = Keyword.get(provider_opts, :store_opts, [])
 
     store_value =
       cond do
@@ -465,25 +461,22 @@ defmodule Jido.Memory.Provider.Basic do
         not is_nil(plugin_store) ->
           plugin_store
 
-        not is_nil(provider_store) ->
-          provider_store
-
         true ->
           @default_store
       end
 
     with {:ok, {store_mod, base_opts}} <- Store.normalize_store(store_value),
-         {:ok, merged_opts} <- merge_store_opts(base_opts, provider_store_opts, explicit_store_opts) do
+         {:ok, merged_opts} <- merge_store_opts(base_opts, explicit_store_opts) do
       {:ok, {store_mod, merged_opts}}
     end
   end
 
-  defp merge_store_opts(base_opts, provider_store_opts, explicit_store_opts)
-       when is_list(base_opts) and is_list(provider_store_opts) and is_list(explicit_store_opts) do
-    {:ok, Keyword.merge(base_opts, Keyword.merge(provider_store_opts, explicit_store_opts))}
+  defp merge_store_opts(base_opts, explicit_store_opts)
+       when is_list(base_opts) and is_list(explicit_store_opts) do
+    {:ok, Keyword.merge(base_opts, explicit_store_opts)}
   end
 
-  defp merge_store_opts(_base, _provider_opts, _explicit_opts), do: {:error, :invalid_store_opts}
+  defp merge_store_opts(_base, _explicit_opts), do: {:error, :invalid_store_opts}
 
   defp rebuild_ingest_request(%IngestRequest{} = request, records, context) do
     %{

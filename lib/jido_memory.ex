@@ -37,8 +37,8 @@ defmodule Jido.Memory.Runtime do
     do: remember(target, Map.new(attrs), opts)
 
   def remember(target, attrs, opts) when is_map(attrs) and is_list(opts) do
-    with_provider(target, attrs, opts, fn provider_mod, _provider_opts, dispatch_opts ->
-      provider_mod.remember(target, attrs, dispatch_opts)
+    with_provider(target, attrs, opts, fn provider_mod, provider_opts ->
+      provider_mod.remember(target, attrs, provider_opts)
     end)
   end
 
@@ -49,8 +49,8 @@ defmodule Jido.Memory.Runtime do
   def get(target, id, opts \\ [])
 
   def get(target, id, opts) when is_binary(id) and is_list(opts) do
-    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
-      provider_mod.get(target, id, dispatch_opts)
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts ->
+      provider_mod.get(target, id, provider_opts)
     end)
   end
 
@@ -61,8 +61,8 @@ defmodule Jido.Memory.Runtime do
   def forget(target, id, opts \\ [])
 
   def forget(target, id, opts) when is_binary(id) and is_list(opts) do
-    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
-      provider_mod.forget(target, id, dispatch_opts)
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts ->
+      provider_mod.forget(target, id, provider_opts)
     end)
   end
 
@@ -77,11 +77,11 @@ defmodule Jido.Memory.Runtime do
     do: retrieve(target, Map.new(query_attrs), opts)
 
   def retrieve(target, query_attrs, opts) when is_map(query_attrs) and is_list(opts) do
-    with_provider(target, query_attrs, opts, fn provider_mod, _provider_opts, dispatch_opts ->
-      with {:ok, result} <- provider_mod.retrieve(target, query_attrs, dispatch_opts),
+    with_provider(target, query_attrs, opts, fn provider_mod, provider_opts ->
+      with {:ok, result} <- provider_mod.retrieve(target, query_attrs, provider_opts),
            {:ok, query} <- normalize_query(query_attrs),
            {:ok, normalized} <-
-             normalize_retrieve_result(result, query, provider_mod, target, query_attrs, dispatch_opts) do
+             normalize_retrieve_result(result, query, provider_mod, target, query_attrs, provider_opts) do
         {:ok, normalized}
       end
     end)
@@ -92,9 +92,8 @@ defmodule Jido.Memory.Runtime do
   @doc "Returns the canonical capability set for the active provider."
   @spec capabilities(target(), keyword()) :: {:ok, CapabilitySet.t()} | {:error, term()}
   def capabilities(target, opts \\ []) when is_list(opts) do
-    with_provider(target, %{}, opts, fn provider_mod, provider_opts, _dispatch_opts ->
-      with {:ok, capability_set} <- provider_mod.capabilities(provider_opts),
-           {:ok, normalized} <- normalize_capability_set(capability_set, provider_mod) do
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts ->
+      with {:ok, normalized} <- load_capability_set(provider_mod, provider_opts) do
         {:ok, normalized}
       end
     end)
@@ -107,7 +106,7 @@ defmodule Jido.Memory.Runtime do
   @doc "Returns provider metadata, optionally filtered to selected fields."
   @spec info(target(), keyword(), :all | [atom()]) :: {:ok, ProviderInfo.t() | map()} | {:error, term()}
   def info(target, opts, fields) when is_list(opts) do
-    with_provider(target, %{}, opts, fn provider_mod, provider_opts, _dispatch_opts ->
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts ->
       with {:ok, info} <- provider_mod.info(provider_opts, :all),
            {:ok, normalized} <- normalize_provider_info(info, provider_mod) do
         case fields do
@@ -127,11 +126,10 @@ defmodule Jido.Memory.Runtime do
 
   def ingest(target, request, opts) when is_map(request) and is_list(opts) do
     with_provider_capability(target, request, opts, :ingest, :ingest, 3, fn provider_mod,
-                                                                            _provider_opts,
-                                                                            dispatch_opts ->
-      with {:ok, result} <- provider_mod.ingest(target, request, dispatch_opts),
+                                                                            provider_opts ->
+      with {:ok, result} <- provider_mod.ingest(target, request, provider_opts),
            {:ok, normalized} <-
-             normalize_ingest_result(result, provider_mod, target, request, dispatch_opts) do
+             normalize_ingest_result(result, provider_mod, target, request, provider_opts) do
         {:ok, normalized}
       end
     end)
@@ -155,10 +153,10 @@ defmodule Jido.Memory.Runtime do
       :explain_retrieval,
       :explain_retrieval,
       3,
-      fn provider_mod, _provider_opts, dispatch_opts ->
-        with {:ok, explanation} <- provider_mod.explain_retrieval(target, query_attrs, dispatch_opts),
+      fn provider_mod, provider_opts ->
+        with {:ok, explanation} <- provider_mod.explain_retrieval(target, query_attrs, provider_opts),
              {:ok, normalized} <-
-               normalize_explanation(explanation, provider_mod, target, query_attrs, dispatch_opts) do
+               normalize_explanation(explanation, provider_mod, target, query_attrs, provider_opts) do
           {:ok, normalized}
         end
       end
@@ -171,10 +169,9 @@ defmodule Jido.Memory.Runtime do
   @spec consolidate(target(), keyword()) :: {:ok, ConsolidationResult.t()} | {:error, term()}
   def consolidate(target, opts \\ []) when is_list(opts) do
     with_provider_capability(target, %{}, opts, :consolidate, :consolidate, 2, fn provider_mod,
-                                                                                  _provider_opts,
-                                                                                  dispatch_opts ->
-      with {:ok, result} <- provider_mod.consolidate(target, dispatch_opts),
-           {:ok, normalized} <- normalize_consolidation_result(result, provider_mod, target, dispatch_opts) do
+                                                                                  provider_opts ->
+      with {:ok, result} <- provider_mod.consolidate(target, provider_opts),
+           {:ok, normalized} <- normalize_consolidation_result(result, provider_mod, target, provider_opts) do
         {:ok, normalized}
       end
     end)
@@ -183,8 +180,8 @@ defmodule Jido.Memory.Runtime do
   @doc "Prunes expired records in the active store."
   @spec prune_expired(target(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
   def prune_expired(target, opts \\ []) when is_list(opts) do
-    with_provider(target, %{}, opts, fn provider_mod, _provider_opts, dispatch_opts ->
-      provider_mod.prune(target, dispatch_opts)
+    with_provider(target, %{}, opts, fn provider_mod, provider_opts ->
+      provider_mod.prune(target, provider_opts)
     end)
   end
 
@@ -196,19 +193,19 @@ defmodule Jido.Memory.Runtime do
     provider_input = Helpers.pick_value(opts, attrs, :provider)
 
     with {:ok, provider_ref} <- ProviderRef.normalize(provider_input),
-         {:ok, provider_opts} <- merge_provider_opts(provider_ref.opts, plugin_state, attrs, opts),
+         {:ok, provider_opts} <- merge_provider_opts(provider_ref, plugin_state, attrs, opts),
          {:ok, _module} <- ProviderRef.validate(%{provider_ref | opts: provider_opts}) do
       {:ok, {provider_ref.module, provider_opts}}
     end
   end
 
-  @spec merge_provider_opts(keyword(), map(), map(), keyword()) :: {:ok, keyword()} | {:error, term()}
-  defp merge_provider_opts(base_opts, plugin_state, attrs, opts)
+  @spec merge_provider_opts(ProviderRef.t(), map(), map(), keyword()) :: {:ok, keyword()} | {:error, term()}
+  defp merge_provider_opts(%ProviderRef{module: provider_mod, opts: base_opts}, plugin_state, attrs, opts)
        when is_list(base_opts) and is_map(plugin_state) and is_map(attrs) and is_list(opts) do
-    plugin_state_opts = provider_defaults_from_plugin_state(plugin_state)
-    attr_defaults = provider_defaults_from_map(attrs)
+    plugin_state_opts = provider_defaults_from_plugin_state(plugin_state, provider_mod)
+    attr_defaults = provider_defaults_from_map(attrs, provider_mod)
     attr_opts = Helpers.map_get(attrs, :provider_opts, [])
-    runtime_defaults = provider_defaults_from_opts(opts)
+    runtime_defaults = provider_defaults_from_opts(opts, provider_mod)
     runtime_opts = Keyword.get(opts, :provider_opts, [])
 
     with :ok <- validate_provider_opts_input(plugin_state_opts),
@@ -226,39 +223,31 @@ defmodule Jido.Memory.Runtime do
     end
   end
 
-  @spec provider_dispatch_opts(keyword(), keyword()) :: keyword()
-  defp provider_dispatch_opts(opts, provider_opts) do
-    opts
-    |> Keyword.delete(:provider)
-    |> Keyword.delete(:provider_opts)
-    |> Keyword.put(:provider_opts, provider_opts)
+  defp normalize_retrieve_result(%RetrieveResult{} = result, query, provider_mod, target, attrs, provider_opts) do
+    {:ok, merge_retrieve_defaults(result, query, provider_mod, target, attrs, provider_opts)}
   end
 
-  defp normalize_retrieve_result(%RetrieveResult{} = result, query, provider_mod, target, attrs, opts) do
-    {:ok, merge_retrieve_defaults(result, query, provider_mod, target, attrs, opts)}
-  end
-
-  defp normalize_retrieve_result(records, query, provider_mod, target, attrs, opts) when is_list(records) do
+  defp normalize_retrieve_result(records, query, provider_mod, target, attrs, provider_opts) when is_list(records) do
     {:ok,
      RetrieveResult.from_records(records,
        query: query,
-       scope: infer_scope(target, attrs, provider_mod, opts),
-       provider: infer_provider_info(provider_mod, opts)
+       scope: infer_scope(target, attrs, provider_mod, provider_opts),
+       provider: infer_provider_info(provider_mod, provider_opts)
      )}
   end
 
-  defp normalize_retrieve_result(%{} = attrs, query, provider_mod, target, query_attrs, opts) do
+  defp normalize_retrieve_result(%{} = attrs, query, provider_mod, target, query_attrs, provider_opts) do
     with {:ok, result} <- RetrieveResult.new(attrs) do
-      {:ok, merge_retrieve_defaults(result, query, provider_mod, target, query_attrs, opts)}
+      {:ok, merge_retrieve_defaults(result, query, provider_mod, target, query_attrs, provider_opts)}
     end
   end
 
   defp normalize_retrieve_result(other, _query, _provider_mod, _target, _attrs, _opts),
     do: {:error, {:invalid_retrieve_result, other}}
 
-  defp merge_retrieve_defaults(%RetrieveResult{} = result, query, provider_mod, target, attrs, opts) do
-    default_scope = infer_scope(target, attrs, provider_mod, opts)
-    default_provider = infer_provider_info(provider_mod, opts)
+  defp merge_retrieve_defaults(%RetrieveResult{} = result, query, provider_mod, target, attrs, provider_opts) do
+    default_scope = infer_scope(target, attrs, provider_mod, provider_opts)
+    default_provider = infer_provider_info(provider_mod, provider_opts)
 
     %RetrieveResult{
       result
@@ -270,7 +259,13 @@ defmodule Jido.Memory.Runtime do
     }
   end
 
-  defp normalize_capability_set(%CapabilitySet{} = capabilities, _provider_mod), do: {:ok, capabilities}
+  defp normalize_capability_set(%CapabilitySet{} = capabilities, provider_mod) do
+    capabilities
+    |> Map.from_struct()
+    |> Map.put_new(:provider, provider_mod)
+    |> Map.put_new(:key, ProviderRegistry.key_for(provider_mod))
+    |> CapabilitySet.new()
+  end
 
   defp normalize_capability_set(%{} = attrs, provider_mod) do
     attrs
@@ -289,7 +284,13 @@ defmodule Jido.Memory.Runtime do
 
   defp normalize_capability_set(other, _provider_mod), do: {:error, {:invalid_capability_set, other}}
 
-  defp normalize_provider_info(%ProviderInfo{} = info, _provider_mod), do: {:ok, info}
+  defp normalize_provider_info(%ProviderInfo{} = info, provider_mod) do
+    info
+    |> Map.from_struct()
+    |> Map.put_new(:provider, provider_mod)
+    |> Map.put_new(:key, ProviderRegistry.key_for(provider_mod))
+    |> ProviderInfo.new()
+  end
 
   defp normalize_provider_info(%{} = attrs, provider_mod) do
     attrs
@@ -300,80 +301,94 @@ defmodule Jido.Memory.Runtime do
 
   defp normalize_provider_info(other, _provider_mod), do: {:error, {:invalid_provider_info, other}}
 
-  defp normalize_ingest_result(%IngestResult{} = result, provider_mod, _target, request, opts) do
-    {:ok, merge_ingest_defaults(result, provider_mod, request, opts)}
+  defp normalize_ingest_result(%IngestResult{} = result, provider_mod, _target, request, provider_opts) do
+    {:ok, merge_ingest_defaults(result, provider_mod, request, provider_opts)}
   end
 
-  defp normalize_ingest_result(%{} = attrs, provider_mod, _target, request, opts) do
+  defp normalize_ingest_result(%{} = attrs, provider_mod, _target, request, provider_opts) do
     with {:ok, result} <- IngestResult.new(attrs) do
-      {:ok, merge_ingest_defaults(result, provider_mod, request, opts)}
+      {:ok, merge_ingest_defaults(result, provider_mod, request, provider_opts)}
     end
   end
 
   defp normalize_ingest_result(other, _provider_mod, _target, _request, _opts),
     do: {:error, {:invalid_ingest_result, other}}
 
-  defp merge_ingest_defaults(%IngestResult{} = result, provider_mod, request, opts) do
+  defp merge_ingest_defaults(%IngestResult{} = result, provider_mod, request, provider_opts) do
     %IngestResult{
       result
-      | scope: result.scope || infer_scope_from_request(request, provider_mod, opts),
-        provider: result.provider || infer_provider_info(provider_mod, opts)
+      | scope: result.scope || infer_scope_from_request(request, provider_mod, provider_opts),
+        provider: result.provider || infer_provider_info(provider_mod, provider_opts)
     }
   end
 
-  defp normalize_explanation(%Explanation{} = explanation, provider_mod, target, query, opts) do
-    {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, opts)}
+  defp normalize_explanation(%Explanation{} = explanation, provider_mod, target, query, provider_opts) do
+    {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, provider_opts)}
   end
 
-  defp normalize_explanation(%{} = attrs, provider_mod, target, query, opts) do
+  defp normalize_explanation(%{} = attrs, provider_mod, target, query, provider_opts) do
     with {:ok, explanation} <- Explanation.new(attrs) do
-      {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, opts)}
+      {:ok, merge_explanation_defaults(explanation, provider_mod, target, query, provider_opts)}
     end
   end
 
   defp normalize_explanation(other, _provider_mod, _target, _query, _opts),
     do: {:error, {:invalid_explanation, other}}
 
-  defp merge_explanation_defaults(%Explanation{} = explanation, provider_mod, target, query, opts) do
+  defp merge_explanation_defaults(%Explanation{} = explanation, provider_mod, target, query, provider_opts) do
     %Explanation{
       explanation
       | query: explanation.query || normalize_query!(query),
-        scope: explanation.scope || infer_scope(target, query, provider_mod, opts),
-        provider: explanation.provider || infer_provider_info(provider_mod, opts)
+        scope: explanation.scope || infer_scope(target, query, provider_mod, provider_opts),
+        provider: explanation.provider || infer_provider_info(provider_mod, provider_opts)
     }
   end
 
-  defp normalize_consolidation_result(%ConsolidationResult{} = result, provider_mod, target, opts) do
-    {:ok, merge_consolidation_defaults(result, provider_mod, target, opts)}
+  defp normalize_consolidation_result(%ConsolidationResult{} = result, provider_mod, target, provider_opts) do
+    {:ok, merge_consolidation_defaults(result, provider_mod, target, provider_opts)}
   end
 
-  defp normalize_consolidation_result(%{} = attrs, provider_mod, target, opts) do
+  defp normalize_consolidation_result(%{} = attrs, provider_mod, target, provider_opts) do
     with {:ok, result} <- ConsolidationResult.new(attrs) do
-      {:ok, merge_consolidation_defaults(result, provider_mod, target, opts)}
+      {:ok, merge_consolidation_defaults(result, provider_mod, target, provider_opts)}
     end
   end
 
   defp normalize_consolidation_result(other, _provider_mod, _target, _opts),
     do: {:error, {:invalid_consolidation_result, other}}
 
-  defp merge_consolidation_defaults(%ConsolidationResult{} = result, provider_mod, target, opts) do
+  defp merge_consolidation_defaults(%ConsolidationResult{} = result, provider_mod, target, provider_opts) do
     %ConsolidationResult{
       result
-      | scope: result.scope || infer_scope(target, %{}, provider_mod, opts),
-        provider: result.provider || infer_provider_info(provider_mod, opts)
+      | scope: result.scope || infer_scope(target, %{}, provider_mod, provider_opts),
+        provider: result.provider || infer_provider_info(provider_mod, provider_opts)
     }
   end
 
-  defp ensure_capability(provider_mod, callback, arity, capability) do
-    if function_exported?(provider_mod, callback, arity) do
-      :ok
-    else
-      {:error, {:unsupported_capability, capability, provider_mod}}
+  defp load_capability_set(provider_mod, provider_opts) do
+    with {:ok, capability_set} <- provider_mod.capabilities(provider_opts),
+         {:ok, normalized} <- normalize_capability_set(capability_set, provider_mod) do
+      {:ok, normalized}
     end
   end
 
-  defp infer_provider_info(provider_mod, opts) do
-    case provider_mod.info(Keyword.get(opts, :provider_opts, []), :all) do
+  defp ensure_capability(provider_mod, provider_opts, callback, arity, capability) do
+    with {:ok, capability_set} <- load_capability_set(provider_mod, provider_opts) do
+      cond do
+        not CapabilitySet.supports?(capability_set, capability) ->
+          {:error, {:unsupported_capability, capability, provider_mod}}
+
+        function_exported?(provider_mod, callback, arity) ->
+          :ok
+
+        true ->
+          {:error, {:invalid_provider_capability, capability, provider_mod}}
+      end
+    end
+  end
+
+  defp infer_provider_info(provider_mod, provider_opts) do
+    case provider_mod.info(provider_opts, :all) do
       {:ok, info} ->
         case normalize_provider_info(info, provider_mod) do
           {:ok, %ProviderInfo{} = normalized} -> normalized
@@ -394,23 +409,21 @@ defmodule Jido.Memory.Runtime do
     })
   end
 
-  defp infer_scope(target, attrs, provider_mod, opts) do
+  defp infer_scope(target, attrs, provider_mod, provider_opts) do
     namespace =
       Helpers.pick_value(
-        opts,
+        provider_opts,
         attrs,
         :namespace,
         Helpers.map_get(Helpers.plugin_state(target, @plugin_state_key), :namespace)
       )
 
-    provider_opts =
-      Keyword.get(opts, :provider_opts, [])
-      |> maybe_put(:namespace, namespace)
+    provider_opts = maybe_put(provider_opts, :namespace, namespace)
 
     Scope.from_provider(provider_mod, provider_opts)
   end
 
-  defp infer_scope_from_request(request, provider_mod, opts) when is_map(request) do
+  defp infer_scope_from_request(request, provider_mod, provider_opts) when is_map(request) do
     scope = Helpers.map_get(request, :scope)
 
     case scope do
@@ -432,28 +445,28 @@ defmodule Jido.Memory.Runtime do
             _ -> nil
           end)
 
-        Scope.from_provider(provider_mod, maybe_put(Keyword.get(opts, :provider_opts, []), :namespace, namespace))
+        Scope.from_provider(provider_mod, maybe_put(provider_opts, :namespace, namespace))
     end
   end
 
-  defp infer_scope_from_request(_request, provider_mod, opts),
-    do: Scope.from_provider(provider_mod, Keyword.get(opts, :provider_opts, []))
+  defp infer_scope_from_request(_request, provider_mod, provider_opts),
+    do: Scope.from_provider(provider_mod, provider_opts)
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put_new(opts, key, value)
 
-  defp with_provider(target, attrs, opts, fun) when is_map(attrs) and is_list(opts) and is_function(fun, 3) do
+  defp with_provider(target, attrs, opts, fun) when is_map(attrs) and is_list(opts) and is_function(fun, 2) do
     with {:ok, {provider_mod, provider_opts}} <- resolve_provider(target, attrs, opts),
          :ok <- provider_mod.validate_config(provider_opts) do
-      fun.(provider_mod, provider_opts, provider_dispatch_opts(opts, provider_opts))
+      fun.(provider_mod, provider_opts)
     end
   end
 
   defp with_provider_capability(target, attrs, opts, capability, callback, arity, fun)
-       when is_map(attrs) and is_list(opts) and is_function(fun, 3) do
-    with_provider(target, attrs, opts, fn provider_mod, provider_opts, dispatch_opts ->
-      with :ok <- ensure_capability(provider_mod, callback, arity, capability) do
-        fun.(provider_mod, provider_opts, dispatch_opts)
+       when is_map(attrs) and is_list(opts) and is_function(fun, 2) do
+    with_provider(target, attrs, opts, fn provider_mod, provider_opts ->
+      with :ok <- ensure_capability(provider_mod, provider_opts, callback, arity, capability) do
+        fun.(provider_mod, provider_opts)
       end
     end)
   end
@@ -473,28 +486,44 @@ defmodule Jido.Memory.Runtime do
   defp validate_provider_opts_input(opts) when is_list(opts), do: :ok
   defp validate_provider_opts_input(_), do: {:error, :invalid_provider_opts}
 
-  defp provider_defaults_from_plugin_state(plugin_state) when is_map(plugin_state) do
+  defp provider_defaults_from_plugin_state(plugin_state, provider_mod) when is_map(plugin_state) do
     []
     |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Helpers.map_get(plugin_state, :namespace)))
-    |> maybe_put_provider_opt(:store, Helpers.map_get(plugin_state, :store))
+    |> maybe_put_provider_store_defaults(provider_mod, plugin_state)
   end
 
-  defp provider_defaults_from_map(attrs) when is_map(attrs) do
+  defp provider_defaults_from_map(attrs, provider_mod) when is_map(attrs) do
     []
     |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Helpers.map_get(attrs, :namespace)))
-    |> maybe_put_provider_opt(:store, Helpers.map_get(attrs, :store))
-    |> maybe_put_provider_opt(:store_opts, normalize_provider_store_opts(Helpers.map_get(attrs, :store_opts)))
+    |> maybe_put_provider_store_default(provider_mod, :store, Helpers.map_get(attrs, :store))
+    |> maybe_put_provider_store_default(provider_mod, :store_opts, normalize_provider_store_opts(Helpers.map_get(attrs, :store_opts)))
   end
 
-  defp provider_defaults_from_opts(opts) when is_list(opts) do
+  defp provider_defaults_from_opts(opts, provider_mod) when is_list(opts) do
     []
     |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Keyword.get(opts, :namespace)))
-    |> maybe_put_provider_opt(:store, Keyword.get(opts, :store))
-    |> maybe_put_provider_opt(:store_opts, normalize_provider_store_opts(Keyword.get(opts, :store_opts)))
+    |> maybe_put_provider_store_default(provider_mod, :store, Keyword.get(opts, :store))
+    |> maybe_put_provider_store_default(provider_mod, :store_opts, normalize_provider_store_opts(Keyword.get(opts, :store_opts)))
   end
 
   defp maybe_put_provider_opt(opts, _key, nil), do: opts
   defp maybe_put_provider_opt(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp maybe_put_provider_store_defaults(opts, provider_mod, plugin_state) do
+    opts
+    |> maybe_put_provider_store_default(provider_mod, :store, Helpers.map_get(plugin_state, :store))
+  end
+
+  defp maybe_put_provider_store_default(opts, provider_mod, key, value) do
+    if basic_provider?(provider_mod) do
+      maybe_put_provider_opt(opts, key, value)
+    else
+      opts
+    end
+  end
+
+  defp basic_provider?(Jido.Memory.Provider.Basic), do: true
+  defp basic_provider?(_provider_mod), do: false
 
   defp normalize_provider_store_opts(nil), do: nil
   defp normalize_provider_store_opts(opts) when is_list(opts), do: opts

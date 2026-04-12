@@ -31,8 +31,15 @@ Providers can implement these capability behaviours when supported:
 - `Jido.Memory.Capability.ExplainableRetrieval`
 - `Jido.Memory.Capability.Lifecycle`
 
-If a provider does not implement a capability callback, `Jido.Memory.Runtime`
-returns `{:error, {:unsupported_capability, capability, provider_module}}`.
+`Jido.Memory.Runtime` treats `CapabilitySet` as the source of truth for optional
+operations.
+
+That means:
+
+- if the capability is not advertised, runtime returns
+  `{:error, {:unsupported_capability, capability, provider_module}}`
+- if the capability is advertised but the callback is missing, runtime returns
+  `{:error, {:invalid_provider_capability, capability, provider_module}}`
 
 ## Canonical Result Types
 
@@ -66,6 +73,9 @@ Compatibility note:
 - advanced provider-direct operations
 - surface boundaries between runtime, plugin, and provider-native APIs
 
+`Runtime.info/3` filters fields locally after normalizing `ProviderInfo`.
+Providers should treat `info/2` as the full-metadata callback.
+
 ## Provider Aliases
 
 Core aliases exposed by `Jido.Memory.ProviderRegistry`:
@@ -89,8 +99,9 @@ Provider option precedence is:
 3. plugin state
 4. provider defaults
 
-Provider implementations should keep this in mind when they merge backend-
-specific options internally.
+Runtime resolves that precedence before calling the provider. Provider
+callbacks receive one canonical provider option set as their final argument.
+They should treat that option list as the resolved provider config input.
 
 ## Bootstrap
 

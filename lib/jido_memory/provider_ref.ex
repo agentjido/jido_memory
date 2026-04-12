@@ -74,6 +74,7 @@ defmodule Jido.Memory.ProviderRef do
   defp resolve_provider(provider) when is_atom(provider) do
     case ProviderRegistry.resolve(provider) do
       {:ok, module} -> {:ok, {ProviderRegistry.key_for(provider) || ProviderRegistry.key_for(module), module}}
+      {:error, _reason} = error -> error
     end
   end
 

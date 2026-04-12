@@ -14,6 +14,43 @@ defmodule Jido.Memory.RuntimeTest do
 
   alias Jido.Memory.Store.ETS
 
+  defmodule NeutralProvider do
+    @behaviour Jido.Memory.Provider
+
+    def validate_config(opts) when is_list(opts), do: :ok
+    def capabilities(_opts), do: {:ok, CapabilitySet.new!(provider: __MODULE__, capabilities: [:retrieve])}
+
+    def info(opts, _fields),
+      do: {:ok, ProviderInfo.new!(provider: __MODULE__, name: "neutral", capabilities: [:retrieve], metadata: %{opts: opts})}
+
+    def remember(_target, attrs, _opts) do
+      {:ok,
+       Record.new!(%{
+         namespace: attrs[:namespace] || "agent:neutral",
+         class: :semantic,
+         kind: :fact,
+         text: attrs[:text] || "neutral",
+         observed_at: 1
+       })}
+    end
+
+    def get(_target, id, _opts) do
+      {:ok,
+       Record.new!(%{
+         id: id,
+         namespace: "agent:neutral",
+         class: :semantic,
+         kind: :fact,
+         text: "neutral",
+         observed_at: 1
+       })}
+    end
+
+    def retrieve(_target, _query, _opts), do: {:ok, RetrieveResult.new!(hits: [], total_count: 0)}
+    def forget(_target, _id, _opts), do: {:ok, false}
+    def prune(_target, _opts), do: {:ok, 0}
+  end
+
   setup do
     table = String.to_atom("jido_memory_facade_test_#{System.unique_integer([:positive])}")
     opts = [table: table]
@@ -189,6 +226,25 @@ defmodule Jido.Memory.RuntimeTest do
 
     assert Keyword.get(provider_opts, :store) == store
     assert Keyword.get(provider_opts, :namespace) == "agent:compat"
+  end
+
+  test "resolve_provider keeps non-basic providers free of store-specific defaults", %{store: store} do
+    agent = %{
+      id: "agent-neutral",
+      state: %{
+        __memory__: %{
+          namespace: "agent:agent-neutral",
+          store: store
+        }
+      }
+    }
+
+    assert {:ok, {NeutralProvider, provider_opts}} =
+             Runtime.resolve_provider(agent, %{}, provider: NeutralProvider, store: store, store_opts: [table: :ignored])
+
+    assert Keyword.get(provider_opts, :namespace) == "agent:agent-neutral"
+    refute Keyword.has_key?(provider_opts, :store)
+    refute Keyword.has_key?(provider_opts, :store_opts)
   end
 
   test "invalid provider option container fails fast", %{store: store} do

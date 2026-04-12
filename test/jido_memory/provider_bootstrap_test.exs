@@ -1,5 +1,5 @@
 defmodule Jido.Memory.ProviderBootstrapTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Jido.Memory.{ProviderBootstrap, ProviderInfo}
 
@@ -56,6 +56,20 @@ defmodule Jido.Memory.ProviderBootstrapTest do
     end
   end
 
+  setup do
+    previous = Application.get_env(:jido_memory, :provider_aliases)
+
+    on_exit(fn ->
+      if is_nil(previous) do
+        Application.delete_env(:jido_memory, :provider_aliases)
+      else
+        Application.put_env(:jido_memory, :provider_aliases, previous)
+      end
+    end)
+
+    :ok
+  end
+
   test "child_specs returns an empty list for the basic provider" do
     assert {:ok, []} = ProviderBootstrap.child_specs(:basic)
   end
@@ -82,5 +96,14 @@ defmodule Jido.Memory.ProviderBootstrapTest do
     assert description.ownership == :caller
     assert is_list(description.child_specs)
     assert %ProviderInfo{name: "boot_provider", provider: BootProvider} = description.provider_info
+  end
+
+  test "describe backfills canonical provider keys for aliased providers" do
+    Application.put_env(:jido_memory, :provider_aliases, custom_boot: BootProvider)
+
+    assert {:ok, description} =
+             ProviderBootstrap.describe({:custom_boot, [namespace: "agent:boot"]})
+
+    assert %ProviderInfo{provider: BootProvider, key: :custom_boot} = description.provider_info
   end
 end
