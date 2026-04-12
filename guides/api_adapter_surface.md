@@ -83,6 +83,7 @@ Providers adapt concrete memory implementations into the canonical runtime API.
 Examples:
 
 - `Jido.Memory.Provider.Basic`
+- `Jido.Memory.Provider.Redis`
 - `Jido.Memory.Provider.MemPalace`
 - `Jido.Memory.Provider.Mem0`
 
@@ -151,6 +152,7 @@ Two modules matter here:
 Core keeps that alias set intentionally small. The built-in alias core is:
 
 - `:basic`
+- `:redis`
 
 External provider packages can extend the registry through application config:
 

@@ -71,8 +71,8 @@ defmodule Jido.Memory.Provider.Basic do
     store_opts = Keyword.get(opts, :store_opts, [])
 
     with :ok <- validate_namespace(namespace),
-         :ok <- validate_store(store),
-         true <- is_list(store_opts) do
+         true <- is_list(store_opts),
+         :ok <- validate_store(store, store_opts) do
       :ok
     else
       false -> {:error, :invalid_store_opts}
@@ -553,12 +553,17 @@ defmodule Jido.Memory.Provider.Basic do
   defp validate_namespace(namespace) when is_binary(namespace), do: :ok
   defp validate_namespace(_), do: {:error, :invalid_namespace}
 
-  defp validate_store(nil), do: :ok
+  defp validate_store(nil, _store_opts), do: :ok
 
-  defp validate_store(store) do
+  defp validate_store(store, store_opts) when is_list(store_opts) do
     case Store.normalize_store(store) do
-      {:ok, _} -> :ok
-      {:error, _reason} -> {:error, :invalid_store}
+      {:ok, {store_mod, base_opts}} ->
+        Store.validate_options(store_mod, Keyword.merge(base_opts, store_opts))
+
+      {:error, _reason} ->
+        {:error, :invalid_store}
     end
   end
+
+  defp validate_store(_store, _store_opts), do: {:error, :invalid_store_opts}
 end

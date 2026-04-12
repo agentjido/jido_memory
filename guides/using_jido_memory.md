@@ -8,7 +8,7 @@ For application code, the canonical surface is:
 
 - `Jido.Memory.Runtime` for reading and writing memory
 - canonical structs such as `Record`, `Query`, and `RetrieveResult`
-- `Jido.Memory.BasicPlugin` when integrating the built-in basic path into a `Jido.Agent`
+- `Jido.Memory.BasicPlugin` when integrating the built-in store-backed path into a `Jido.Agent`
 
 For new code:
 
@@ -163,8 +163,8 @@ Example:
 
 Application code should stay stable when the provider changes.
 
-Core ships the built-in `:basic` alias. External providers should register
-their own atom aliases through config:
+Core ships the built-in `:basic` and `:redis` aliases. External providers
+should register their own atom aliases through config:
 
 ```elixir
 config :jido_memory, :provider_aliases,

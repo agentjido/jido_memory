@@ -58,11 +58,17 @@ defmodule Jido.Memory.ProviderRegistryTest do
 
   test "built-in aliases resolve and unknown atoms fail explicitly" do
     assert ProviderRegistry.built_in_aliases()[:basic] == Jido.Memory.Provider.Basic
+    assert ProviderRegistry.built_in_aliases()[:redis] == Jido.Memory.Provider.Redis
     assert ProviderRegistry.alias?(:basic)
+    assert ProviderRegistry.alias?(:redis)
     assert {:ok, Jido.Memory.Provider.Basic} = ProviderRegistry.resolve(:basic)
+    assert {:ok, Jido.Memory.Provider.Redis} = ProviderRegistry.resolve(:redis)
     assert ProviderRegistry.resolve!(Jido.Memory.Provider.Basic) == Jido.Memory.Provider.Basic
+    assert ProviderRegistry.resolve!(Jido.Memory.Provider.Redis) == Jido.Memory.Provider.Redis
     assert ProviderRegistry.key_for(:basic) == :basic
+    assert ProviderRegistry.key_for(:redis) == :redis
     assert ProviderRegistry.key_for(Jido.Memory.Provider.Basic) == :basic
+    assert ProviderRegistry.key_for(Jido.Memory.Provider.Redis) == :redis
     assert {:error, {:unknown_provider, :unknown_provider}} = ProviderRegistry.resolve(:unknown_provider)
     refute ProviderRegistry.alias?(:unknown_provider)
     refute ProviderRegistry.alias?("basic")
@@ -74,9 +80,11 @@ defmodule Jido.Memory.ProviderRegistryTest do
     assert ProviderRegistry.alias?(:custom)
     assert ProviderRegistry.aliases()[:custom] == CustomProvider
     assert ProviderRegistry.aliases()[:basic] == Jido.Memory.Provider.Basic
+    assert ProviderRegistry.aliases()[:redis] == Jido.Memory.Provider.Redis
 
     assert {:ok, CustomProvider} = ProviderRegistry.resolve(:custom)
     assert {:ok, Jido.Memory.Provider.Basic} = ProviderRegistry.resolve(:basic)
+    assert {:ok, Jido.Memory.Provider.Redis} = ProviderRegistry.resolve(:redis)
     assert ProviderRegistry.key_for(CustomProvider) == :custom
   end
 

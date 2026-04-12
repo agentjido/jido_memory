@@ -70,12 +70,14 @@ defmodule Jido.Memory.ProviderBootstrapTest do
     :ok
   end
 
-  test "child_specs returns an empty list for the basic provider" do
+  test "child_specs returns an empty list for built-in store-backed providers" do
     assert {:ok, []} = ProviderBootstrap.child_specs(:basic)
+    assert {:ok, []} = ProviderBootstrap.child_specs(:redis)
   end
 
   test "bootstrappable reports whether a provider exports child_specs/1" do
     assert ProviderBootstrap.bootstrappable?(:basic)
+    assert ProviderBootstrap.bootstrappable?(:redis)
     assert ProviderBootstrap.bootstrappable?(BootProvider)
     refute ProviderBootstrap.bootstrappable?(:not_a_provider)
   end
