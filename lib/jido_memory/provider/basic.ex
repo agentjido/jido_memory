@@ -114,7 +114,16 @@ defmodule Jido.Memory.Provider.Basic do
        },
        advanced_operations: %{},
        surface_boundary: %{
-         common_runtime: [:remember, :get, :retrieve, :forget, :prune_expired, :ingest, :explain_retrieval, :consolidate],
+         common_runtime: [
+           :remember,
+           :get,
+           :retrieve,
+           :forget,
+           :prune_expired,
+           :ingest,
+           :explain_retrieval,
+           :consolidate
+         ],
          provider_direct: [],
          plugin: Jido.Memory.BasicPlugin
        },
@@ -516,7 +525,9 @@ defmodule Jido.Memory.Provider.Basic do
   defp info_struct(provider_opts) do
     info(provider_opts, :all)
     |> case do
-      {:ok, %ProviderInfo{} = info} -> info
+      {:ok, %ProviderInfo{} = info} ->
+        info
+
       _ ->
         ProviderInfo.new!(%{
           name: "basic",

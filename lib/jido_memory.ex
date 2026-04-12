@@ -125,8 +125,7 @@ defmodule Jido.Memory.Runtime do
     do: ingest(target, Map.new(request), opts)
 
   def ingest(target, request, opts) when is_map(request) and is_list(opts) do
-    with_provider_capability(target, request, opts, :ingest, :ingest, 3, fn provider_mod,
-                                                                            provider_opts ->
+    with_provider_capability(target, request, opts, :ingest, :ingest, 3, fn provider_mod, provider_opts ->
       with {:ok, result} <- provider_mod.ingest(target, request, provider_opts),
            {:ok, normalized} <-
              normalize_ingest_result(result, provider_mod, target, request, provider_opts) do
@@ -168,8 +167,7 @@ defmodule Jido.Memory.Runtime do
   @doc "Runs canonical lifecycle consolidation when supported by the provider."
   @spec consolidate(target(), keyword()) :: {:ok, ConsolidationResult.t()} | {:error, term()}
   def consolidate(target, opts \\ []) when is_list(opts) do
-    with_provider_capability(target, %{}, opts, :consolidate, :consolidate, 2, fn provider_mod,
-                                                                                  provider_opts ->
+    with_provider_capability(target, %{}, opts, :consolidate, :consolidate, 2, fn provider_mod, provider_opts ->
       with {:ok, result} <- provider_mod.consolidate(target, provider_opts),
            {:ok, normalized} <- normalize_consolidation_result(result, provider_mod, target, provider_opts) do
         {:ok, normalized}
@@ -496,14 +494,22 @@ defmodule Jido.Memory.Runtime do
     []
     |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Helpers.map_get(attrs, :namespace)))
     |> maybe_put_provider_store_default(provider_mod, :store, Helpers.map_get(attrs, :store))
-    |> maybe_put_provider_store_default(provider_mod, :store_opts, normalize_provider_store_opts(Helpers.map_get(attrs, :store_opts)))
+    |> maybe_put_provider_store_default(
+      provider_mod,
+      :store_opts,
+      normalize_provider_store_opts(Helpers.map_get(attrs, :store_opts))
+    )
   end
 
   defp provider_defaults_from_opts(opts, provider_mod) when is_list(opts) do
     []
     |> maybe_put_provider_opt(:namespace, Helpers.normalize_optional_string(Keyword.get(opts, :namespace)))
     |> maybe_put_provider_store_default(provider_mod, :store, Keyword.get(opts, :store))
-    |> maybe_put_provider_store_default(provider_mod, :store_opts, normalize_provider_store_opts(Keyword.get(opts, :store_opts)))
+    |> maybe_put_provider_store_default(
+      provider_mod,
+      :store_opts,
+      normalize_provider_store_opts(Keyword.get(opts, :store_opts))
+    )
   end
 
   defp maybe_put_provider_opt(opts, _key, nil), do: opts

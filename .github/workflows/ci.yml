@@ -7,73 +7,56 @@ on:
     branches: [main, develop]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    name: Test on OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
-    strategy:
-      matrix:
-        otp: ["26.2"]
-        elixir: ["1.18"]
+  lint:
+    name: Lint
+    uses: agentjido/github-actions/.github/workflows/elixir-lint.yml@v3
+    with:
+      otp_version: "26.2"
+      elixir_version: "1.18"
+      lint_command: >-
+        mix format --check-formatted &&
+        mix compile --warnings-as-errors
+      validate_hex_package: false
 
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Elixir
-        uses: erlef/setup-elixir@v1
-        with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
-      
-      - name: Restore dependencies cache
-        uses: actions/cache@v3
-        with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-      
-      - name: Install dependencies
-        run: mix deps.get
-      
-      - name: Check formatting
-        run: mix format --check-formatted
-      
-      - name: Run Credo
-        run: mix credo --strict
-      
-      - name: Run tests
-        run: mix test
-      
-      - name: Run coverage
-        run: mix coveralls.json
-      
-      - name: Check documentation
-        run: mix doctor --raise
-      
-      - name: Run Dialyzer
-        run: mix dialyzer
+  test:
+    name: Test
+    uses: agentjido/github-actions/.github/workflows/elixir-test.yml@v3
+    with:
+      otp_versions: '["26.2"]'
+      elixir_versions: '["1.18"]'
+      test_command: mix test
 
   docs:
     runs-on: ubuntu-latest
     name: Generate Documentation
 
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5
+
       - name: Set up Elixir
-        uses: erlef/setup-elixir@v1
+        uses: erlef/setup-beam@v1
         with:
           otp-version: "26.2"
           elixir-version: "1.18"
-      
+
       - name: Restore dependencies cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-      
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-docs-otp26.2-elixir1.18-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-otp26.2-elixir1.18-
+
+      - name: Install Hex/Rebar
+        run: |
+          set -euo pipefail
+          mix local.hex --force
+          mix local.rebar --force
+
       - name: Install dependencies
         run: mix deps.get
-      
+
       - name: Generate documentation
         run: mix docs
