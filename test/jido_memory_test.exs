@@ -232,18 +232,19 @@ defmodule Jido.Memory.RuntimeTest do
     assert Keyword.get(provider_opts, :namespace) == "agent:compat"
   end
 
-  test "resolve_provider folds runtime namespace and store opts into redis provider opts" do
+  test "resolve_provider keeps direct redis callback opts in provider opts" do
     {:ok, pid} = MockRedis.start_link()
-    runtime_store_opts = [command_fn: MockRedis.command_fn(pid), prefix: "jido:runtime:redis"]
+    direct_opts = [command_fn: MockRedis.command_fn(pid), prefix: "jido:runtime:redis"]
 
     assert {:ok, {RedisProvider, provider_opts}} =
              Runtime.resolve_provider(%{}, %{namespace: "agent:compat-redis"},
                provider: :redis,
-               store_opts: runtime_store_opts
+               provider_opts: direct_opts
              )
 
     assert Keyword.get(provider_opts, :namespace) == "agent:compat-redis"
-    assert Keyword.get(provider_opts, :store_opts) == runtime_store_opts
+    assert Keyword.get(provider_opts, :command_fn)
+    assert Keyword.get(provider_opts, :prefix) == "jido:runtime:redis"
   end
 
   test "resolve_provider keeps non-store-backed providers free of store-specific defaults", %{store: store} do

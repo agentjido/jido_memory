@@ -94,10 +94,8 @@ opts = [
   provider: :redis,
   provider_opts: [
     namespace: "agent:agent-1",
-    store_opts: [
-      command_fn: &MyApp.MemoryRedis.command/1,
-      prefix: "my_app:memory"
-    ]
+    command_fn: &MyApp.MemoryRedis.command/1,
+    prefix: "my_app:memory"
   ]
 ]
 ```

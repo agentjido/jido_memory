@@ -25,6 +25,7 @@ defmodule Jido.Memory.Provider.Redis do
   alias Jido.Memory.Store.Redis, as: RedisStore
 
   @default_store {RedisStore, []}
+  @redis_store_option_keys [:command_fn, :prefix, :ttl]
   @capabilities [:remember, :get, :retrieve, :forget, :prune, :ingest, :explain_retrieval, :consolidate]
   @capability_descriptor Capabilities.normalize(%{
                            core: true,
@@ -46,6 +47,11 @@ defmodule Jido.Memory.Provider.Redis do
             __MODULE__,
             %{
               namespace: Zoi.string(description: "Optional explicit namespace used by this provider"),
+              command_fn:
+                Zoi.any(description: "1-arity Redis command callback, e.g. &Redix.command/2 wrapper")
+                |> Zoi.optional(),
+              prefix: Zoi.string(description: "Redis key prefix") |> Zoi.optional(),
+              ttl: Zoi.integer(description: "Redis key TTL in milliseconds") |> Zoi.optional(),
               store: Zoi.any(description: "Store declaration (module or {module, opts})"),
               store_opts: Zoi.list(Zoi.any(), description: "Store options") |> Zoi.default([])
             },
@@ -64,7 +70,7 @@ defmodule Jido.Memory.Provider.Redis do
 
     with :ok <- validate_namespace(namespace),
          true <- is_list(store_opts),
-         :ok <- validate_store_config(store, store_opts) do
+         :ok <- validate_store_shape(store) do
       :ok
     else
       false -> {:error, :invalid_store_opts}
@@ -76,14 +82,14 @@ defmodule Jido.Memory.Provider.Redis do
 
   @impl true
   def capabilities(opts) when is_list(opts) do
-    with {:ok, merged_opts} <- merge_default_store(opts) do
+    with {:ok, normalized_opts} <- normalize_provider_store(opts) do
       {:ok,
        CapabilitySet.new!(%{
          key: :redis,
          provider: __MODULE__,
          capabilities: @capabilities,
          descriptor: @capability_descriptor,
-         metadata: %{provider_opts: merged_opts}
+         metadata: %{provider_opts: normalized_opts}
        })}
     end
   end
@@ -92,7 +98,7 @@ defmodule Jido.Memory.Provider.Redis do
 
   @impl true
   def info(opts, _fields) when is_list(opts) do
-    with {:ok, merged_opts} <- merge_default_store(opts) do
+    with {:ok, normalized_opts} <- normalize_provider_store(opts) do
       {:ok,
        ProviderInfo.new!(%{
          name: "redis",
@@ -103,7 +109,7 @@ defmodule Jido.Memory.Provider.Redis do
          description: "Provider that persists canonical records through Jido.Memory.Store.Redis",
          capabilities: @capabilities,
          capability_descriptor: @capability_descriptor,
-         scope: Scope.from_provider(__MODULE__, merged_opts),
+         scope: Scope.from_provider(__MODULE__, normalized_opts),
          topology: %{
            archetype: :store_backed,
            persistence: :single_store,
@@ -124,11 +130,11 @@ defmodule Jido.Memory.Provider.Redis do
            provider_direct: []
          },
          defaults: %{
-           namespace: Keyword.get(merged_opts, :namespace),
-           store: Keyword.get(merged_opts, :store, @default_store),
-           store_opts: Keyword.get(merged_opts, :store_opts, [])
+           namespace: Keyword.get(normalized_opts, :namespace),
+           store: Keyword.get(normalized_opts, :store, @default_store),
+           store_opts: []
          },
-         metadata: %{store: Keyword.get(merged_opts, :store, @default_store)}
+         metadata: %{store: Keyword.get(normalized_opts, :store, @default_store)}
        })}
     end
   end
@@ -295,26 +301,36 @@ defmodule Jido.Memory.Provider.Redis do
   end
 
   defp merge_default_store(opts) when is_list(opts) do
+    with {:ok, normalized_opts} <- normalize_provider_store(opts),
+         :ok <- validate_runtime_store(normalized_opts) do
+      {:ok, normalized_opts}
+    else
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp normalize_provider_store(opts) when is_list(opts) do
     store = Keyword.get(opts, :store, @default_store)
     store_opts = Keyword.get(opts, :store_opts, [])
 
     with true <- is_list(store_opts),
-         {:ok, validated_store} <- validate_store(store, store_opts) do
-      {:ok, Keyword.put(opts, :store, validated_store)}
+         {:ok, normalized_store} <- normalize_store(store, direct_store_opts(opts), store_opts) do
+      {:ok,
+       opts
+       |> Keyword.drop(@redis_store_option_keys)
+       |> Keyword.delete(:store_opts)
+       |> Keyword.put(:store, normalized_store)}
     else
       false -> {:error, :invalid_store_opts}
       {:error, _reason} = error -> error
     end
   end
 
-  defp validate_store(store, store_opts) when is_list(store_opts) do
+  defp normalize_store(store, direct_store_opts, store_opts)
+       when is_list(direct_store_opts) and is_list(store_opts) do
     case Store.normalize_store(store) do
       {:ok, {RedisStore, base_opts}} ->
-        merged_opts = Keyword.merge(base_opts, store_opts)
-
-        with :ok <- Store.validate_options(RedisStore, merged_opts) do
-          {:ok, {RedisStore, base_opts}}
-        end
+        {:ok, {RedisStore, base_opts |> Keyword.merge(direct_store_opts) |> Keyword.merge(store_opts)}}
 
       {:ok, _other} ->
         {:error, :invalid_store}
@@ -324,18 +340,26 @@ defmodule Jido.Memory.Provider.Redis do
     end
   end
 
-  defp validate_store(_store, _store_opts), do: {:error, :invalid_store_opts}
+  defp normalize_store(_store, _direct_store_opts, _store_opts), do: {:error, :invalid_store_opts}
 
-  defp validate_store_config(nil, []), do: :ok
-
-  defp validate_store_config(nil, store_opts) when is_list(store_opts) do
-    Store.validate_options(RedisStore, store_opts)
+  defp validate_runtime_store(opts) do
+    case Keyword.fetch(opts, :store) do
+      {:ok, {RedisStore, store_opts}} -> Store.validate_options(RedisStore, store_opts)
+      _ -> {:error, :invalid_store}
+    end
   end
 
-  defp validate_store_config(store, store_opts) when is_list(store_opts),
-    do: validate_store(store, store_opts)
+  defp direct_store_opts(opts), do: Keyword.take(opts, @redis_store_option_keys)
 
-  defp validate_store_config(_store, _store_opts), do: {:error, :invalid_store_opts}
+  defp validate_store_shape(nil), do: :ok
+
+  defp validate_store_shape(store) do
+    case Store.normalize_store(store) do
+      {:ok, {RedisStore, _opts}} -> :ok
+      {:ok, _other} -> {:error, :invalid_store}
+      {:error, _reason} -> {:error, :invalid_store}
+    end
+  end
 
   defp validate_namespace(nil), do: :ok
   defp validate_namespace(namespace) when is_binary(namespace), do: :ok

@@ -22,10 +22,8 @@ defmodule Jido.Memory.Provider.RedisTest do
 
     provider_opts = [
       namespace: "agent:redis",
-      store_opts: [
-        command_fn: MockRedis.command_fn(pid),
-        prefix: "jido:provider:redis:#{System.unique_integer([:positive])}"
-      ]
+      command_fn: MockRedis.command_fn(pid),
+      prefix: "jido:provider:redis:#{System.unique_integer([:positive])}"
     ]
 
     %{pid: pid, provider_opts: provider_opts}
@@ -33,9 +31,12 @@ defmodule Jido.Memory.Provider.RedisTest do
 
   test "validate_config child_specs capabilities and info", %{provider_opts: provider_opts} do
     assert :ok = Redis.validate_config(provider_opts)
-    assert {:error, :invalid_namespace} = Redis.validate_config(namespace: 123, store_opts: [])
+
+    assert {:error, :invalid_namespace} =
+             Redis.validate_config(namespace: 123, command_fn: fn _args -> {:ok, "PONG"} end)
+
     assert {:error, :invalid_store} = Redis.validate_config(namespace: "agent:test", store: Jido.Memory.Store.ETS)
-    assert :ok = Redis.validate_config(namespace: "agent:test", store_opts: [])
+    assert :ok = Redis.validate_config(namespace: "agent:test")
     assert {:error, :invalid_store_opts} = Redis.validate_config(namespace: "agent:test", store_opts: :bad)
     assert {:error, :invalid_provider_opts} = Redis.validate_config(:bad)
     assert [] == Redis.child_specs([])
@@ -50,6 +51,11 @@ defmodule Jido.Memory.Provider.RedisTest do
 
     assert match?({Jido.Memory.Store.Redis, _}, info.metadata.store)
     assert info.surface_boundary.common_runtime != []
+  end
+
+  test "metadata paths do not require command_fn" do
+    assert {:ok, %Jido.Memory.CapabilitySet{key: :redis, provider: Redis}} = Redis.capabilities([])
+    assert {:ok, %ProviderInfo{key: :redis, provider: Redis}} = Redis.info([], :all)
   end
 
   test "remember requires command_fn when redis provider executes" do
@@ -123,18 +129,22 @@ defmodule Jido.Memory.Provider.RedisTest do
              Redis.consolidate(%{id: "redis-ingest"}, provider_opts)
   end
 
-  test "provider integrates with runtime via the :redis alias and top-level store opts", %{provider_opts: provider_opts} do
-    runtime_store_opts = Keyword.fetch!(provider_opts, :store_opts)
-
+  test "provider integrates with runtime via the :redis alias and direct redis opts", %{provider_opts: provider_opts} do
     assert {:ok, %Record{namespace: "agent:runtime-redis"}} =
              Runtime.remember(
                %{id: "runtime-redis"},
                %{class: :semantic, kind: :fact, text: "runtime redis"},
                provider: :redis,
-               store_opts: runtime_store_opts
+               provider_opts: [
+                 command_fn: Keyword.fetch!(provider_opts, :command_fn),
+                 prefix: Keyword.fetch!(provider_opts, :prefix)
+               ]
              )
 
     assert {:ok, %ProviderInfo{key: :redis, provider: Redis}} =
-             Runtime.info(%{}, provider: :redis, store_opts: runtime_store_opts)
+             Runtime.info(%{},
+               provider: :redis,
+               provider_opts: [command_fn: Keyword.fetch!(provider_opts, :command_fn)]
+             )
   end
 end

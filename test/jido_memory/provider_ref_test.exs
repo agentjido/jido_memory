@@ -14,7 +14,7 @@ defmodule Jido.Memory.ProviderRefTest do
 
   test "normalizes explicit provider module and tuple providers" do
     opts = [namespace: "agent:test", store: {Jido.Memory.Store.ETS, [table: :jido_memory_ref_test]}]
-    redis_opts = [namespace: "agent:test", store_opts: [command_fn: fn _args -> {:ok, "PONG"} end]]
+    redis_opts = [namespace: "agent:test", command_fn: fn _args -> {:ok, "PONG"} end]
 
     assert {:ok, %{key: :basic, module: Jido.Memory.Provider.Basic, opts: ^opts}} =
              ProviderRef.normalize({Jido.Memory.Provider.Basic, opts})

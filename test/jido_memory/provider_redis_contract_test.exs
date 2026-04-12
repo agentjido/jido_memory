@@ -11,10 +11,8 @@ defmodule Jido.Memory.RedisProviderContractTest do
     %{
       provider_opts: [
         namespace: "agent:provider-contract-redis",
-        store_opts: [
-          command_fn: MockRedis.command_fn(pid),
-          prefix: "jido:provider:contract:#{System.unique_integer([:positive])}"
-        ]
+        command_fn: MockRedis.command_fn(pid),
+        prefix: "jido:provider:contract:#{System.unique_integer([:positive])}"
       ]
     }
   end

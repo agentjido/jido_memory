@@ -395,10 +395,8 @@ Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
   provider: :redis,
   provider_opts: [
     namespace: "agent:agent-1",
-    store_opts: [
-      command_fn: &MyApp.MemoryRedis.command/1,
-      prefix: "my_app:memory"
-    ]
+    command_fn: &MyApp.MemoryRedis.command/1,
+    prefix: "my_app:memory"
   ]
 )
 ```
