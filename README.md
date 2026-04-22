@@ -89,17 +89,22 @@ defmodule MyApp.SupportAgent do
   use Jido.Agent,
     name: "support_agent",
     description: "A Jido agent with built-in memory",
-    default_plugins: %{__memory__: false},
-    plugins: [
-      {Jido.Memory.BasicPlugin,
-       %{
-         store: {Jido.Memory.Store.ETS, [table: :support_agent_memory]},
-         namespace_mode: :per_agent,
-         auto_capture: true
-       }}
-    ]
+    default_plugins: %{
+      __memory__:
+        {Jido.Memory.BasicPlugin,
+         %{
+           store: {Jido.Memory.Store.ETS, [table: :support_agent_memory]},
+           namespace_mode: :per_agent,
+           auto_capture: true
+         }}
+    }
 end
 ```
+
+`Jido.Memory.BasicPlugin` uses the same canonical `:__memory__` state key as
+Jido's built-in memory plugin. Install it as the `__memory__` default-plugin
+replacement so `Jido.Memory.Runtime` can discover memory state through the
+normal plugin path.
 
 ### 3. Make sure the ETS table exists
 

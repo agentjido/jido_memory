@@ -129,15 +129,21 @@ opts = [
 `Jido.Memory.BasicPlugin` is the Jido integration layer for `Basic`.
 
 ```elixir
-{Jido.Memory.BasicPlugin,
- %{
-   store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
-   namespace_mode: :per_agent
- }}
+use Jido.Agent,
+  name: "memory_agent",
+  default_plugins: %{
+    __memory__:
+      {Jido.Memory.BasicPlugin,
+       %{
+         store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
+         namespace_mode: :per_agent
+       }}
+  }
 ```
 
-The plugin keeps only namespace and store state. `Runtime` resolves those into
-basic provider options when action and agent calls are dispatched.
+The plugin replaces Jido's built-in `:__memory__` default plugin and keeps only
+namespace and store state. `Runtime` resolves those into basic provider options
+when action and agent calls are dispatched.
 
 ## Retrieval Behavior
 

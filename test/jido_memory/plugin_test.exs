@@ -6,6 +6,20 @@ defmodule Jido.Memory.BasicPluginTest do
   alias Jido.Memory.Store.{ETS, Redis}
   alias JidoMemory.Test.MockRedis
 
+  defmodule AgentWithBasicMemoryReplacement do
+    use Jido.Agent,
+      name: "jido_memory_basic_replacement_agent",
+      default_plugins: %{
+        __memory__:
+          {Jido.Memory.BasicPlugin,
+           %{
+             store: {Jido.Memory.Store.ETS, [table: :jido_memory_basic_replacement_contract]},
+             namespace_mode: :per_agent,
+             auto_capture: false
+           }}
+      }
+  end
+
   setup do
     Application.ensure_all_started(:jido_signal)
     table = String.to_atom("jido_memory_plugin_test_#{System.unique_integer([:positive])}")
@@ -23,6 +37,37 @@ defmodule Jido.Memory.BasicPluginTest do
     assert state.auto_capture == true
     refute Map.has_key?(state, :provider)
     refute Map.has_key?(state, :provider_opts)
+  end
+
+  test "can replace Jido's default memory plugin through the canonical default slot" do
+    modules = Enum.map(AgentWithBasicMemoryReplacement.plugin_instances(), & &1.module)
+
+    assert Plugin in modules
+    refute Jido.Memory.Plugin in modules
+    assert Jido.Thread.Plugin in modules
+    assert Jido.Identity.Plugin in modules
+
+    agent_id = "replacement-#{System.unique_integer([:positive])}"
+    agent = AgentWithBasicMemoryReplacement.new(id: agent_id)
+
+    assert agent.state[:__memory__].namespace == "agent:#{agent_id}"
+
+    assert {:ok, {Jido.Memory.Provider.Basic, provider_opts}} =
+             Runtime.resolve_provider(agent, %{}, [])
+
+    assert Keyword.fetch!(provider_opts, :store) ==
+             {ETS, [table: :jido_memory_basic_replacement_contract]}
+
+    assert {:ok, _record} =
+             Runtime.remember(agent, %{
+               class: :semantic,
+               kind: :fact,
+               text: "replacement memory #{agent_id}"
+             })
+
+    assert {:ok, result} = Runtime.retrieve(agent, %{text_contains: "replacement memory", order: :asc})
+
+    assert Enum.any?(RetrieveResult.records(result), &String.contains?(&1.text, agent_id))
   end
 
   test "mount rejects invalid redis store config" do
