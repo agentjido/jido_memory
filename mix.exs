@@ -63,20 +63,20 @@ defmodule JidoMemory.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0.0-rc.5"},
-      {:jido_action, "~> 2.0", override: true},
-      {:jido_ai, "== 2.0.0-rc.0"},
+      {:jido, "~> 2.2"},
+      {:jido_action, "~> 2.2", override: true},
+      {:jido_ai, "~> 2.1", only: [:dev, :test]},
       # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
       # does not resolve the retired legacy transport stack.
       {:tzdata, "~> 1.1"},
       # Validation & errors
-      {:zoi, "~> 0.16"},
+      {:zoi, "~> 0.17"},
       {:splode, "~> 0.3"},
       # Dev & test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:doctor, "~> 0.21", only: :dev, runtime: false},
+      {:doctor, "~> 0.22", only: :dev, runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:mimic, "~> 2.0", only: :test}

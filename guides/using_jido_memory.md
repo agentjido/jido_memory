@@ -101,21 +101,22 @@ Important record fields:
 ## Plugin Integration
 
 For `Jido.Agent` usage with the built-in simple memory path, attach
-`Jido.Memory.BasicPlugin`.
+`Jido.Memory.BasicPlugin` as the canonical `:__memory__` default-plugin
+replacement.
 
 ```elixir
 defmodule MyApp.Agent do
   use Jido.Agent,
     name: "memory_agent",
-    default_plugins: %{__memory__: false},
-    plugins: [
-      {Jido.Memory.BasicPlugin,
-       %{
-         store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
-         namespace_mode: :per_agent,
-         auto_capture: true
-       }}
-    ]
+    default_plugins: %{
+      __memory__:
+        {Jido.Memory.BasicPlugin,
+         %{
+           store: {Jido.Memory.Store.ETS, [table: :my_agent_memory]},
+           namespace_mode: :per_agent,
+           auto_capture: true
+         }}
+    }
 end
 ```
 

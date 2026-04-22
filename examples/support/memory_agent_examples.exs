@@ -31,7 +31,11 @@ defmodule Jido.Memory.Examples.Actions.RetrieveNotes do
          %{
            retrieved_texts: texts,
            retrieved_count: length(texts),
-           memory_result: result
+           memory_result: %{
+             retrieved_texts: texts,
+             retrieved_count: length(texts),
+             total_count: result.total_count
+           }
          }}
 
       {:error, reason} ->
@@ -50,15 +54,15 @@ defmodule Jido.Memory.Examples.JidoAgent do
   use Jido.Agent,
     name: "jido_memory_examples_agent",
     description: "Example Jido agent using Jido.Memory.BasicPlugin",
-    default_plugins: %{__memory__: false},
-    plugins: [
-      {Jido.Memory.BasicPlugin,
-       %{
-         store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_agent]},
-         namespace_mode: :per_agent,
-         auto_capture: true
-       }}
-    ],
+    default_plugins: %{
+      __memory__:
+        {Jido.Memory.BasicPlugin,
+         %{
+           store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_agent]},
+           namespace_mode: :per_agent,
+           auto_capture: true
+         }}
+    },
     signal_routes: [
       {"demo.retrieve", Jido.Memory.Examples.Actions.RetrieveNotes}
     ],
@@ -89,17 +93,16 @@ defmodule Jido.Memory.Examples.AIEnabledAgent do
   use Jido.Agent,
     name: "jido_memory_examples_ai_agent",
     description: "Example AI-capable Jido agent wired to Jido.Memory",
-    default_plugins: %{__memory__: false},
-    plugins:
-      Jido.AI.PluginStack.default_plugins() ++
-        [
-          {Jido.Memory.BasicPlugin,
-           %{
-             store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_ai]},
-             namespace_mode: :per_agent,
-             auto_capture: true
-           }}
-        ],
+    default_plugins: %{
+      __memory__:
+        {Jido.Memory.BasicPlugin,
+         %{
+           store: {Jido.Memory.Store.ETS, [table: :jido_memory_examples_ai]},
+           namespace_mode: :per_agent,
+           auto_capture: true
+         }}
+    },
+    plugins: Jido.AI.PluginStack.default_plugins(),
     strategy: {Jido.AI.Reasoning.ReAct.Strategy, @strategy_opts},
     schema:
       Zoi.object(%{
