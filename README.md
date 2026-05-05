@@ -389,6 +389,42 @@ Jido.Memory.Runtime.remember(%{id: "agent-1"}, %{
 )
 ```
 
+Postgres can also back `Basic` when your application already owns an Ecto repo.
+The Ecto and Postgrex dependencies are optional in `jido_memory`; add them to
+your application when you use this store.
+
+```elixir
+provider: :basic,
+provider_opts: [
+  namespace: "agent:my-agent",
+  store: {Jido.Memory.Store.Postgres, repo: MyApp.Repo}
+]
+```
+
+Create the table with an application migration:
+
+```elixir
+create table(:jido_memory_records, primary_key: false) do
+  add :namespace, :text, null: false, primary_key: true
+  add :id, :text, null: false, primary_key: true
+  add :class, :text, null: false
+  add :kind, :text, null: false
+  add :text, :text
+  add :source, :text
+  add :observed_at, :bigint, null: false
+  add :expires_at, :bigint
+  add :record, :binary, null: false
+end
+
+create index(:jido_memory_records, [:namespace, :observed_at, :id])
+create index(:jido_memory_records, [:namespace, :class, :observed_at, :id])
+create index(:jido_memory_records, [:namespace, :kind, :observed_at, :id])
+create index(:jido_memory_records, [:expires_at], where: "expires_at IS NOT NULL")
+```
+
+This is durable structured storage for canonical records. It is not pgvector,
+semantic retrieval, or an analytics schema.
+
 If you want Redis to be the explicit provider identity in core, use `:redis`:
 
 ```elixir

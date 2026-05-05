@@ -86,6 +86,55 @@ provider_opts = [
 `jido_memory` still does not take a hard Redis dependency. Your application
 provides the command bridge, typically through a client such as Redix.
 
+Postgres is also available as an optional durable store for `Basic`. Your
+application owns the Ecto repo and must include `:ecto_sql` and `:postgrex`.
+
+```elixir
+provider_opts = [
+  namespace: "agent:my-agent",
+  store: {Jido.Memory.Store.Postgres, repo: MyApp.Repo}
+]
+```
+
+The adapter is migration-first by default. Use a regular application migration:
+
+```elixir
+def change do
+  create table(:jido_memory_records, primary_key: false) do
+    add :namespace, :text, null: false, primary_key: true
+    add :id, :text, null: false, primary_key: true
+    add :class, :text, null: false
+    add :kind, :text, null: false
+    add :text, :text
+    add :source, :text
+    add :observed_at, :bigint, null: false
+    add :expires_at, :bigint
+    add :record, :binary, null: false
+  end
+
+  create index(:jido_memory_records, [:namespace, :observed_at, :id])
+  create index(:jido_memory_records, [:namespace, :class, :observed_at, :id])
+  create index(:jido_memory_records, [:namespace, :kind, :observed_at, :id])
+  create index(:jido_memory_records, [:expires_at], where: "expires_at IS NOT NULL")
+end
+```
+
+For development or integration tests, `ensure_ready/1` can create the table and
+indexes when `ensure_table?: true` is set:
+
+```elixir
+store:
+  {Jido.Memory.Store.Postgres,
+   [
+     repo: MyApp.Repo,
+     table: "jido_memory_records",
+     ensure_table?: true
+   ]}
+```
+
+The Postgres store is basic durable storage for canonical records. It is not a
+vector search adapter, pgvector integration, or analytics-oriented schema.
+
 If you want Redis to be the explicit provider identity in core, use `provider:
 :redis` instead of `:basic` with a Redis store override:
 

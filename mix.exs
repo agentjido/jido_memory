@@ -72,6 +72,9 @@ defmodule JidoMemory.MixProject do
       # Validation & errors
       {:zoi, "~> 0.17"},
       {:splode, "~> 0.3"},
+      # Optional durable stores
+      {:ecto_sql, "~> 3.13", optional: true},
+      {:postgrex, "~> 0.20", optional: true},
       # Dev & test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
