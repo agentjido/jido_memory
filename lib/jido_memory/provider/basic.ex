@@ -70,12 +70,12 @@ defmodule Jido.Memory.Provider.Basic do
     store = Keyword.get(opts, :store)
     store_opts = Keyword.get(opts, :store_opts, [])
 
-    with :ok <- validate_namespace(namespace),
-         true <- is_list(store_opts),
+    with :ok <- validate_provider_opts_shape(opts),
+         :ok <- validate_namespace(namespace),
+         :ok <- validate_store_opts_shape(store_opts),
          :ok <- validate_store(store, store_opts) do
       :ok
     else
-      false -> {:error, :invalid_store_opts}
       {:error, _} = error -> error
     end
   end
@@ -482,10 +482,24 @@ defmodule Jido.Memory.Provider.Basic do
 
   defp merge_store_opts(base_opts, explicit_store_opts)
        when is_list(base_opts) and is_list(explicit_store_opts) do
-    {:ok, Keyword.merge(base_opts, explicit_store_opts)}
+    with :ok <- validate_store_opts_shape(base_opts),
+         :ok <- validate_store_opts_shape(explicit_store_opts) do
+      {:ok, Keyword.merge(base_opts, explicit_store_opts)}
+    end
   end
 
   defp merge_store_opts(_base, _explicit_opts), do: {:error, :invalid_store_opts}
+
+  defp validate_store_opts_shape(opts) do
+    if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_store_opts}
+  end
+
+  defp validate_store_opts_for_store(store_mod, base_opts, store_opts) do
+    with :ok <- validate_store_opts_shape(base_opts),
+         :ok <- validate_store_opts_shape(store_opts) do
+      Store.validate_options(store_mod, Keyword.merge(base_opts, store_opts))
+    end
+  end
 
   defp rebuild_ingest_request(%IngestRequest{} = request, records, context) do
     %{
@@ -553,12 +567,16 @@ defmodule Jido.Memory.Provider.Basic do
   defp validate_namespace(namespace) when is_binary(namespace), do: :ok
   defp validate_namespace(_), do: {:error, :invalid_namespace}
 
+  defp validate_provider_opts_shape(opts) do
+    if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_provider_opts}
+  end
+
   defp validate_store(nil, _store_opts), do: :ok
 
   defp validate_store(store, store_opts) when is_list(store_opts) do
     case Store.normalize_store(store) do
       {:ok, {store_mod, base_opts}} ->
-        Store.validate_options(store_mod, Keyword.merge(base_opts, store_opts))
+        validate_store_opts_for_store(store_mod, base_opts, store_opts)
 
       {:error, _reason} ->
         {:error, :invalid_store}

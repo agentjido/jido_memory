@@ -23,9 +23,16 @@ defmodule Jido.Memory.Provider.BasicTest do
     assert {:error, :invalid_store_opts} =
              Basic.validate_config(namespace: "agent:test", store: store, store_opts: :bad)
 
+    assert {:error, :invalid_store_opts} =
+             Basic.validate_config(namespace: "agent:test", store: {ETS, [1]})
+
+    assert {:error, :invalid_store_opts} =
+             Basic.validate_config(namespace: "agent:test", store_opts: [1])
+
     assert {:error, :missing_command_fn} =
              Basic.validate_config(namespace: "agent:test", store: Redis, store_opts: [])
 
+    assert {:error, :invalid_provider_opts} = Basic.validate_config([1])
     assert {:error, :invalid_provider_opts} = Basic.validate_config(:bad)
     assert [] == Basic.child_specs([])
 

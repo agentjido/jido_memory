@@ -129,12 +129,16 @@ defmodule Jido.Memory.BasicPlugin do
     override_opts = Helpers.map_get(config, :store_opts, [])
 
     with {:ok, {store_mod, base_opts}} <- Store.normalize_store(store_value),
-         true <- is_list(override_opts) do
+         :ok <- validate_store_opts_shape(base_opts),
+         :ok <- validate_store_opts_shape(override_opts) do
       {:ok, {store_mod, Keyword.merge(base_opts, override_opts)}}
     else
-      false -> {:error, :invalid_store_opts}
       {:error, _} = error -> error
     end
+  end
+
+  defp validate_store_opts_shape(opts) do
+    if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_store_opts}
   end
 
   @spec resolve_namespace(map(), map()) :: {:ok, String.t()} | {:error, term()}

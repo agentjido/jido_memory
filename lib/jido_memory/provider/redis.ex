@@ -68,12 +68,13 @@ defmodule Jido.Memory.Provider.Redis do
     store = Keyword.get(opts, :store)
     store_opts = Keyword.get(opts, :store_opts, [])
 
-    with :ok <- validate_namespace(namespace),
-         true <- is_list(store_opts),
+    with :ok <- validate_keyword_opts(opts),
+         :ok <- validate_namespace(namespace),
+         :ok <- validate_store_opts_shape(store_opts),
+         :ok <- validate_redis_option_shapes(opts),
          :ok <- validate_store_shape(store) do
       :ok
     else
-      false -> {:error, :invalid_store_opts}
       {:error, _reason} = error -> error
     end
   end
@@ -82,7 +83,8 @@ defmodule Jido.Memory.Provider.Redis do
 
   @impl true
   def capabilities(opts) when is_list(opts) do
-    with {:ok, normalized_opts} <- normalize_provider_store(opts) do
+    with :ok <- validate_keyword_opts(opts),
+         {:ok, normalized_opts} <- normalize_provider_store(opts) do
       {:ok,
        CapabilitySet.new!(%{
          key: :redis,
@@ -98,7 +100,8 @@ defmodule Jido.Memory.Provider.Redis do
 
   @impl true
   def info(opts, _fields) when is_list(opts) do
-    with {:ok, normalized_opts} <- normalize_provider_store(opts) do
+    with :ok <- validate_keyword_opts(opts),
+         {:ok, normalized_opts} <- normalize_provider_store(opts) do
       {:ok,
        ProviderInfo.new!(%{
          name: "redis",
@@ -313,7 +316,8 @@ defmodule Jido.Memory.Provider.Redis do
     store = Keyword.get(opts, :store, @default_store)
     store_opts = Keyword.get(opts, :store_opts, [])
 
-    with true <- is_list(store_opts),
+    with :ok <- validate_keyword_opts(opts),
+         :ok <- validate_store_opts_shape(store_opts),
          {:ok, normalized_store} <- normalize_store(store, direct_store_opts(opts), store_opts) do
       {:ok,
        opts
@@ -321,7 +325,6 @@ defmodule Jido.Memory.Provider.Redis do
        |> Keyword.delete(:store_opts)
        |> Keyword.put(:store, normalized_store)}
     else
-      false -> {:error, :invalid_store_opts}
       {:error, _reason} = error -> error
     end
   end
@@ -330,7 +333,12 @@ defmodule Jido.Memory.Provider.Redis do
        when is_list(direct_store_opts) and is_list(store_opts) do
     case Store.normalize_store(store) do
       {:ok, {RedisStore, base_opts}} ->
-        {:ok, {RedisStore, base_opts |> Keyword.merge(direct_store_opts) |> Keyword.merge(store_opts)}}
+        with :ok <- validate_store_opts_shape(base_opts),
+             :ok <- validate_optional_store_opts(base_opts),
+             :ok <- validate_optional_store_opts(direct_store_opts),
+             :ok <- validate_optional_store_opts(store_opts) do
+          {:ok, {RedisStore, base_opts |> Keyword.merge(direct_store_opts) |> Keyword.merge(store_opts)}}
+        end
 
       {:ok, _other} ->
         {:error, :invalid_store}
@@ -351,13 +359,54 @@ defmodule Jido.Memory.Provider.Redis do
 
   defp direct_store_opts(opts), do: Keyword.take(opts, @redis_store_option_keys)
 
+  defp validate_keyword_opts(opts) do
+    if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_provider_opts}
+  end
+
+  defp validate_store_opts_shape(store_opts) do
+    if Keyword.keyword?(store_opts), do: :ok, else: {:error, :invalid_store_opts}
+  end
+
+  defp validate_redis_option_shapes(opts) do
+    direct_store_opts(opts)
+    |> validate_optional_store_opts()
+  end
+
+  defp validate_optional_store_opts(opts) when is_list(opts) do
+    with :ok <- validate_optional_command_fn(Keyword.get(opts, :command_fn)),
+         :ok <- validate_optional_prefix(Keyword.get(opts, :prefix)),
+         :ok <- validate_optional_ttl(Keyword.get(opts, :ttl)) do
+      :ok
+    end
+  end
+
+  defp validate_optional_command_fn(nil), do: :ok
+  defp validate_optional_command_fn(command_fn) when is_function(command_fn, 1), do: :ok
+  defp validate_optional_command_fn(_command_fn), do: {:error, :invalid_command_fn}
+
+  defp validate_optional_prefix(nil), do: :ok
+  defp validate_optional_prefix(prefix) when is_binary(prefix) and prefix != "", do: :ok
+  defp validate_optional_prefix(_prefix), do: {:error, :invalid_prefix}
+
+  defp validate_optional_ttl(nil), do: :ok
+  defp validate_optional_ttl(ttl) when is_integer(ttl) and ttl > 0, do: :ok
+  defp validate_optional_ttl(_ttl), do: {:error, :invalid_ttl}
+
   defp validate_store_shape(nil), do: :ok
 
   defp validate_store_shape(store) do
     case Store.normalize_store(store) do
-      {:ok, {RedisStore, _opts}} -> :ok
-      {:ok, _other} -> {:error, :invalid_store}
-      {:error, _reason} -> {:error, :invalid_store}
+      {:ok, {RedisStore, opts}} ->
+        with :ok <- validate_store_opts_shape(opts),
+             :ok <- validate_optional_store_opts(opts) do
+          :ok
+        end
+
+      {:ok, _other} ->
+        {:error, :invalid_store}
+
+      {:error, _reason} ->
+        {:error, :invalid_store}
     end
   end
 

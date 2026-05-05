@@ -1,1 +1,1 @@
-ExUnit.start(exclude: [examples: true])
+ExUnit.start(exclude: [examples: true, integration: true])
