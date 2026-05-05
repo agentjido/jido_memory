@@ -49,7 +49,8 @@ defmodule Jido.Memory.Store.Redis do
     command_fn = fetch_command_fn!(opts)
 
     case command_fn.(["PING"]) do
-      {:ok, _pong} -> :ok
+      {:ok, "PONG"} -> :ok
+      {:ok, other} -> {:error, {:redis_not_ready, {:unexpected_ping_reply, other}}}
       {:error, reason} -> {:error, {:redis_not_ready, reason}}
     end
   rescue

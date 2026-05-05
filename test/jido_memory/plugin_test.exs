@@ -76,6 +76,12 @@ defmodule Jido.Memory.BasicPluginTest do
                store: Redis,
                namespace_mode: :per_agent
              })
+
+    assert {:error, :invalid_store_opts} =
+             Plugin.mount(%{id: "agent-redis-invalid-opts"}, %{
+               store: {Redis, [1]},
+               namespace_mode: :per_agent
+             })
   end
 
   test "mount supports shared namespaces", %{store: store} do

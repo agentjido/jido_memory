@@ -202,4 +202,9 @@ defmodule Jido.Memory.StoreRedisTest do
   test "ensure_ready reports missing command_fn" do
     assert {:error, {:redis_not_ready, %ArgumentError{}}} = Redis.ensure_ready([])
   end
+
+  test "ensure_ready rejects unexpected ping replies" do
+    assert {:error, {:redis_not_ready, {:unexpected_ping_reply, "OK"}}} =
+             Redis.ensure_ready(command_fn: fn ["PING"] -> {:ok, "OK"} end)
+  end
 end

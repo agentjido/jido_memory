@@ -38,8 +38,20 @@ defmodule Jido.Memory.Provider.RedisTest do
     assert {:error, :invalid_store} = Redis.validate_config(namespace: "agent:test", store: Jido.Memory.Store.ETS)
     assert :ok = Redis.validate_config(namespace: "agent:test")
     assert {:error, :invalid_store_opts} = Redis.validate_config(namespace: "agent:test", store_opts: :bad)
+    assert {:error, :invalid_provider_opts} = Redis.validate_config([1])
+    assert {:error, :invalid_store_opts} = Redis.validate_config(store_opts: [1])
+    assert {:error, :invalid_command_fn} = Redis.validate_config(command_fn: :bad)
+    assert {:error, :invalid_prefix} = Redis.validate_config(prefix: "")
+    assert {:error, :invalid_ttl} = Redis.validate_config(ttl: 0)
+    assert {:error, :invalid_store_opts} = Redis.validate_config(store: {Jido.Memory.Store.Redis, [1]})
+    assert {:error, :invalid_prefix} = Redis.validate_config(store: {Jido.Memory.Store.Redis, [prefix: ""]})
     assert {:error, :invalid_provider_opts} = Redis.validate_config(:bad)
     assert [] == Redis.child_specs([])
+
+    assert {:error, :invalid_provider_opts} = Redis.capabilities([1])
+    assert {:error, :invalid_provider_opts} = Redis.info([1], :all)
+    assert {:error, :invalid_prefix} = Redis.capabilities(prefix: "")
+    assert {:error, :invalid_ttl} = Redis.info([ttl: 0], :all)
 
     assert {:ok, capability_set} = Redis.capabilities(provider_opts)
     assert capability_set.key == :redis
