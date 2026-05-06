@@ -371,6 +371,4 @@ defmodule Jido.Memory.BasicPlugin do
   rescue
     ArgumentError -> nil
   end
-
-  defp safe_existing_atom(_), do: nil
 end

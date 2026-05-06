@@ -55,7 +55,7 @@ defmodule Jido.Memory.StorePostgresIntegrationTest do
     assert :ok = Postgres.ensure_ready(opts)
 
     on_exit(fn ->
-      _ = apply(Ecto.Adapters.SQL, :query, [LivePostgresRepo, "DROP TABLE IF EXISTS \"#{table}\"", [], []])
+      _ = Ecto.Adapters.SQL.query(LivePostgresRepo, "DROP TABLE IF EXISTS \"#{table}\"", [], [])
     end)
 
     %{opts: opts, namespace: "agent:test-live-postgres"}

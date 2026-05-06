@@ -119,6 +119,7 @@ defmodule Jido.Memory.ProviderInfo do
     })
   end
 
+  @dialyzer {:nowarn_function, normalize_provider: 1}
   defp normalize_provider(provider) when is_atom(provider), do: {:ok, provider}
   defp normalize_provider(other), do: {:error, {:invalid_provider, other}}
 

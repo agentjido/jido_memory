@@ -21,6 +21,7 @@ defmodule JidoMemory.MixProject do
       homepage_url: @source_url,
       description: @description,
       docs: docs(),
+      package: package(),
       # Testing
       test_coverage: [summary: [threshold: 0]]
     ]
@@ -64,7 +65,7 @@ defmodule JidoMemory.MixProject do
     [
       # Jido ecosystem
       {:jido, "~> 2.2"},
-      {:jido_action, "~> 2.2", override: true},
+      {:jido_action, "~> 2.2"},
       {:jido_ai, "~> 2.1", only: [:dev, :test]},
       # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
       # does not resolve the retired legacy transport stack.
@@ -103,6 +104,15 @@ defmodule JidoMemory.MixProject do
       main: "readme",
       source_ref: "main",
       formatters: ["html"]
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => @source_url
+      }
     ]
   end
 end
