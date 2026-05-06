@@ -50,9 +50,8 @@ defmodule JidoMemory.Test.LiveRedis do
   defp command(connection, redis_command) when is_list(redis_command) do
     with_connection(connection, fn socket ->
       with :ok <- select_db(socket, connection.db, connection.timeout),
-           :ok <- send_command(socket, redis_command),
-           {:ok, response} <- read_response(socket, connection.timeout) do
-        {:ok, response}
+           :ok <- send_command(socket, redis_command) do
+        read_response(socket, connection.timeout)
       end
     end)
   end
@@ -134,17 +133,19 @@ defmodule JidoMemory.Test.LiveRedis do
   defp normalize_arg(arg), do: to_string(arg)
 
   defp read_response(socket, timeout) do
-    with {:ok, <<prefix>>} <- :gen_tcp.recv(socket, 1, timeout) do
-      case prefix do
-        ?+ -> read_simple_string(socket, timeout)
-        ?- -> read_error(socket, timeout)
-        ?: -> read_integer(socket, timeout)
-        ?$ -> read_bulk_string(socket, timeout)
-        ?* -> read_array(socket, timeout)
-        other -> {:error, {:unexpected_reply_prefix, other}}
-      end
-    else
-      {:error, reason} -> {:error, {:recv_failed, reason}}
+    case :gen_tcp.recv(socket, 1, timeout) do
+      {:ok, <<prefix>>} ->
+        case prefix do
+          ?+ -> read_simple_string(socket, timeout)
+          ?- -> read_error(socket, timeout)
+          ?: -> read_integer(socket, timeout)
+          ?$ -> read_bulk_string(socket, timeout)
+          ?* -> read_array(socket, timeout)
+          other -> {:error, {:unexpected_reply_prefix, other}}
+        end
+
+      {:error, reason} ->
+        {:error, {:recv_failed, reason}}
     end
   end
 
@@ -157,9 +158,8 @@ defmodule JidoMemory.Test.LiveRedis do
   end
 
   defp read_integer(socket, timeout) do
-    with {:ok, line} <- read_line(socket, timeout),
-         {:ok, integer} <- parse_integer(line) do
-      {:ok, integer}
+    with {:ok, line} <- read_line(socket, timeout) do
+      parse_integer(line)
     end
   end
 

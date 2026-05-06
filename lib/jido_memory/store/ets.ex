@@ -290,10 +290,9 @@ defmodule Jido.Memory.Store.ETS do
 
   defp text_matches?(%Record{text: text, content: content}, filter) do
     haystack =
-      cond do
-        is_binary(text) and text != "" -> text
-        true -> inspect(content)
-      end
+      if is_binary(text) and text != "",
+        do: text,
+        else: inspect(content)
 
     haystack
     |> String.downcase()

@@ -8,10 +8,10 @@ defmodule Jido.Memory.Examples.MemoryAgentExampleTest do
   @plain_table :jido_memory_examples_agent
   @ai_table :jido_memory_examples_ai
 
-  alias Jido.AI.Actions.ToolCalling.ExecuteTool
   alias Jido.AgentServer
-  alias Jido.Memory.Examples.{AIEnabledAgent, JidoAgent}
+  alias Jido.AI.Actions.ToolCalling.ExecuteTool
   alias Jido.Memory.Examples.Actions.RetrieveNotes
+  alias Jido.Memory.Examples.{AIEnabledAgent, JidoAgent}
   alias Jido.Memory.Runtime
   alias Jido.Memory.Store.ETS
   alias Jido.Signal

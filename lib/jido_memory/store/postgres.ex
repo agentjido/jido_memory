@@ -56,9 +56,8 @@ defmodule Jido.Memory.Store.Postgres do
          :ok <- validate_repo_opts(opts),
          :ok <- validate_ensure_table(opts),
          :ok <- validate_query_fn(opts),
-         :ok <- validate_sql_module(opts),
-         :ok <- validate_query_backend(opts) do
-      :ok
+         :ok <- validate_sql_module(opts) do
+      validate_query_backend(opts)
     end
   end
 
@@ -350,10 +349,9 @@ defmodule Jido.Memory.Store.Postgres do
 
   defp text_matches?(%Record{text: text, content: content}, filter) do
     haystack =
-      cond do
-        is_binary(text) and text != "" -> text
-        true -> inspect(content)
-      end
+      if is_binary(text) and text != "",
+        do: text,
+        else: inspect(content)
 
     haystack
     |> String.downcase()
@@ -386,7 +384,7 @@ defmodule Jido.Memory.Store.Postgres do
           sql_module = sql_module(opts)
 
           if Code.ensure_loaded?(sql_module) and function_exported?(sql_module, :query, 4) do
-            apply(sql_module, :query, [repo, sql, params, repo_opts])
+            sql_module.query(repo, sql, params, repo_opts)
           else
             {:error, :ecto_sql_not_available}
           end

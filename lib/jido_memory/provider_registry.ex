@@ -88,16 +88,14 @@ defmodule Jido.Memory.ProviderRegistry do
   def key_for(nil), do: nil
 
   def key_for(value) when is_atom(value) do
-    cond do
-      alias?(value) ->
-        value
-
-      true ->
-        aliases()
-        |> Enum.sort_by(fn {alias_name, _module} -> Atom.to_string(alias_name) end)
-        |> Enum.find_value(fn {alias_name, module} ->
-          if module == value, do: alias_name, else: nil
-        end)
+    if alias?(value) do
+      value
+    else
+      aliases()
+      |> Enum.sort_by(fn {alias_name, _module} -> Atom.to_string(alias_name) end)
+      |> Enum.find_value(fn {alias_name, module} ->
+        if module == value, do: alias_name, else: nil
+      end)
     end
   end
 

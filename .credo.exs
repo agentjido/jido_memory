@@ -11,7 +11,9 @@
       color: true,
       checks: [
         {Credo.Check.Design.AliasUsage, false},
-        {Credo.Check.Readability.MaxLineLength, [max_length: 120]}
+        {Credo.Check.Readability.MaxLineLength, [max_length: 120]},
+        {Credo.Check.Refactor.CyclomaticComplexity, [max_complexity: 12]},
+        {Credo.Check.Refactor.Nesting, [max_nesting: 5]}
       ]
     }
   ]

@@ -59,23 +59,23 @@ defmodule Jido.Memory.ProviderBootstrap do
   end
 
   defp normalize_provider(provider_input, opts) do
-    with {:ok, provider_ref} <- ProviderRef.normalize(provider_input),
-         merged_opts <- Keyword.merge(provider_ref.opts, opts),
-         {:ok, provider_ref} <- ProviderRef.validate(%{provider_ref | opts: merged_opts}) do
-      {:ok, provider_ref}
+    case ProviderRef.normalize(provider_input) do
+      {:ok, provider_ref} ->
+        ProviderRef.validate(%{provider_ref | opts: Keyword.merge(provider_ref.opts, opts)})
+
+      {:error, _reason} = error ->
+        error
     end
   end
 
   defp describe_child_specs(%ProviderRef{module: provider, opts: provider_opts}) do
-    cond do
-      function_exported?(provider, :child_specs, 1) ->
-        case provider.child_specs(provider_opts) do
-          specs when is_list(specs) -> {:ok, specs}
-          other -> {:error, {:invalid_child_specs, other}}
-        end
-
-      true ->
-        {:ok, []}
+    if function_exported?(provider, :child_specs, 1) do
+      case provider.child_specs(provider_opts) do
+        specs when is_list(specs) -> {:ok, specs}
+        other -> {:error, {:invalid_child_specs, other}}
+      end
+    else
+      {:ok, []}
     end
   end
 

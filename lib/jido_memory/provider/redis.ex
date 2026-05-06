@@ -374,9 +374,8 @@ defmodule Jido.Memory.Provider.Redis do
 
   defp validate_optional_store_opts(opts) when is_list(opts) do
     with :ok <- validate_optional_command_fn(Keyword.get(opts, :command_fn)),
-         :ok <- validate_optional_prefix(Keyword.get(opts, :prefix)),
-         :ok <- validate_optional_ttl(Keyword.get(opts, :ttl)) do
-      :ok
+         :ok <- validate_optional_prefix(Keyword.get(opts, :prefix)) do
+      validate_optional_ttl(Keyword.get(opts, :ttl))
     end
   end
 
@@ -397,9 +396,8 @@ defmodule Jido.Memory.Provider.Redis do
   defp validate_store_shape(store) do
     case Store.normalize_store(store) do
       {:ok, {RedisStore, opts}} ->
-        with :ok <- validate_store_opts_shape(opts),
-             :ok <- validate_optional_store_opts(opts) do
-          :ok
+        with :ok <- validate_store_opts_shape(opts) do
+          validate_optional_store_opts(opts)
         end
 
       {:ok, _other} ->

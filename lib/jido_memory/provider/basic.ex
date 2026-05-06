@@ -9,8 +9,8 @@ defmodule Jido.Memory.Provider.Basic do
   @behaviour Jido.Memory.Capability.Lifecycle
 
   alias Jido.Memory.{
-    CapabilitySet,
     Capabilities,
+    CapabilitySet,
     ConsolidationResult,
     Explanation,
     Helpers,
@@ -537,21 +537,8 @@ defmodule Jido.Memory.Provider.Basic do
   end
 
   defp info_struct(provider_opts) do
-    info(provider_opts, :all)
-    |> case do
-      {:ok, %ProviderInfo{} = info} ->
-        info
-
-      _ ->
-        ProviderInfo.new!(%{
-          name: "basic",
-          key: :basic,
-          provider: __MODULE__,
-          provider_style: :basic,
-          capabilities: @capabilities,
-          capability_descriptor: @capability_descriptor
-        })
-    end
+    {:ok, %ProviderInfo{} = info} = info(provider_opts, :all)
+    info
   end
 
   defp version do
