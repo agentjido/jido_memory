@@ -1,62 +1,30 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+  merge_group:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
 
 jobs:
-  lint:
-    name: Lint
-    uses: agentjido/github-actions/.github/workflows/elixir-lint.yml@v3
+  ci:
+    name: CI
+    uses: agentjido/github-actions/.github/workflows/jido-ci.yml@v4
+    secrets: inherit
     with:
-      otp_version: "26.2"
-      elixir_version: "1.18"
-      lint_command: >-
-        mix format --check-formatted &&
-        mix compile --warnings-as-errors
-      validate_hex_package: false
-
-  test:
-    name: Test
-    uses: agentjido/github-actions/.github/workflows/elixir-test.yml@v3
-    with:
-      otp_versions: '["26.2"]'
-      elixir_versions: '["1.18"]'
+      otp_versions: '["27", "28"]'
+      elixir_versions: '["1.18", "1.19"]'
+      experimental_compile_elixir_versions: '["v1.20.0-rc.4"]'
+      experimental_compile_otp_versions: '["28.4.1"]'
+      experimental_compile_otp_name: '28'
+      docs_command: mix docs -f html
       test_command: mix test
-
-  docs:
-    runs-on: ubuntu-latest
-    name: Generate Documentation
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: "26.2"
-          elixir-version: "1.18"
-
-      - name: Restore dependencies cache
-        uses: actions/cache@v5
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-docs-otp26.2-elixir1.18-${{ hashFiles('mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-docs-otp26.2-elixir1.18-
-
-      - name: Install Hex/Rebar
-        run: |
-          set -euo pipefail
-          mix local.hex --force
-          mix local.rebar --force
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Generate documentation
-        run: mix docs
