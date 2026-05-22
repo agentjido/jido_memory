@@ -45,7 +45,7 @@ defmodule Jido.Memory.BasicPluginTest do
     assert Plugin in modules
     refute Jido.Memory.Plugin in modules
     assert Jido.Thread.Plugin in modules
-    assert Jido.Identity.Plugin in modules
+    assert Jido.Agent.Identity.Plugin in modules
 
     agent_id = "replacement-#{System.unique_integer([:positive])}"
     agent = AgentWithBasicMemoryReplacement.new(id: agent_id)

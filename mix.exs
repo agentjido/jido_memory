@@ -1,7 +1,7 @@
 defmodule JidoMemory.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "1.0.0"
   @source_url "https://github.com/agentjido/jido_memory"
   @description "Provider-backed memory runtime and basic Jido integration for agents"
 
@@ -64,14 +64,14 @@ defmodule JidoMemory.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.2"},
-      {:jido_action, "~> 2.2"},
-      {:jido_ai, "~> 2.1", only: [:dev, :test]},
+      {:jido, "~> 2.3"},
+      {:jido_action, "~> 2.3"},
+      {:jido_ai, "~> 2.2", only: [:dev, :test]},
       # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
       # does not resolve the retired legacy transport stack.
       {:tzdata, "~> 1.1"},
       # Validation & errors
-      {:zoi, "~> 0.17"},
+      {:zoi, "~> 0.18"},
       {:splode, "~> 0.3"},
       # Optional durable stores
       {:ecto_sql, "~> 3.13", optional: true},
