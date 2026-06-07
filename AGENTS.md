@@ -131,7 +131,7 @@ mix doctor --raise
 ### Adding a New Memory Class
 
 1. Update `Record` schema to validate new class
-2. Update CHANGELOG.md
+2. Generate release notes from Git history
 3. Add tests in `test/jido_memory/record_test.exs`
 4. Update README.md with example
 
@@ -208,7 +208,7 @@ mix dialyzer
 mix quality
 mix test
 
-# Update CHANGELOG.md with release notes
+# Confirm release notes are covered by Conventional Commits; CHANGELOG.md is generated from Git history during release
 # Commit: "chore(release): 0.2.0"
 git tag v0.2.0
 git push && git push --tags
@@ -216,6 +216,10 @@ git push && git push --tags
 # Publish to Hex
 mix hex.publish
 ```
+
+## Release Hygiene
+
+- Do not modify `CHANGELOG.md`; release notes are generated from Git history during release, so keep changes focused on proper Conventional Commits.
 
 ## Useful Resources
 
