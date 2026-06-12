@@ -222,8 +222,6 @@ defmodule Jido.Memory.Store.ETS do
   end
 
   @spec ids_from_tags_all(String.t(), [String.t()], keyword()) :: MapSet.t(String.t())
-  defp ids_from_tags_all(_namespace, [], _opts), do: MapSet.new()
-
   defp ids_from_tags_all(namespace, [first | rest], opts) do
     initial =
       :ets.lookup(ns_tag_table(opts), {namespace, first})
