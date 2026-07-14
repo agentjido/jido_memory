@@ -15,6 +15,15 @@ defmodule JidoMemory.MixProject do
       deps: deps(),
       aliases: aliases(),
       cli: cli(),
+      # Hackney 4.x is incompatible with the current HTTPoison/ExAws dependency chain.
+      hex: [
+        ignore_advisories: [
+          "CVE-2026-47075",
+          "CVE-2026-47076",
+          "CVE-2026-47071",
+          "CVE-2026-47069"
+        ]
+      ],
       # Documentation
       name: "Jido Memory",
       source_url: @source_url,
@@ -23,7 +32,7 @@ defmodule JidoMemory.MixProject do
       docs: docs(),
       package: package(),
       # Testing
-      test_coverage: [summary: [threshold: 0]]
+      test_coverage: [tool: ExCoveralls, summary: [threshold: 0]]
     ]
   end
 
@@ -80,7 +89,7 @@ defmodule JidoMemory.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:doctor, "~> 0.22", only: :dev, runtime: false},
+      {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:mimic, "~> 2.0", only: :test}

@@ -39,9 +39,11 @@ defmodule Jido.Memory.ProviderRef do
 
   @type provider_input :: t() | atom() | {atom(), keyword()} | nil
 
+  @doc "Returns the schema used to validate provider references."
   @spec schema() :: Zoi.schema()
   def schema, do: @schema
 
+  @doc "Normalizes a provider name, module, tuple, or reference into a validated reference."
   @spec normalize(provider_input()) :: {:ok, t()} | {:error, term()}
   def normalize(nil), do: validate(%__MODULE__{key: :basic, module: Basic, opts: []})
   def normalize(%__MODULE__{} = provider), do: validate(provider)
@@ -60,6 +62,7 @@ defmodule Jido.Memory.ProviderRef do
 
   def normalize(_), do: {:error, :invalid_provider}
 
+  @doc "Validates that a provider reference is loaded and implements the provider contract."
   @spec validate(t()) :: {:ok, t()} | {:error, term()}
   def validate(%__MODULE__{key: key, module: module, opts: opts}) when is_atom(module) and is_list(opts) do
     with {:ok, loaded} <- ensure_loaded(module),
