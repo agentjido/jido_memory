@@ -89,6 +89,7 @@ defmodule JidoMemory.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:git_ops, "~> 2.9", only: :dev, runtime: false},
       {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
