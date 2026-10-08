@@ -73,14 +73,19 @@ defmodule JidoMemory.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.3"},
+      {:jido,
+       git: "https://github.com/agentjido/jido.git", ref: "0c8853bf451a40330b7192c9d2200a06f9c61261", override: true},
       {:jido_action, "~> 2.3"},
-      {:jido_ai, "~> 2.2", only: [:dev, :test]},
+      {:jido_ai,
+       git: "https://github.com/agentjido/jido_ai.git",
+       ref: "9558c18a31380c00d0694ea5c747dd40ac50ead9",
+       override: true,
+       only: [:dev, :test]},
       # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
       # does not resolve the retired legacy transport stack.
       {:tzdata, "~> 1.1"},
       # Validation & errors
-      {:zoi, "~> 0.18"},
+      {:zoi, "~> 0.18.11"},
       {:splode, "~> 0.3"},
       # Optional durable stores
       {:ecto_sql, "~> 3.13", optional: true},
