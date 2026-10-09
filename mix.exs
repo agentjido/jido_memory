@@ -75,10 +75,7 @@ defmodule JidoMemory.MixProject do
       # Jido ecosystem
       {:jido, "~> 2.4"},
       {:jido_action, "~> 2.3"},
-      {:jido_ai,
-       git: "https://github.com/agentjido/jido_ai.git",
-       ref: "f24ffdc701c48a2c6894c95e7cb550b25a68ce9e",
-       only: [:dev, :test]},
+      {:jido_ai, "~> 2.4", only: [:dev, :test]},
       # Force the maintained tzdata/hackney path so shared CI's `mix hex.audit`
       # does not resolve the retired legacy transport stack.
       {:tzdata, "~> 1.1"},
