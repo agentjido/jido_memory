@@ -662,3 +662,7 @@ That is the primary user-facing value of this package.
 
 If you need a different memory system later, core already gives you the stable
 plumbing to swap providers without throwing away your agent-facing memory story.
+
+## Local Documentation
+
+Run `mix docs` to generate HTML and Markdown documentation in `doc/`, including Markdown pages and `llms.txt`.

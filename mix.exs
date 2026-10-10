@@ -88,7 +88,7 @@ defmodule JidoMemory.MixProject do
       # Dev & test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:git_ops, "~> 2.9", only: :dev, runtime: false},
       {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
@@ -113,7 +113,7 @@ defmodule JidoMemory.MixProject do
       ],
       main: "readme",
       source_ref: "main",
-      formatters: ["html"]
+      formatters: ["html", "markdown"]
     ]
   end
 
