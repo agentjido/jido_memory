@@ -15,15 +15,6 @@ defmodule JidoMemory.MixProject do
       deps: deps(),
       aliases: aliases(),
       cli: cli(),
-      # Hackney 4.x is incompatible with the current HTTPoison/ExAws dependency chain.
-      hex: [
-        ignore_advisories: [
-          "CVE-2026-47075",
-          "CVE-2026-47076",
-          "CVE-2026-47071",
-          "CVE-2026-47069"
-        ]
-      ],
       # Documentation
       name: "Jido Memory",
       source_url: @source_url,
