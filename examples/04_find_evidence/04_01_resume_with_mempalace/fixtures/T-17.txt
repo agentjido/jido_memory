@@ -1,0 +1,6 @@
+User: My refund is still pending. Case T-17.
+Assistant: Support opened a refund review on November 19. The review is still open.
+User: Please call me when the review is complete.
+Assistant: I confirmed a callback as your contact preference.
+User: I might want the refund sent to a different card.
+Assistant: I have not verified a new payment destination.

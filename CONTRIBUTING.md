@@ -29,9 +29,9 @@ Thank you for your interest in contributing to Jido Memory!
 
 ### Making Changes
 
-1. Create a feature branch from `main`
+1. Create a feature branch from `release/v3`
    ```bash
-   git checkout -b feat/your-feature-name
+   git switch -c feat/your-feature-name origin/release/v3
    ```
 
 2. Make your changes and write tests
@@ -99,10 +99,10 @@ mix test
 mix coveralls.html
 
 # Run a specific test file
-mix test test/jido_memory_test.exs
+mix test test/jido_memory/agent_state_test.exs
 
 # Run a specific test
-mix test test/jido_memory_test.exs:12
+mix test test/jido_memory/agent_state_test.exs:12
 ```
 
 ## Documentation
