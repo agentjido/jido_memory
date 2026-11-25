@@ -74,6 +74,7 @@ defmodule JidoMemory.MixProject do
       {:zoi, "~> 0.18.11"},
       {:splode, "~> 0.3"},
       # Optional durable stores
+      {:db_connection, "~> 2.10 and >= 2.10.3", optional: true},
       {:ecto_sql, "~> 3.13", optional: true},
       {:postgrex, "~> 0.20", optional: true},
       # Dev & test
