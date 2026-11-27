@@ -6,6 +6,7 @@ if config_env() == :dev do
     changelog_file: "CHANGELOG.md",
     repository_url: "https://github.com/agentjido/jido_memory",
     manage_mix_version?: true,
+    version_source: :tags,
     version_tag_prefix: "v",
     types: [
       feat: [header: "Features"],
